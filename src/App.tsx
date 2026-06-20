@@ -20,7 +20,7 @@ import SquadronQuestLedger from './components/SquadronQuestLedger';
 import { 
   Shield, Sparkles, Coins, HelpCircle, History, RefreshCw, Star, 
   BookOpen, Compass, Sword, Landmark, Hammer, Trophy, DollarSign, 
-  Info, Skull, LayoutGrid, CheckCircle2, Circle, Volume2, VolumeX, X, Play, LogOut, Award, Maximize2, Minimize2
+  Info, Skull, LayoutGrid, CheckCircle2, Circle, Volume2, VolumeX, X, Play, LogOut, Award, Maximize2, Minimize2, Users
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AetheriaAudioEngine } from './utils/audio';
@@ -176,7 +176,7 @@ export default function App() {
     return basePlayTimeRef.current + Math.floor((Date.now() - sessionStartRef.current) / 1000);
   }, []);
   // Default to Main Menu as requested: 'menu'
-  const [activeScreen, setActiveScreen] = useState<'menu' | 'wiki' | 'arena' | 'wish' | 'inventory' | 'quest' | 'dungeon'>('menu');
+  const [activeScreen, setActiveScreen] = useState<'menu' | 'wiki' | 'arena' | 'wish' | 'inventory' | 'quest' | 'dungeon' | 'party'>('menu');
   const [pullHistory, setPullHistory] = useState<{ name: string; rarity: number; time: string }[]>([]);
   
   const [bgmVolume, setBgmVolume] = useState<number>(100);
@@ -1613,7 +1613,7 @@ export default function App() {
         <div className="xl:col-span-3 space-y-6 flex flex-col h-full">
           
           {/* Main Action tab selectors */}
-          <div className="grid grid-cols-3 md:flex bg-[#0b0f19]/80 backdrop-blur-md border border-white/10 p-1.5 rounded-xl w-full md:w-fit gap-1 shadow-[0_0_20px_rgba(0,0,0,0.5)]">
+          <div className="grid grid-cols-4 md:flex bg-[#0b0f19]/80 backdrop-blur-md border border-white/10 p-1.5 rounded-xl w-full md:w-fit gap-1 shadow-[0_0_20px_rgba(0,0,0,0.5)]">
             <button
               onClick={() => {
                 setActiveScreen('wiki');
@@ -1713,6 +1713,23 @@ export default function App() {
             >
               <Trophy className="w-3.5 h-3.5 shrink-0 text-slate-955 text-slate-950" />
               <span>Quest</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveScreen('party');
+                AetheriaAudioEngine.playClick();
+              }}
+              className={`p-2 px-1 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 flex-1 md:flex-initial cursor-pointer ${
+                activeScreen === 'party'
+                  ? 'bg-emerald-500 text-slate-950 shadow-[0_0_15px_rgba(16,185,129,0.35)] font-black'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-black'
+              }`}
+              id="dash_screen_party"
+            >
+              <Users className="w-3.5 h-3.5 shrink-0 text-slate-955 text-slate-950" />
+              <span className="hidden md:inline">Party Setup</span>
+              <span className="md:hidden">Party</span>
             </button>
           </div>
 
@@ -1874,6 +1891,102 @@ export default function App() {
                     onClaimAllQuestRewards={claimAllQuestRewards}
                     layout="full"
                   />
+                </motion.div>
+              )}
+
+              {activeScreen === 'party' && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.98 }}
+                  transition={{ duration: 0.15 }}
+                  key="party_scr"
+                  className="w-full"
+                >
+                  <div className="bg-[#0b0f19]/70 border border-white/10 p-6 rounded-xl shadow-[0_4px_30px_rgba(0,0,0,0.4)] backdrop-blur-md space-y-6">
+                    <div className="border-b border-white/5 pb-3">
+                      <h3 className="text-sm font-black text-slate-200 uppercase tracking-widest flex items-center gap-2 font-display">
+                        <Users className="w-4 h-4 text-emerald-450 text-emerald-405 text-emerald-400" />
+                        Combat Party Setup ({saveState.partyIds.length}/4)
+                      </h3>
+                      <p className="text-[10px] text-slate-405 text-slate-400 mt-1">
+                        Deploy up to 4 heroes to sync elemental reaction triggers inside the active arena.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {PLAYABLE_CHARACTERS.map(c => {
+                        const isChecked = saveState.partyIds.includes(c.id);
+                        const isOwned = (saveState.unlockedCharacterIds || []).includes(c.id);
+
+                        if (!isOwned) return null;
+
+                        const charLvl = saveState.characterLevels[c.id] || 1;
+                        const equippedWeaponId = saveState.characterEquippedWeapon[c.id];
+                        const weaponObj = saveState.inventoryWeapons?.find(w => w.id === equippedWeaponId);
+
+                        return (
+                          <button
+                            key={c.id}
+                            onClick={() => {
+                              if (isChecked) {
+                                if (saveState.partyIds.length <= 1) return; // Must have at least 1
+                                triggerSaveUpdate(prev => ({
+                                  ...prev,
+                                  partyIds: prev.partyIds.filter(pid => pid !== c.id)
+                                }));
+                              } else {
+                                if (saveState.partyIds.length >= 4) return; // max 4
+                                triggerSaveUpdate(prev => ({
+                                  ...prev,
+                                  partyIds: [...prev.partyIds, c.id]
+                                }));
+                              }
+                              AetheriaAudioEngine.playClick();
+                            }}
+                            className={`p-4 rounded-xl border text-left flex flex-col justify-between min-h-[110px] h-auto transition-all relative overflow-hidden cursor-pointer ${
+                              isChecked
+                                ? 'bg-[#0f172a] border-amber-400 text-white shadow-[0_0_18px_rgba(251,191,36,0.2)] ring-1 ring-amber-400/30'
+                                : 'bg-black/35 border-white/5 text-slate-405 hover:border-white/15'
+                            }`}
+                          >
+                            {isChecked && (
+                              <span className="absolute top-2 right-2 bg-amber-400 text-slate-950 font-black text-[7.5px] px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                Active
+                              </span>
+                            )}
+                            <div>
+                              <div className="flex items-center gap-1.5 w-full justify-between pr-10">
+                                <span className="font-black text-[12px] truncate uppercase tracking-tight text-slate-100">{c.name}</span>
+                                <span className="bg-slate-800 border border-slate-700 text-amber-500 font-mono text-[8px] px-1.5 py-0.5 rounded leading-none shrink-0">LV.{charLvl}</span>
+                              </div>
+                              <div className="flex shrink-0 gap-0.5 mt-1 select-none">
+                                {Array.from({ length: c.rarity }).map((_, i) => (
+                                  <Star key={i} className="w-2.5 h-2.5 text-amber-400 fill-amber-400 shrink-0" />
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="mt-4 border-t border-white/5 pt-2 flex flex-col gap-0.5">
+                              <div className="flex justify-between items-center text-[9px] font-mono text-slate-400 uppercase tracking-tight">
+                                <span className="font-bold text-indigo-400">{c.element}</span>
+                                <span className="text-slate-400">{c.weaponType} class</span>
+                              </div>
+                              {weaponObj ? (
+                                <div className="text-[8px] font-medium text-slate-300 truncate font-mono uppercase bg-black/45 px-1.5 py-0.5 rounded border border-white/5 mt-1 tracking-tighter">
+                                  ⚙️ {weaponObj.name} (LV.{weaponObj.level})
+                                </div>
+                              ) : (
+                                <div className="text-[8px] font-medium text-red-400/70 truncate font-mono uppercase bg-black/45 px-1.5 py-0.5 rounded border border-red-955/20 mt-1 tracking-tighter">
+                                  ⚠️ NO WEAPON
+                                </div>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
