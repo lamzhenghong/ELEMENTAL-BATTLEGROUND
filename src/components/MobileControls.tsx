@@ -59,18 +59,18 @@ export default function MobileControls({
   return (
     <div 
       className="fixed bottom-6 right-6 z-50 select-none touch-none pointer-events-auto"
-      style={{ width: '220px', height: '160px' }}
+      style={{ width: '192px', height: '192px' }}
       onPointerDown={(e) => e.stopPropagation()} // Stop propagation to canvas
     >
-      {/* 1. Attack Button (Bottom-Right, largest) */}
+      {/* 1. Attack Button (Center, largest) */}
       <button
         onPointerDown={(e) => handleAction(e, onAttack)}
         className="absolute bg-[#0d131f]/80 border border-white/20 active:bg-white/10 text-white rounded-full flex items-center justify-center active:scale-95 transition-all cursor-pointer overflow-hidden z-20"
         style={{
           width: '72px',
           height: '72px',
-          bottom: '12px',
-          right: '12px',
+          top: '60px',
+          left: '60px',
           boxShadow: `0 0 12px rgba(255, 255, 255, 0.15), inset 0 0 8px rgba(255, 255, 255, 0.05)`,
           touchAction: 'none'
         }}
@@ -78,7 +78,7 @@ export default function MobileControls({
         <Sword className="w-8 h-8 text-slate-100" />
       </button>
 
-      {/* 2. Elemental Skill Button (Top-Right) */}
+      {/* 2. Elemental Skill Button (Top) */}
       <button
         onPointerDown={(e) => {
           if (skillCooldown <= 0) {
@@ -88,12 +88,12 @@ export default function MobileControls({
           }
         }}
         disabled={skillCooldown > 0}
-        className="absolute rounded-full flex flex-col items-center justify-center active:scale-95 transition-all cursor-pointer border relative overflow-hidden bg-[#0d131f]/80 disabled:opacity-50 z-20"
+        className="absolute rounded-full flex flex-col items-center justify-center active:scale-95 transition-all cursor-pointer border overflow-hidden bg-[#0d131f]/80 disabled:opacity-50 z-20"
         style={{
-          width: '48px',
-          height: '48px',
-          bottom: '98px',
-          right: '12px',
+          width: '44px',
+          height: '44px',
+          top: '12px',
+          left: '74px',
           borderColor: skillCooldown > 0 ? 'rgba(255,255,255,0.05)' : `${elemColor}80`,
           color: skillCooldown > 0 ? '#64748b' : elemColor,
           boxShadow: skillCooldown > 0 ? 'none' : `0 0 15px ${elemColor}40, inset 0 0 8px ${elemColor}15`,
@@ -101,7 +101,7 @@ export default function MobileControls({
         }}
       >
         <Zap className="w-4 h-4" />
-        <span className="text-[7.5px] font-bold mt-0.5 tracking-wider">SKILL</span>
+        <span className="text-[7px] font-bold mt-0.5 tracking-wider">SKILL</span>
         {skillCooldown > 0 && (
           <div className="absolute inset-0 bg-[#0d131f]/90 flex items-center justify-center text-xs font-mono font-black text-red-400">
             {Math.ceil(skillCooldown)}s
@@ -109,59 +109,7 @@ export default function MobileControls({
         )}
       </button>
 
-      {/* 3. Ultimate Burst Button (Top-Left diagonal) */}
-      <button
-        onPointerDown={(e) => handleAction(e, onUltimate)}
-        className="absolute rounded-full flex flex-col items-center justify-center active:scale-95 transition-all cursor-pointer border relative overflow-hidden bg-[#0d131f]/80 z-20"
-        style={{
-          width: '48px',
-          height: '48px',
-          bottom: '82px',
-          right: '82px',
-          borderColor: ultReady ? '#eab308' : 'rgba(255, 255, 255, 0.3)',
-          color: ultReady ? '#fbbf24' : '#e2e8f0',
-          boxShadow: ultReady 
-            ? '0 0 15px rgba(234, 179, 8, 0.4), inset 0 0 8px rgba(234, 179, 8, 0.1)' 
-            : '0 0 12px rgba(255, 255, 255, 0.15), inset 0 0 6px rgba(255, 255, 255, 0.05)',
-          touchAction: 'none'
-        }}
-      >
-        <Sparkles className={`w-4 h-4 ${ultReady ? 'animate-spin' : ''}`} style={{ animationDuration: '6s' }} />
-        <span className="text-[7.5px] font-bold mt-0.5 tracking-wider">{ultPercent}%</span>
-      </button>
-
-      {/* 4. Dash/Dodge Button (Bottom-Left) */}
-      <button
-        onPointerDown={(e) => {
-          if (dodgeCooldown <= 0) {
-            handleAction(e, onDodge);
-          } else {
-            e.stopPropagation();
-          }
-        }}
-        disabled={dodgeCooldown > 0}
-        className="absolute rounded-full flex flex-col items-center justify-center active:scale-95 transition-all cursor-pointer border relative overflow-hidden bg-[#0d131f]/80 disabled:opacity-50 z-20"
-        style={{
-          width: '48px',
-          height: '48px',
-          bottom: '12px',
-          right: '98px',
-          borderColor: dodgeCooldown > 0 ? 'rgba(255,255,255,0.05)' : 'rgba(16, 185, 129, 0.6)',
-          color: dodgeCooldown > 0 ? '#64748b' : '#34d399',
-          boxShadow: dodgeCooldown > 0 ? 'none' : '0 0 15px rgba(16, 185, 129, 0.4), inset 0 0 8px rgba(16, 185, 129, 0.1)',
-          touchAction: 'none'
-        }}
-      >
-        <RefreshCw className="w-4 h-4" />
-        <span className="text-[7.5px] font-bold mt-0.5 tracking-wider">DASH</span>
-        {dodgeCooldown > 0 && (
-          <div className="absolute inset-0 bg-[#0d131f]/90 flex items-center justify-center text-xs font-mono font-black text-red-400">
-            {Math.ceil(dodgeCooldown)}s
-          </div>
-        )}
-      </button>
-
-      {/* 5. Parry/Block Button (Far Left) */}
+      {/* 3. Parry/Block Button (Left) */}
       <button
         onPointerDown={(e) => {
           if (parryCooldown <= 0) {
@@ -181,12 +129,12 @@ export default function MobileControls({
           onParryEnd?.();
         }}
         disabled={parryCooldown > 0}
-        className="absolute rounded-full flex flex-col items-center justify-center active:scale-95 transition-all cursor-pointer border relative overflow-hidden bg-[#0d131f]/80 disabled:opacity-50 z-20"
+        className="absolute rounded-full flex flex-col items-center justify-center active:scale-95 transition-all cursor-pointer border overflow-hidden bg-[#0d131f]/80 disabled:opacity-50 z-20"
         style={{
-          width: '48px',
-          height: '48px',
-          bottom: '12px',
-          right: '156px',
+          width: '44px',
+          height: '44px',
+          top: '74px',
+          left: '12px',
           borderColor: parryCooldown > 0 ? 'rgba(255,255,255,0.05)' : 'rgba(6, 182, 212, 0.6)',
           color: parryCooldown > 0 ? '#64748b' : '#22d3ee',
           boxShadow: parryCooldown > 0 ? 'none' : '0 0 15px rgba(6, 182, 212, 0.4), inset 0 0 8px rgba(6, 182, 212, 0.1)',
@@ -194,7 +142,7 @@ export default function MobileControls({
         }}
       >
         <ShieldAlert className="w-4 h-4" />
-        <span className="text-[7.5px] font-bold mt-0.5 tracking-wider">PARRY</span>
+        <span className="text-[7px] font-bold mt-0.5 tracking-wider">PARRY</span>
         {parryCooldown > 0 && (
           <div className="absolute inset-0 bg-[#0d131f]/90 flex items-center justify-center text-xs font-mono font-black text-red-400">
             {Math.ceil(parryCooldown)}s
@@ -202,17 +150,57 @@ export default function MobileControls({
         )}
       </button>
 
-      {/* Directional arrow pointer overlays pointing to center Attack button */}
-      {/* Skill pointer down arrow */}
-      <div 
-        className="absolute w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[5px] z-10 pointer-events-none" 
-        style={{ bottom: '89px', right: '32px', borderTopColor: skillCooldown > 0 ? 'rgba(255, 255, 255, 0.2)' : elemColor }}
-      />
-      {/* Dash pointer right arrow */}
-      <div 
-        className="absolute w-0 h-0 border-t-[4px] border-t-transparent border-b-[4px] border-b-transparent border-l-[5px] border-l-emerald-400/80 z-10 pointer-events-none" 
-        style={{ bottom: '32px', right: '89px' }}
-      />
+      {/* 4. Dash/Dodge Button (Bottom) */}
+      <button
+        onPointerDown={(e) => {
+          if (dodgeCooldown <= 0) {
+            handleAction(e, onDodge);
+          } else {
+            e.stopPropagation();
+          }
+        }}
+        disabled={dodgeCooldown > 0}
+        className="absolute rounded-full flex flex-col items-center justify-center active:scale-95 transition-all cursor-pointer border overflow-hidden bg-[#0d131f]/80 disabled:opacity-50 z-20"
+        style={{
+          width: '44px',
+          height: '44px',
+          top: '136px',
+          left: '74px',
+          borderColor: dodgeCooldown > 0 ? 'rgba(255,255,255,0.05)' : 'rgba(16, 185, 129, 0.6)',
+          color: dodgeCooldown > 0 ? '#64748b' : '#34d399',
+          boxShadow: dodgeCooldown > 0 ? 'none' : '0 0 15px rgba(16, 185, 129, 0.4), inset 0 0 8px rgba(16, 185, 129, 0.1)',
+          touchAction: 'none'
+        }}
+      >
+        <RefreshCw className="w-4 h-4" />
+        <span className="text-[7px] font-bold mt-0.5 tracking-wider">DASH</span>
+        {dodgeCooldown > 0 && (
+          <div className="absolute inset-0 bg-[#0d131f]/90 flex items-center justify-center text-xs font-mono font-black text-red-400">
+            {Math.ceil(dodgeCooldown)}s
+          </div>
+        )}
+      </button>
+
+      {/* 5. Ultimate Burst Button (Right) */}
+      <button
+        onPointerDown={(e) => handleAction(e, onUltimate)}
+        className="absolute rounded-full flex flex-col items-center justify-center active:scale-95 transition-all cursor-pointer border overflow-hidden bg-[#0d131f]/80 z-20"
+        style={{
+          width: '44px',
+          height: '44px',
+          top: '74px',
+          left: '136px',
+          borderColor: ultReady ? '#eab308' : 'rgba(255, 255, 255, 0.3)',
+          color: ultReady ? '#fbbf24' : '#e2e8f0',
+          boxShadow: ultReady 
+            ? '0 0 15px rgba(234, 179, 8, 0.4), inset 0 0 8px rgba(234, 179, 8, 0.1)' 
+            : '0 0 12px rgba(255, 255, 255, 0.15), inset 0 0 6px rgba(255, 255, 255, 0.05)',
+          touchAction: 'none'
+        }}
+      >
+        <Sparkles className="w-4 h-4" />
+        <span className="text-[7px] font-bold mt-0.5 tracking-wider">{ultPercent}%</span>
+      </button>
     </div>
   );
 }
