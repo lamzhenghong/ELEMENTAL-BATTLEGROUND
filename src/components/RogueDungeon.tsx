@@ -75,7 +75,7 @@ export default function RogueDungeon({
   // Run states
   const [runActive, setRunActive] = useState<boolean>(() => getSavedValue('runActive', false));
   const [currentRoomIdx, setCurrentRoomIdx] = useState<number>(() => getSavedValue('currentRoomIdx', 0));
-  const [dungeonMap, setDungeonMap] = useState<('battle' | 'elite' | 'rest' | 'buff' | 'boss')[]>(() => getSavedValue('dungeonMap', []));
+  const [dungeonMap, setDungeonMap] = useState<('battle' | 'elite' | 'rest' | 'boss')[]>(() => getSavedValue('dungeonMap', []));
   const [partyHp, setPartyHp] = useState<Record<string, number>>(() => getSavedValue('partyHp', {}));
   const [partyUlt, setPartyUlt] = useState<Record<string, number>>(() => getSavedValue('partyUlt', {}));
   const [activeBuffs, setActiveBuffs] = useState<string[]>(() => getSavedValue('activeBuffs', []));
@@ -83,6 +83,7 @@ export default function RogueDungeon({
   // Choice states
   const [offeredBuffs, setOfferedBuffs] = useState<string[]>(() => getSavedValue('offeredBuffs', []));
   const [roomCompleted, setRoomCompleted] = useState<boolean>(() => getSavedValue('roomCompleted', false));
+  const [roomBuffChosen, setRoomBuffChosen] = useState<boolean>(() => getSavedValue('roomBuffChosen', false));
   const [runFinished, setRunFinished] = useState<'victory' | 'defeat' | null>(() => getSavedValue('runFinished', null));
   const [runPartyIds, setRunPartyIds] = useState<string[]>(() => getSavedValue('runPartyIds', []));
   
@@ -102,7 +103,8 @@ export default function RogueDungeon({
         offeredBuffs,
         roomCompleted,
         runFinished,
-        runPartyIds
+        runPartyIds,
+        roomBuffChosen
       };
       localStorage.setItem('aetheria_ruins_save_v1', JSON.stringify(saveData));
     } else {
@@ -118,7 +120,8 @@ export default function RogueDungeon({
     offeredBuffs,
     roomCompleted,
     runFinished,
-    runPartyIds
+    runPartyIds,
+    roomBuffChosen
   ]);
 
   // Report room progress to stats on mount/load
@@ -132,20 +135,19 @@ export default function RogueDungeon({
   const handleStartRun = () => {
     AetheriaAudioEngine.playClick();
     
-    // Generate map of 30 rooms
-    const map: ('battle' | 'elite' | 'rest' | 'buff' | 'boss')[] = [];
-    for (let i = 1; i <= 29; i++) {
-      if (i === 5 || i === 11 || i === 17 || i === 23 || i === 27) {
-        map.push('buff');
-      } else if (i === 8 || i === 15 || i === 22 || i === 26) {
-        map.push('rest');
-      } else if (i === 4 || i === 10 || i === 16 || i === 20 || i === 25 || i === 28) {
-        map.push('elite');
-      } else {
-        map.push('battle');
-      }
-    }
-    map.push('boss');
+    // Generate map of 10 rooms
+    const map: ('battle' | 'elite' | 'rest' | 'boss')[] = [
+      'battle', // Room 1
+      'battle', // Room 2
+      'elite',  // Room 3
+      'rest',   // Room 4
+      'battle', // Room 5
+      'battle', // Room 6
+      'battle', // Room 7
+      'elite',  // Room 8
+      'rest',   // Room 9
+      'boss'    // Room 10
+    ];
     
     // Initialize healths from character levels (max Hp calculation)
     const initialHps: Record<string, number> = {};
@@ -175,6 +177,7 @@ export default function RogueDungeon({
     setCurrentRoomIdx(0);
     setRunActive(true);
     setRoomCompleted(false);
+    setRoomBuffChosen(false);
     setRunFinished(null);
     setCombatActive(false);
     onIncrementStat('rogueRoom', 1);
@@ -190,20 +193,19 @@ export default function RogueDungeon({
 
   const evaluateRoomEnter = (
     idx: number, 
-    map: ('battle' | 'elite' | 'rest' | 'buff' | 'boss')[],
+    map: ('battle' | 'elite' | 'rest' | 'boss')[],
     hps: Record<string, number>
   ) => {
     const rType = map[idx];
     setRoomCompleted(false);
     
-    if (rType === 'buff') {
-      // Pick 3 random buffs
+    // If it's a multiple of 5, offer buffs and wait for selection before entering
+    if ((idx + 1) % 5 === 0) {
       const shuffled = [...DUNGEON_BUFFS].sort(() => 0.5 - Math.random());
       setOfferedBuffs(shuffled.slice(0, 3).map(b => b.name));
-    } else if (rType === 'rest') {
-      // Direct choices
+      setRoomBuffChosen(false);
     } else {
-      // Battle/Elite/Boss - player triggers combat
+      setRoomBuffChosen(true);
     }
   };
 
@@ -240,7 +242,7 @@ export default function RogueDungeon({
   const handleSelectBuff = (buffName: string) => {
     AetheriaAudioEngine.playUltimate();
     setActiveBuffs(prev => [...prev, buffName]);
-    setRoomCompleted(true);
+    setRoomBuffChosen(true); // Proceed to standard room action screen
   };
 
   // Handle combat end callback
@@ -373,6 +375,7 @@ export default function RogueDungeon({
           dungeonPartyHp={partyHp}
           dungeonPartyUlt={partyUlt}
           dungeonRoomType={currentRoomType === 'elite' ? 'elite' : currentRoomType === 'boss' ? 'boss' : 'battle'}
+          dungeonRoomIdx={currentRoomIdx}
           onDungeonBattleEnd={handleDungeonBattleEnd}
           onExitToWiki={onExitToWiki}
           devCheatsEnabled={devCheatsEnabled}
@@ -502,22 +505,22 @@ export default function RogueDungeon({
               {/* Room Choice Selected UI */}
               {!roomCompleted ? (
                 <motion.div
-                  key="room_active"
+                  key={!roomBuffChosen ? "room_buff_select" : "room_active"}
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -15 }}
                   className="w-full text-center space-y-6"
                 >
                   
-                  {/* Buff Selection Room */}
-                  {currentRoomType === 'buff' && (
+                  {/* Buff Selection step (if not chosen yet) */}
+                  {!roomBuffChosen ? (
                     <div className="space-y-6 w-full">
                       <div className="space-y-1">
                         <span className="text-[9px] bg-amber-400/10 text-amber-400 border border-amber-400/30 px-2 py-0.5 rounded uppercase tracking-wider font-mono font-black animate-pulse">
                           🌿 BLESSING OF AEON
                         </span>
                         <h4 className="text-lg font-black text-slate-100 uppercase tracking-widest font-display">Blessing Matrix Selection</h4>
-                        <p className="text-[10px] text-slate-400 max-w-sm mx-auto uppercase">Choose one blessing matrix stream to carry forward</p>
+                        <p className="text-[10px] text-slate-400 max-w-sm mx-auto uppercase">Choose one blessing matrix stream to carry forward before entering Room {currentRoomIdx + 1}</p>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full">
@@ -539,84 +542,86 @@ export default function RogueDungeon({
                         })}
                       </div>
                     </div>
-                  )}
-
-                  {/* Rest site Room */}
-                  {currentRoomType === 'rest' && (
-                    <div className="space-y-6 max-w-sm mx-auto">
-                      <div className="space-y-1">
-                        <span className="text-[9px] bg-cyan-400/10 text-cyan-400 border border-cyan-400/30 px-2 py-0.5 rounded uppercase tracking-wider font-mono font-black">
-                          🕯️ RIFT CAFE
-                        </span>
-                        <h4 className="text-lg font-black text-slate-100 uppercase tracking-widest font-display">Aether Rest Site</h4>
-                        <p className="text-[10px] text-slate-400 uppercase">Select one action matrix to rejuvenate vital sign indices</p>
-                      </div>
-
-                      <div className="grid grid-cols-1 gap-3 w-full">
-                        <button
-                          onClick={() => handleRestChoice('heal')}
-                          className="bg-black/45 hover:bg-[#0c1912] border border-white/5 hover:border-emerald-500/40 p-4 rounded-xl flex items-center gap-4 transition-all duration-300 active:scale-95 cursor-pointer group"
-                        >
-                          <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center group-hover:border-emerald-400">
-                            <Heart className="w-5 h-5 text-emerald-400" />
+                  ) : (
+                    <>
+                      {/* Rest site Room */}
+                      {currentRoomType === 'rest' && (
+                        <div className="space-y-6 max-w-sm mx-auto">
+                          <div className="space-y-1">
+                            <span className="text-[9px] bg-cyan-400/10 text-cyan-400 border border-cyan-400/30 px-2 py-0.5 rounded uppercase tracking-wider font-mono font-black">
+                              🕯️ RIFT CAFE
+                            </span>
+                            <h4 className="text-lg font-black text-slate-100 uppercase tracking-widest font-display">Aether Rest Site</h4>
+                            <p className="text-[10px] text-slate-400 uppercase">Select one action matrix to rejuvenate vital sign indices</p>
                           </div>
-                          <div className="text-left">
-                            <span className="text-xs font-black text-slate-200 block uppercase tracking-wide">Restore Life Force</span>
-                            <span className="text-[9px] text-slate-400 font-mono block">Heals all active party members back to 100% max HP.</span>
-                          </div>
-                        </button>
 
-                        <button
-                          onClick={() => handleRestChoice('ult')}
-                          className="bg-black/45 hover:bg-[#1a140b] border border-white/5 hover:border-amber-500/40 p-4 rounded-xl flex items-center gap-4 transition-all duration-300 active:scale-95 cursor-pointer group"
-                        >
-                          <div className="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center group-hover:border-amber-400">
-                            <Zap className="w-5 h-5 text-amber-400 animate-pulse" />
-                          </div>
-                          <div className="text-left">
-                            <span className="text-xs font-black text-slate-200 block uppercase tracking-wide">Charge Celestial Bursts</span>
-                            <span className="text-[9px] text-slate-400 font-mono block">Charges all characters ultimate energy indices to 100%.</span>
-                          </div>
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                          <div className="grid grid-cols-1 gap-3 w-full">
+                            <button
+                              onClick={() => handleRestChoice('heal')}
+                              className="bg-black/45 hover:bg-[#0c1912] border border-white/5 hover:border-emerald-500/40 p-4 rounded-xl flex items-center gap-4 transition-all duration-300 active:scale-95 cursor-pointer group"
+                            >
+                              <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center group-hover:border-emerald-400">
+                                <Heart className="w-5 h-5 text-emerald-400" />
+                              </div>
+                              <div className="text-left">
+                                <span className="text-xs font-black text-slate-200 block uppercase tracking-wide">Restore Life Force</span>
+                                <span className="text-[9px] text-slate-400 font-mono block">Heals all active party members back to 100% max HP.</span>
+                              </div>
+                            </button>
 
-                  {/* Battle / Elite / Boss trigger screen */}
-                  {(currentRoomType === 'battle' || currentRoomType === 'elite' || currentRoomType === 'boss') && (
-                    <div className="space-y-6 max-w-sm mx-auto">
-                      <div className="space-y-1">
-                        <span className={`text-[9px] border px-2 py-0.5 rounded uppercase tracking-wider font-mono font-black ${
-                          currentRoomType === 'boss' ? 'bg-red-500/10 border-red-500/35 text-red-400 animate-pulse' :
-                          currentRoomType === 'elite' ? 'bg-purple-500/10 border-purple-500/35 text-purple-400' :
-                          'bg-indigo-500/10 border-indigo-500/35 text-indigo-400'
-                        }`}>
-                          {currentRoomType === 'boss' ? '👿 THREAT DETECTED: Boss Room' :
-                           currentRoomType === 'elite' ? '⚔️ THREAT DETECTED: Elite Combat' :
-                           '⚔️ CONFLICT ZONE: Battle Room'}
-                        </span>
-                        <h4 className="text-lg font-black text-slate-100 uppercase tracking-widest font-display">
-                          {currentRoomType === 'boss' ? 'THE DRAKE CALAMITY RIFT' :
-                           currentRoomType === 'elite' ? 'Epoch Ruin Sentinel guard' :
-                           'Cognitive Slime Matrix'}
-                        </h4>
-                        <p className="text-[10px] text-slate-450 uppercase">Prepare indices. Eliminate all threats to progress.</p>
-                      </div>
+                            <button
+                              onClick={() => handleRestChoice('ult')}
+                              className="bg-black/45 hover:bg-[#1a140b] border border-white/5 hover:border-amber-500/40 p-4 rounded-xl flex items-center gap-4 transition-all duration-300 active:scale-95 cursor-pointer group"
+                            >
+                              <div className="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center group-hover:border-amber-400">
+                                <Zap className="w-5 h-5 text-amber-400 animate-pulse" />
+                              </div>
+                              <div className="text-left">
+                                <span className="text-xs font-black text-slate-200 block uppercase tracking-wide">Charge Celestial Bursts</span>
+                                <span className="text-[9px] text-slate-400 font-mono block">Charges all characters ultimate energy indices to 100%.</span>
+                              </div>
+                            </button>
+                          </div>
+                        </div>
+                      )}
 
-                      <button
-                        onClick={() => {
-                          AetheriaAudioEngine.playClick();
-                          setCombatActive(true);
-                        }}
-                        className={`w-full p-4 font-black text-xs uppercase tracking-widest rounded-xl cursor-pointer flex items-center justify-center gap-2 transition-all ${
-                          currentRoomType === 'boss' 
-                            ? 'bg-red-650 hover:bg-red-550 text-white shadow-lg shadow-red-950/40 hover:scale-105' 
-                            : 'bg-indigo-650 hover:bg-indigo-550 text-white shadow-lg shadow-indigo-950/40 hover:scale-105'
-                        }`}
-                      >
-                        <Play className="w-4 h-4 fill-current" /> Deploy Strike Squad
-                      </button>
-                    </div>
+                      {/* Battle / Elite / Boss trigger screen */}
+                      {(currentRoomType === 'battle' || currentRoomType === 'elite' || currentRoomType === 'boss') && (
+                        <div className="space-y-6 max-w-sm mx-auto">
+                          <div className="space-y-1">
+                            <span className={`text-[9px] border px-2 py-0.5 rounded uppercase tracking-wider font-mono font-black ${
+                              currentRoomType === 'boss' ? 'bg-red-500/10 border-red-500/35 text-red-400 animate-pulse' :
+                              currentRoomType === 'elite' ? 'bg-purple-500/10 border-purple-500/35 text-purple-400' :
+                              'bg-indigo-500/10 border-indigo-500/35 text-indigo-400'
+                            }`}>
+                              {currentRoomType === 'boss' ? '👿 THREAT DETECTED: Boss Room' :
+                               currentRoomType === 'elite' ? '⚔️ THREAT DETECTED: Elite Combat' :
+                               '⚔️ CONFLICT ZONE: Battle Room'}
+                            </span>
+                            <h4 className="text-lg font-black text-slate-100 uppercase tracking-widest font-display">
+                              {currentRoomType === 'boss' ? 'THE DRAKE CALAMITY RIFT' :
+                               currentRoomType === 'elite' ? 'Epoch Ruin Sentinel guard' :
+                               'Cognitive Slime Matrix'}
+                            </h4>
+                            <p className="text-[10px] text-slate-450 uppercase">Prepare indices. Eliminate all threats to progress.</p>
+                          </div>
+
+                          <button
+                            onClick={() => {
+                              AetheriaAudioEngine.playClick();
+                              setCombatActive(true);
+                            }}
+                            className={`w-full p-4 font-black text-xs uppercase tracking-widest rounded-xl cursor-pointer flex items-center justify-center gap-2 transition-all ${
+                              currentRoomType === 'boss' 
+                                ? 'bg-red-650 hover:bg-red-550 text-white shadow-lg shadow-red-950/40 hover:scale-105' 
+                                : 'bg-indigo-650 hover:bg-indigo-550 text-white shadow-lg shadow-indigo-950/40 hover:scale-105'
+                            }`}
+                          >
+                            <Play className="w-4 h-4 fill-current" /> Deploy Strike Squad
+                          </button>
+                        </div>
+                      )}
+                    </>
                   )}
                 </motion.div>
               ) : (
@@ -670,7 +675,7 @@ export default function RogueDungeon({
                     Abandon Matrix Run?
                   </h3>
                   <p className="text-xs text-slate-350 font-mono leading-relaxed uppercase">
-                    Abandoning the ruins will terminate your progress at room {currentRoomIdx + 1}/30. All active blessings and temporary HP indicators will be permanently lost.
+                    Abandoning the ruins will terminate your progress at room {currentRoomIdx + 1}/10. All active blessings and temporary HP indicators will be permanently lost.
                   </p>
                 </div>
 
@@ -718,14 +723,14 @@ export default function RogueDungeon({
             Aether Ruins Explorer
           </h3>
           <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-            Every deep dive generates a new pathway of rifts. Collect custom blessings, maintain frontline roster HP indices, and purge the Calamity Erosion Drake at Node 30.
+            Every deep dive generates a new pathway of rifts. Collect custom blessings, maintain frontline roster HP indices, and purge the Calamity Erosion Drake at Node 10. Choose a blessing before entering Rooms 5 &amp; 10.
           </p>
         </div>
 
         <div className="space-y-2.5 bg-black/40 border border-white/5 p-4 rounded-xl">
           <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest block font-display">Ruins Core Constraints:</span>
           <div className="space-y-1.5 text-[10px] font-mono text-slate-350 uppercase">
-            <div>• ROOM NODES: <b className="text-slate-100">30 levels generated per matrix deep dive</b></div>
+            <div>• ROOM NODES: <b className="text-slate-100">10 levels generated per matrix deep dive</b></div>
             <div>• PARTY HEALTH: <b className="text-red-400">Hp persists between battle nodes</b></div>
             <div>• ULTIMATE BURSTS: <b className="text-amber-400">Energies carry forward</b></div>
             <div>• blessings: <b className="text-indigo-400">Choose buffs along the matrix choice rooms</b></div>

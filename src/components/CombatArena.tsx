@@ -49,6 +49,7 @@ interface CombatArenaProps {
   dungeonPartyHp?: Record<string, number>;
   dungeonPartyUlt?: Record<string, number>;
   dungeonRoomType?: 'battle' | 'elite' | 'boss';
+  dungeonRoomIdx?: number;
   onDungeonBattleEnd?: (victory: boolean, remainingHp: Record<string, number>, remainingUlt: Record<string, number>) => void;
 }
 
@@ -229,6 +230,7 @@ export default function CombatArena({
   dungeonPartyHp = {},
   dungeonPartyUlt = {},
   dungeonRoomType,
+  dungeonRoomIdx = 0,
   onDungeonBattleEnd,
   onExitToWiki,
   onAddItems
@@ -700,7 +702,7 @@ export default function CombatArena({
 
 // Keyboard binding trackers moved below trigger functions to satisfy block scope compilation rules
 
-  // Spawn enemies by progressive Wave and align with original presets
+  // Spawn enemies by progressive Wave — procedurally generated, scales with wave number and dungeon depth
   const triggerSpawnWave = (waveNum: number) => {
     setCurrentWave(waveNum);
     setIsGameOver(false);
@@ -714,245 +716,167 @@ export default function CombatArena({
     const centerX = WORLD_WIDTH / 2;
     const centerY = WORLD_HEIGHT / 2;
 
-    if (waveNum === 1) {
-      setSpawnerPreset('slimes');
-      const slimesData: { element: ElementType; color: string; hp: number }[] = [
-        { element: 'Pyro', color: '#f97316', hp: 500 },
-        { element: 'Hydro', color: '#3b82f6', hp: 600 },
-        { element: 'Cryo', color: '#60a5fa', hp: 450 },
-        { element: 'Electro', color: '#a855f7', hp: 550 },
-        { element: 'Dendro', color: '#22c55e', hp: 500 }
+    const createRandomSlime = (id: string, scale: number) => {
+      const elements: { element: ElementType; color: string; name: string }[] = [
+        { element: 'Pyro', color: '#f97316', name: 'Pyro Slime' },
+        { element: 'Hydro', color: '#3b82f6', name: 'Hydro Slime' },
+        { element: 'Cryo', color: '#60a5fa', name: 'Cryo Slime' },
+        { element: 'Electro', color: '#a855f7', name: 'Electro Slime' },
+        { element: 'Anemo', color: '#10b981', name: 'Anemo Slime' },
+        { element: 'Geo', color: '#fbbf24', name: 'Geo Slime' },
+        { element: 'Dendro', color: '#22c55e', name: 'Dendro Slime' }
       ];
+      const tpl = elements[Math.floor(Math.random() * elements.length)];
+      const baseHp = 500 + Math.random() * 200;
+      const hp = Math.round(baseHp * scale);
+      const speed = 1.2 + Math.random() * 0.4;
+      return {
+        id,
+        name: tpl.name,
+        type: 'Normal' as const,
+        element: tpl.element,
+        color: tpl.color,
+        x: centerX + (Math.random() - 0.5) * 800,
+        y: centerY + (Math.random() - 0.5) * 800,
+        radius: 23,
+        hp,
+        maxHp: hp,
+        speed,
+        activeElements: [] as ElementType[],
+        telegraphTimer: 0,
+        isFrozen: 0,
+        burningTicks: 0
+      };
+    };
 
-      slimesData.forEach((sd, idx) => {
-        list.push({
-          id: `w1_slime_${idx}`,
-          name: `${sd.element} Slime`,
-          type: 'Normal',
-          element: sd.element,
-          color: sd.color,
-          x: centerX + (Math.random() - 0.5) * 800,
-          y: centerY + (Math.random() - 0.5) * 800,
-          radius: 23,
-          hp: sd.hp,
-          maxHp: sd.hp,
-          speed: 1.2 + Math.random() * 0.4,
-          activeElements: [] as ElementType[],
-          telegraphTimer: 0,
-          isFrozen: 0,
-          burningTicks: 0
-        });
-      });
-      setBossHp(null);
-    } else if (waveNum === 2) {
-      setSpawnerPreset('slimes');
-      // Mix of 6 faster slimes
-      const slimesData = [
-        { element: 'Pyro' as ElementType, color: '#f97316', hp: 600 },
-        { element: 'Hydro' as ElementType, color: '#3b82f6', hp: 700 },
-        { element: 'Cryo' as ElementType, color: '#60a5fa', hp: 550 },
-        { element: 'Electro' as ElementType, color: '#a855f7', hp: 650 },
-        { element: 'Anemo' as ElementType, color: '#10b981', hp: 500 },
-        { element: 'Dendro' as ElementType, color: '#22c55e', hp: 600 }
+    const createRandomElite = (id: string, scale: number) => {
+      const eliteTypes = [
+        { name: 'Abyss Obsidian Berserker', element: 'Geo' as ElementType, color: '#78350f', baseHp: 3500, radius: 36, speed: 1.0, telegraphType: 'circle' as const },
+        { name: 'Abyss Cryo Channeler', element: 'Cryo' as ElementType, color: '#0284c7', baseHp: 2800, radius: 35, speed: 0.9, telegraphType: 'line' as const },
+        { name: 'Epoch Ruin Guard', element: (Math.random() > 0.5 ? 'Geo' : 'Cryo') as ElementType, color: '#4b5563', baseHp: 4500, radius: 40, speed: 1.1, telegraphType: (Math.random() > 0.5 ? 'circle' : 'line') as ('circle' | 'line') }
       ];
-      slimesData.forEach((sd, idx) => {
-        list.push({
-          id: `w2_slime_${idx}`,
-          name: `Aggressive ${sd.element} Slime`,
-          type: 'Normal',
-          element: sd.element,
-          color: sd.color,
-          x: centerX + (Math.random() - 0.5) * 1000,
-          y: centerY + (Math.random() - 0.5) * 1000,
-          radius: 23,
-          hp: sd.hp,
-          maxHp: sd.hp,
-          speed: 1.5,
-          activeElements: [] as ElementType[],
-          telegraphTimer: 0,
-          isFrozen: 0,
-          burningTicks: 0
-        });
-      });
-      setBossHp(null);
-    } else if (waveNum === 3) {
-      setSpawnerPreset('elites');
-      // Wave 3: Elites preset (Abyss Berserker + Abyss Cryo Channeler)
-      list.push({
-        id: 'abyss_orc_1',
-        name: 'Abyss Obsidian Berserker',
-        type: 'Elite',
-        element: 'Geo',
-        color: '#78350f',
-        x: centerX - 400,
-        y: centerY,
-        radius: 36,
-        hp: 3500,
-        maxHp: 3500,
-        speed: 1.0,
+      const tpl = eliteTypes[Math.floor(Math.random() * eliteTypes.length)];
+      const hp = Math.round(tpl.baseHp * scale);
+      return {
+        id,
+        name: tpl.name,
+        type: 'Elite' as const,
+        element: tpl.element,
+        color: tpl.color,
+        x: centerX + (Math.random() - 0.5) * 900,
+        y: centerY + (Math.random() - 0.5) * 900,
+        radius: tpl.radius,
+        hp,
+        maxHp: hp,
+        speed: tpl.speed,
         activeElements: [] as ElementType[],
         telegraphTimer: 0,
-        telegraphType: 'circle',
+        telegraphType: tpl.telegraphType,
         isFrozen: 0,
         burningTicks: 0
-      });
-      list.push({
-        id: 'abyss_orc_2',
-        name: 'Abyss Cryo Channeler',
-        type: 'Elite',
-        element: 'Cryo',
-        color: '#0284c7',
-        x: centerX + 400,
-        y: centerY,
-        radius: 35,
-        hp: 2800,
-        maxHp: 2800,
-        speed: 0.9,
-        activeElements: [] as ElementType[],
-        telegraphTimer: 0,
-        telegraphType: 'line',
-        isFrozen: 0,
-        burningTicks: 0
-      });
-      setBossHp(null);
-    } else if (waveNum === 4) {
-      setSpawnerPreset('elites');
-      // Wave 4: 2 Elites + 2 Slimes
-      list.push({
-        id: 'w4_abyss_geo',
-        name: 'Overlord Obsidian Berserker',
-        type: 'Elite',
-        element: 'Geo',
-        color: '#78350f',
-        x: centerX - 500,
-        y: centerY - 200,
-        radius: 38,
-        hp: 4000,
-        maxHp: 4000,
-        speed: 1.1,
-        activeElements: [] as ElementType[],
-        telegraphTimer: 0,
-        telegraphType: 'circle',
-        isFrozen: 0,
-        burningTicks: 0
-      });
-      list.push({
-        id: 'w4_abyss_cryo',
-        name: 'Cryo Arch-Channeller',
-        type: 'Elite',
-        element: 'Cryo',
-        color: '#0284c7',
-        x: centerX + 500,
-        y: centerY + 200,
-        radius: 35,
-        hp: 3200,
-        maxHp: 3200,
-        speed: 1.0,
-        activeElements: [] as ElementType[],
-        telegraphTimer: 0,
-        telegraphType: 'line',
-        isFrozen: 0,
-        burningTicks: 0
-      });
-      // Plus Pyro & Hydro slimes
-      const slimes = [
-        { element: 'Pyro' as ElementType, color: '#f97316' },
-        { element: 'Hydro' as ElementType, color: '#3b82f6' }
-      ];
-      slimes.forEach((sd, i) => {
-        list.push({
-          id: `w4_slime_${i}`,
-          name: `Overcharged ${sd.element} Slime`,
-          type: 'Normal',
-          element: sd.element,
-          color: sd.color,
-          x: centerX + (Math.random() - 0.5) * 300,
-          y: centerY + (Math.random() - 0.5) * 300,
-          radius: 23,
-          hp: 800,
-          maxHp: 800,
-          speed: 1.4,
-          activeElements: [] as ElementType[],
-          telegraphTimer: 0,
-          isFrozen: 0,
-          burningTicks: 0
-        });
-      });
-      setBossHp(null);
-    } else if (waveNum === 5) {
-      // Wave 5: BOSS (Randomly selected from templates)
-      setSpawnerPreset('boss');
+      };
+    };
+
+    const spawnRandomBoss = (id: string, scale: number) => {
       const bossTpl = BOSS_TEMPLATES[Math.floor(Math.random() * BOSS_TEMPLATES.length)];
-      setBossMaxHp(bossTpl.maxHp);
-      list.push({
-        id: 'world_boss_' + Date.now(),
+      const hp = Math.round(bossTpl.maxHp * scale);
+      return {
+        id,
         name: bossTpl.name,
-        type: 'Boss',
+        type: 'Boss' as const,
         bossType: bossTpl.bossType,
         element: bossTpl.element,
         color: bossTpl.color,
         x: centerX,
         y: centerY - 80,
         radius: bossTpl.radius,
-        hp: bossTpl.maxHp,
-        maxHp: bossTpl.maxHp,
+        hp,
+        maxHp: hp,
         speed: bossTpl.speed,
         activeElements: [] as ElementType[],
         telegraphTimer: 0,
-        telegraphType: 'circle',
+        telegraphType: 'circle' as const,
         isFrozen: 0,
         burningTicks: 0,
         phase: 1,
         attackCooldown: 0
-      });
-      setBossHp(bossTpl.maxHp);
-    } else {
-      // Wave 6+: Infinite scaled survival
-      setSpawnerPreset('elites');
-      const scaleMultiplier = 1 + (waveNum - 5) * 0.25;
-      
-      // Giant Mech
-      list.push({
-        id: `w${waveNum}_sentinel`,
-        name: `Epoch Ruin Guard Lv.${waveNum}`,
-        type: 'Elite',
-        element: waveNum % 2 === 0 ? 'Cryo' : 'Geo',
-        color: waveNum % 2 === 0 ? '#0284c7' : '#78350f',
-        x: centerX,
-        y: centerY,
-        radius: 40,
-        hp: Math.round(5000 * scaleMultiplier),
-        maxHp: Math.round(5000 * scaleMultiplier),
-        speed: 1.1,
-        activeElements: [] as ElementType[],
-        telegraphTimer: 0,
-        telegraphType: waveNum % 2 === 0 ? 'line' : 'circle',
-        isFrozen: 0,
-        burningTicks: 0
-      });
+      };
+    };
 
-      // Spawn 3 scaled slimes in flanking positions
-      const elementsList: ElementType[] = ['Pyro', 'Hydro', 'Electro'];
-      elementsList.forEach((el, idx) => {
-        list.push({
-          id: `w${waveNum}_scaled_slime_${idx}`,
-          name: `Survival ${el} Slime Lv.${waveNum}`,
-          type: 'Normal',
-          element: el,
-          color: el === 'Pyro' ? '#f97316' : el === 'Hydro' ? '#3b82f6' : '#a855f7',
-          x: centerX + (idx - 1) * 300,
-          y: centerY + 250,
-          radius: 23,
-          hp: Math.round(1200 * scaleMultiplier),
-          maxHp: Math.round(1200 * scaleMultiplier),
-          speed: 1.3,
-          activeElements: [] as ElementType[],
-          telegraphTimer: 0,
-          isFrozen: 0,
-          burningTicks: 0
-        });
-      });
-      setBossHp(null);
+    if (dungeonMode && dungeonRoomType) {
+      const scaleMultiplier = 1 + dungeonRoomIdx * 0.15;
+      if (dungeonRoomType === 'boss') {
+        setSpawnerPreset('boss');
+        const boss = spawnRandomBoss('dungeon_boss_' + Date.now(), scaleMultiplier);
+        setBossMaxHp(boss.maxHp);
+        setBossHp(boss.hp);
+        list.push(boss);
+      } else if (dungeonRoomType === 'elite') {
+        setSpawnerPreset('elites');
+        const numElites = 2 + Math.floor(dungeonRoomIdx / 4);
+        for (let i = 0; i < numElites; i++) {
+          list.push(createRandomElite(`dungeon_elite_${i}_${Date.now()}`, scaleMultiplier));
+        }
+        const numSlimes = 1 + Math.floor(dungeonRoomIdx / 6);
+        for (let i = 0; i < numSlimes; i++) {
+          list.push(createRandomSlime(`dungeon_slime_${i}_${Date.now()}`, scaleMultiplier));
+        }
+        setBossHp(null);
+      } else {
+        setSpawnerPreset('slimes');
+        const numSlimes = 4 + Math.floor(dungeonRoomIdx / 2);
+        for (let i = 0; i < numSlimes; i++) {
+          list.push(createRandomSlime(`dungeon_slime_${i}_${Date.now()}`, scaleMultiplier));
+        }
+        if (dungeonRoomIdx >= 4) {
+          list.push(createRandomElite(`dungeon_elite_helper_${Date.now()}`, scaleMultiplier));
+        }
+        setBossHp(null);
+      }
+    } else {
+      if (waveNum % 5 === 0) {
+        setSpawnerPreset('boss');
+        const scaleMultiplier = Math.max(1, 1 + (waveNum - 5) * 0.25);
+        const boss = spawnRandomBoss('world_boss_' + Date.now(), scaleMultiplier);
+        setBossMaxHp(boss.maxHp);
+        setBossHp(boss.hp);
+        list.push(boss);
+      } else {
+        const themes = ['slimes', 'elites', 'mix'] as const;
+        let theme: 'slimes' | 'elites' | 'mix' = 'mix';
+        if (waveNum === 1) {
+          theme = 'slimes';
+        } else if (waveNum === 2) {
+          theme = Math.random() > 0.5 ? 'slimes' : 'mix';
+        } else {
+          theme = themes[Math.floor(Math.random() * themes.length)];
+        }
+        
+        setSpawnerPreset(theme === 'slimes' ? 'slimes' : 'elites');
+        const scaleMultiplier = 1 + (waveNum - 1) * 0.15;
+        
+        if (theme === 'slimes') {
+          const numSlimes = 4 + Math.floor(waveNum / 2);
+          for (let i = 0; i < numSlimes; i++) {
+            list.push(createRandomSlime(`w${waveNum}_slime_${i}`, scaleMultiplier));
+          }
+        } else if (theme === 'elites') {
+          const numElites = Math.min(4, 1 + Math.floor(waveNum / 3));
+          for (let i = 0; i < numElites; i++) {
+            list.push(createRandomElite(`w${waveNum}_elite_${i}`, scaleMultiplier));
+          }
+        } else {
+          const numSlimes = Math.max(2, 3 + Math.floor(waveNum / 3));
+          const numElites = Math.max(1, Math.floor(waveNum / 4));
+          for (let i = 0; i < numSlimes; i++) {
+            list.push(createRandomSlime(`w${waveNum}_mix_slime_${i}`, scaleMultiplier));
+          }
+          for (let i = 0; i < numElites; i++) {
+            list.push(createRandomElite(`w${waveNum}_mix_elite_${i}`, scaleMultiplier));
+          }
+        }
+        setBossHp(null);
+      }
     }
 
     enemiesRef.current = list;
@@ -961,31 +885,11 @@ export default function CombatArena({
     bossProjectilesRef.current = [];
   };
 
-  const triggerSpawnEnemies = (preset: 'slimes' | 'elites' | 'boss') => {
-    // Map existing preset UI buttons to waves
-    if (preset === 'slimes') {
-      triggerSpawnWave(1);
-    } else if (preset === 'elites') {
-      triggerSpawnWave(3);
-    } else if (preset === 'boss') {
-      triggerSpawnWave(5);
-    }
-  };
-
   // Run on startup to spawn correct wave/dungeon enemies once battle starts
+  // triggerSpawnWave internally handles dungeonMode + dungeonRoomType branching
   useEffect(() => {
     if (!battleStarted) return;
-    if (dungeonMode && dungeonRoomType) {
-      if (dungeonRoomType === 'battle') {
-        triggerSpawnWave(1);
-      } else if (dungeonRoomType === 'elite') {
-        triggerSpawnWave(3);
-      } else if (dungeonRoomType === 'boss') {
-        triggerSpawnWave(5);
-      }
-    } else {
-      triggerSpawnWave(1);
-    }
+    triggerSpawnWave(1);
   }, [battleStarted, dungeonMode, dungeonRoomType]);
 
   const swapPartyIndex = (idx: number) => {
@@ -3352,19 +3256,6 @@ export default function CombatArena({
               </button>
             )}
 
-            {!isMobile && (['slimes', 'elites', 'boss'] as const).map((preset) => (
-              <button
-                key={preset}
-                onClick={() => triggerSpawnEnemies(preset)}
-                className={`p-1.5 px-3.5 text-[9.5px] font-black rounded-md uppercase tracking-wider border transition-all cursor-pointer ${
-                  spawnerPreset === preset
-                    ? 'bg-red-500/15 border-red-500 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.3)]'
-                    : 'bg-black/35 border-white/10 text-slate-400 hover:text-slate-205'
-                }`}
-              >
-                Spawn: {preset}
-              </button>
-            ))}
 
             {/* Pause buttons */}
             <button
