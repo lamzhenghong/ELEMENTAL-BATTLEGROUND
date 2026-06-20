@@ -77,6 +77,20 @@ export interface CombatCharacter {
     skill: SkillDetails;
     ultimate: SkillDetails;
   };
+  equippedWeaponName?: string;
+  royalStacks?: number;
+  widsithBuffTimer?: number;
+  widsithCooldown?: number;
+  widsithBuffAtk?: number;
+  widsithBuffEle?: number;
+  sacrificialCooldown?: number;
+  swapBuffTimer?: number;
+  swapBuffAtk?: number;
+  crescentPikeTimer?: number;
+  debateClubTimer?: number;
+  debateClubCd?: number;
+  scepterBubbleCd?: number;
+  spearDoubleCd?: number;
 }
 
 export interface Quest {

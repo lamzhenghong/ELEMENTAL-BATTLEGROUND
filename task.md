@@ -1,11 +1,15 @@
 # Tasks
 
-- [x] Declare `WORLD_WIDTH` and `WORLD_HEIGHT` constants in `CombatArena.tsx`
-- [x] Initialize player position to world center `(1000, 1000)` in `playerRef`
-- [x] Calculate camera scroll offsets (`camX`, `camY`) in `updateGameLoop`
-- [x] Translate world space drawings by `-camX` and `-camY` in canvas context, and restore for screen space overlays
-- [x] Draw background board grid and bounding walls in world space dimensions
-- [x] Adjust enemy spawning coordinates and reset player position in `triggerSpawnWave`
-- [x] Convert mouse coordinates to world space in `handleCanvasPointerDown` and `handleCanvasPointerMove`
-- [x] Update bounds checks in movement and dodge logic
-- [x] Verify build and run manual checks
+- [x] Define BOSS_TEMPLATES and randomize boss spawning in `triggerSpawnWave`
+- [x] Add `bossProjectilesRef` and implement updates, drawing, and collision logic in `updateGameLoop`
+    - [x] Implement Fire Dragon phase attacks (fireballs, fire patches, falling meteors)
+    - [x] Implement Ice Golem phase attacks (3-way ice shards, blizzard slow patches, frost tomb field)
+    - [x] Implement Storm Thunderbird phase attacks (lightning strikes, lightning walls, thunderstorm)
+- [x] Update combat party construction to calculate element resonances and store wielder weapon names
+- [x] Implement team synergy resonances calculations and apply modifiers (ATK, CD, Crit Rate, Speed, DMG)
+- [x] Implement visual synergy badges in the Top Combat Info HUD bar
+- [x] Implement weapon passive triggers and transient states in the game loop
+    - [x] 5★ weapons: Solar Searing Blade, Calamity Blaze, Solar Wind Bow, Abyssal Ocean Scepter, Primordial Jade Winged-Spear
+    - [x] 4★ weapons: Sacrificial reset, Favonius energy charge, Royal Claymore crit stacks, Widsith swap-in buffs, Crescent Pike infusion, Dragon's Bane damage modifier
+    - [x] 3★ weapons: Thrilling Tales swap-out buff, Black Tassel slime bonus, Debate Club area DMG, and element condition check damage modifiers
+- [x] Verify everything compiles and builds successfully checks

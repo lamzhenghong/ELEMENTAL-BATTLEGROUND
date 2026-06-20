@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { PLAYABLE_CHARACTERS } from '../data/characters';
 import { PlayableCharacter, ElementType, CombatCharacter, Weapon } from '../types';
 import { 
@@ -171,11 +171,40 @@ class CrystalShard {
     ctx.lineWidth = 1.5;
     ctx.shadowBlur = 15;
     ctx.shadowColor = this.color;
-    ctx.fill();
     ctx.stroke();
     ctx.restore();
   }
 }
+
+const BOSS_TEMPLATES = [
+  {
+    bossType: 'fire_dragon',
+    name: 'Calamity Pyro Dragon',
+    element: 'Pyro' as ElementType,
+    color: '#dc2626',
+    radius: 65,
+    maxHp: 25000,
+    speed: 0.7
+  },
+  {
+    bossType: 'ice_golem',
+    name: 'Glacial Frost Golem',
+    element: 'Cryo' as ElementType,
+    color: '#06b6d4',
+    radius: 68,
+    maxHp: 27000,
+    speed: 0.6
+  },
+  {
+    bossType: 'thunderbird',
+    name: 'Tempest Thunderbird',
+    element: 'Electro' as ElementType,
+    color: '#a855f7',
+    radius: 60,
+    maxHp: 23000,
+    speed: 0.8
+  }
+];
 
 export default function CombatArena({
   onEarnRewards,
@@ -211,6 +240,43 @@ export default function CombatArena({
   const [combatParty, setCombatParty] = useState<CombatCharacter[]>([]);
   const [activePartyIndex, setActivePartyIndex] = useState<number>(0);
   const activeChar = combatParty[activePartyIndex] || null;
+
+  const activeResonances = useMemo(() => {
+    const elementCounts: Record<ElementType, number> = {} as any;
+    combatParty.forEach(c => {
+      elementCounts[c.element] = (elementCounts[c.element] || 0) + 1;
+    });
+
+    const uniqueElements = Object.keys(elementCounts).length;
+    const list: { name: string; desc: string; key: string }[] = [];
+
+    if ((elementCounts['Pyro'] || 0) >= 2) {
+      list.push({ name: 'Fervent Flames (2 Pyro)', desc: '+15% ATK boost', key: 'pyro' });
+    }
+    if ((elementCounts['Hydro'] || 0) >= 2) {
+      list.push({ name: 'Soothing Waters (2 Hydro)', desc: '+20% Energy Recharge rate boost', key: 'hydro' });
+    }
+    if ((elementCounts['Cryo'] || 0) >= 2) {
+      list.push({ name: 'Shattering Ice (2 Cryo)', desc: '+15% Crit Rate against Frozen/Cryo targets', key: 'cryo' });
+    }
+    if ((elementCounts['Electro'] || 0) >= 2) {
+      list.push({ name: 'High Voltage (2 Electro)', desc: '-20% Skill Cooldown reduction', key: 'electro' });
+    }
+    if ((elementCounts['Geo'] || 0) >= 2) {
+      list.push({ name: 'Enduring Rock (2 Geo)', desc: '+15% Shield Strength and +15% DMG when shielded', key: 'geo' });
+    }
+    if ((elementCounts['Anemo'] || 0) >= 2) {
+      list.push({ name: 'Impetuous Winds (2 Anemo)', desc: '+15% Move Speed and -15% Skill cooldown', key: 'anemo' });
+    }
+    if ((elementCounts['Dendro'] || 0) >= 2) {
+      list.push({ name: 'Sprawling Greenery (2 Dendro)', desc: '+50 Elemental Mastery', key: 'dendro' });
+    }
+    if (uniqueElements >= 4) {
+      list.push({ name: 'Protective Canopy (4 Unique)', desc: '+15% All Elemental/Physical DMG', key: 'unique' });
+    }
+
+    return list;
+  }, [combatParty]);
 
   // Level selector for test items
   const [battleStarted, setBattleStarted] = useState<boolean>(false);
@@ -266,6 +332,7 @@ export default function CombatArena({
   const [gameScore, setGameScore] = useState(0);
   const [bossHp, setBossHp] = useState<number | null>(null);
   const [bossMaxHp, setBossMaxHp] = useState<number>(25000);
+  const bossProjectilesRef = useRef<any[]>([]);
 
   // Weather, stamina and premium visual states
   const [currentWeather, setCurrentWeather] = useState<'Sunny' | 'Rain' | 'Thunderstorm' | 'Snow'>('Sunny');
@@ -519,12 +586,24 @@ export default function CombatArena({
           }
         }
 
+        const elementCounts: Record<ElementType, number> = {} as any;
+        partyIds.forEach(pId => {
+          const tpl = PLAYABLE_CHARACTERS.find(c => c.id === pId);
+          if (tpl) {
+            elementCounts[tpl.element] = (elementCounts[tpl.element] || 0) + 1;
+          }
+        });
+        const has2Pyro = (elementCounts['Pyro'] || 0) >= 2;
+
         const pLvl = characterPortraits?.[charTemplate.id] || 0;
         const pBuffs = getAccumulatedPortraitBuffs(charTemplate.id, pLvl);
 
         let baseHp = calculatedHp;
         let baseDef = calculatedDef;
         let baseAtk = calculatedAtk * (1 + bonusAtkPercent);
+        if (has2Pyro) {
+          baseAtk = Math.round(baseAtk * 1.15);
+        }
         let baseCritRate = charTemplate.baseStats.critRate + bonusCritRate;
         let baseCritDmg = charTemplate.baseStats.critDmg + bonusCritDmg;
 
@@ -555,6 +634,8 @@ export default function CombatArena({
           ? dungeonPartyUlt[charTemplate.id]
           : 40;
 
+        const equippedWeaponName = equippedWeapon ? equippedWeapon.name : '';
+
         list.push({
           id: charTemplate.id,
           name: charTemplate.name,
@@ -570,7 +651,21 @@ export default function CombatArena({
           skillCooldownRemaining: 0,
           ultimateEnergy: startingUlt,
           ultimateMaxEnergy: 80,
-          skills: charTemplate.skills
+          skills: charTemplate.skills,
+          equippedWeaponName: equippedWeaponName,
+          royalStacks: 0,
+          widsithBuffTimer: 0,
+          widsithCooldown: 0,
+          widsithBuffAtk: 0,
+          widsithBuffEle: 0,
+          sacrificialCooldown: 0,
+          swapBuffTimer: 0,
+          swapBuffAtk: 0,
+          crescentPikeTimer: 0,
+          debateClubTimer: 0,
+          debateClubCd: 0,
+          scepterBubbleCd: 0,
+          spearDoubleCd: 0
         });
       }
     });
@@ -785,27 +880,32 @@ export default function CombatArena({
       });
       setBossHp(null);
     } else if (waveNum === 5) {
-      // Wave 5: BOSS (The Calamity Erosion Drake)
+      // Wave 5: BOSS (Randomly selected from templates)
       setSpawnerPreset('boss');
+      const bossTpl = BOSS_TEMPLATES[Math.floor(Math.random() * BOSS_TEMPLATES.length)];
+      setBossMaxHp(bossTpl.maxHp);
       list.push({
-        id: 'calamity_drake_boss',
-        name: 'The Calamity Erosion Drake',
+        id: 'world_boss_' + Date.now(),
+        name: bossTpl.name,
         type: 'Boss',
-        element: 'Pyro',
-        color: '#dc2626',
+        bossType: bossTpl.bossType,
+        element: bossTpl.element,
+        color: bossTpl.color,
         x: centerX,
         y: centerY - 80,
-        radius: 65,
-        hp: bossMaxHp,
-        maxHp: bossMaxHp,
-        speed: 0.7,
+        radius: bossTpl.radius,
+        hp: bossTpl.maxHp,
+        maxHp: bossTpl.maxHp,
+        speed: bossTpl.speed,
         activeElements: [] as ElementType[],
         telegraphTimer: 0,
-        telegraphType: 'boss_beam',
+        telegraphType: 'circle',
         isFrozen: 0,
-        burningTicks: 0
+        burningTicks: 0,
+        phase: 1,
+        attackCooldown: 0
       });
-      setBossHp(bossMaxHp);
+      setBossHp(bossTpl.maxHp);
     } else {
       // Wave 6+: Infinite scaled survival
       setSpawnerPreset('elites');
@@ -836,16 +936,16 @@ export default function CombatArena({
       elementsList.forEach((el, idx) => {
         list.push({
           id: `w${waveNum}_scaled_slime_${idx}`,
-          name: `Unstable ${el} Core`,
+          name: `Survival ${el} Slime Lv.${waveNum}`,
           type: 'Normal',
           element: el,
-          color: getElementColorHex(el),
-          x: centerX + (idx - 1) * 350 + (Math.random() - 0.5) * 100,
-          y: centerY - 350 + Math.random() * 200,
-          radius: 22 + Math.random() * 5,
-          hp: Math.round(1000 * scaleMultiplier),
-          maxHp: Math.round(1000 * scaleMultiplier),
-          speed: 1.4,
+          color: el === 'Pyro' ? '#f97316' : el === 'Hydro' ? '#3b82f6' : '#a855f7',
+          x: centerX + (idx - 1) * 300,
+          y: centerY + 250,
+          radius: 23,
+          hp: Math.round(1200 * scaleMultiplier),
+          maxHp: Math.round(1200 * scaleMultiplier),
+          speed: 1.3,
           activeElements: [] as ElementType[],
           telegraphTimer: 0,
           isFrozen: 0,
@@ -858,6 +958,7 @@ export default function CombatArena({
     enemiesRef.current = list;
     shardsRef.current = [];
     particlesRef.current = [];
+    bossProjectilesRef.current = [];
   };
 
   const triggerSpawnEnemies = (preset: 'slimes' | 'elites' | 'boss') => {
@@ -903,6 +1004,53 @@ export default function CombatArena({
 
     // Swapping trigger Resonance reaction check
     spawnFloatingDamageText(px, py - 40, `SWAP: ${swapped.name}!`, getElementColorHex(swapped.element), 13);
+
+    // Weapon Swapping passive triggers
+    setCombatParty(pList => pList.map((c, i) => {
+      let charObj = { ...c };
+      
+      // If this is the incoming character
+      if (i === idx) {
+        // Widsith swap-in check
+        if (charObj.equippedWeaponName?.includes('Widsith')) {
+          if (!charObj.widsithCooldown || charObj.widsithCooldown <= 0) {
+            const isAtkSong = Math.random() < 0.5;
+            charObj.widsithBuffTimer = 600; // 10s
+            charObj.widsithCooldown = 1800; // 30s
+            if (isAtkSong) {
+              charObj.widsithBuffAtk = 0.60;
+              charObj.widsithBuffEle = 0;
+              spawnFloatingDamageText(px, py - 55, '🎵 WIDSITH DEBUT: ATK +60%!', '#facc15', 12, true);
+            } else {
+              charObj.widsithBuffAtk = 0;
+              charObj.widsithBuffEle = 0.48;
+              spawnFloatingDamageText(px, py - 55, '🎵 WIDSITH DEBUT: ELEMENTAL +48%!', '#c084fc', 12, true);
+            }
+          }
+        }
+
+        // Thrilling Tales swap-out bonus check: if outgoing had TTDS, grant incoming +24% ATK
+        const outgoing = pList[currentPartyIndex];
+        if (outgoing?.equippedWeaponName?.includes('Thrilling Tales')) {
+          if (!outgoing.widsithCooldown || outgoing.widsithCooldown <= 0) {
+            charObj.swapBuffTimer = 600; // 10s
+            charObj.swapBuffAtk = 0.24;
+            spawnFloatingDamageText(px, py - 65, '📖 HERITAGE: ATK +24%!', '#60a5fa', 11, true);
+          }
+        }
+      }
+
+      // If this is the outgoing character
+      if (i === currentPartyIndex) {
+        if (charObj.equippedWeaponName?.includes('Thrilling Tales')) {
+          if (!charObj.widsithCooldown || charObj.widsithCooldown <= 0) {
+            charObj.widsithCooldown = 1200; // 20s cooldown
+          }
+        }
+      }
+
+      return charObj;
+    }));
   };
 
   const triggerDodgeDash = () => {
@@ -1063,10 +1211,30 @@ export default function CombatArena({
     // Reset skill cooldowns
     setCombatParty(pList => pList.map((c, i) => {
       if (i === currentPartyIndex) {
-        const energyMultiplier = dungeonMode && dungeonBuffs.includes('Recharge Matrix') ? 1.5 : 1.0;
+        const has2Electro = activeResonances.some(r => r.key === 'electro');
+        const has2Anemo = activeResonances.some(r => r.key === 'anemo');
+        const hasSearingBlade = c.equippedWeaponName?.includes('Solar Searing Blade');
+
+        let cdMultiplier = 1.0;
+        if (has2Electro) cdMultiplier *= 0.80;
+        if (has2Anemo) cdMultiplier *= 0.85;
+        if (hasSearingBlade) cdMultiplier *= 0.80;
+
+        const skillCdMax = 10.0 * cdMultiplier;
+
+        const has2Hydro = activeResonances.some(r => r.key === 'hydro');
+        const resonanceEnergyMult = has2Hydro ? 1.20 : 1.0;
+        const energyMultiplier = (dungeonMode && dungeonBuffs.includes('Recharge Matrix') ? 1.5 : 1.0) * resonanceEnergyMult;
+
+        let debateTimerVal = c.debateClubTimer || 0;
+        if (c.equippedWeaponName?.includes('Debate Club')) {
+          debateTimerVal = 600; // 10s
+        }
+
         return { 
           ...c, 
-          skillCooldownRemaining: 10.0, 
+          skillCooldownRemaining: skillCdMax, 
+          debateClubTimer: debateTimerVal,
           ultimateEnergy: Math.min(c.ultimateMaxEnergy, c.ultimateEnergy + 25 * energyMultiplier) 
         };
       }
@@ -1162,18 +1330,97 @@ export default function CombatArena({
 
     // Check hit collision
     let hitSomething = false;
+    const basicAttackRange = currentActiveChar.equippedWeaponName?.includes('Calamity Blaze') ? 60 :
+                             currentActiveChar.equippedWeaponName?.includes('Solar Wind Bow') ? 100 : 40;
+
     enemiesRef.current.forEach(enemy => {
       if (enemy.hp <= 0) return;
       const dx = enemy.x - swipeX;
       const dy = enemy.y - swipeY;
       const dist = Math.hypot(dx, dy);
 
-      if (dist < 40 + enemy.radius) {
-        const crit = Math.random() < currentActiveChar.critRate;
+      if (dist < basicAttackRange + enemy.radius) {
+        // Cryo resonance: +15% Crit Rate against Frozen/Cryo targets
+        const has2Cryo = activeResonances.some(r => r.key === 'cryo');
+        let charCritRate = currentActiveChar.critRate;
+        if (has2Cryo && (enemy.activeElements.includes('Cryo') || enemy.isFrozen > 0)) {
+          charCritRate += 0.15;
+        }
+
+        // Royal Claymore focus stacks: +8% Crit Rate per stack
+        if (currentActiveChar.equippedWeaponName?.includes('Royal Claymore')) {
+          const stacks = currentActiveChar.royalStacks || 0;
+          charCritRate += stacks * 0.08;
+        }
+
+        // Vigorous (Harbinger of Dawn): when HP is above 90%, +14% Crit Rate
+        if (currentActiveChar.equippedWeaponName?.includes('Harbinger of Dawn') && (currentActiveChar.currentHp / currentActiveChar.maxHp >= 0.90)) {
+          charCritRate += 0.14;
+        }
+
+        const crit = Math.random() < charCritRate;
         let baseDmg = currentActiveChar.atk * currentActiveChar.skills.basic.damageMultiplier;
-        if (crit) baseDmg *= (1 + currentActiveChar.critDmg);
+
+        // White Tassel passive: +24% Normal Attack damage
+        if (currentActiveChar.equippedWeaponName?.includes('White Tassel')) {
+          baseDmg *= 1.24;
+        }
+
+        // Crescent Pike infusion flat damage
+        if (currentActiveChar.equippedWeaponName?.includes('Crescent Pike') && currentActiveChar.crescentPikeTimer > 0) {
+          baseDmg += currentActiveChar.atk * 0.20;
+        }
+
+        if (crit) {
+          baseDmg *= (1 + currentActiveChar.critDmg);
+          // Royal Claymore reset stacks on crit
+          if (currentActiveChar.equippedWeaponName?.includes('Royal Claymore')) {
+            currentActiveChar.royalStacks = 0;
+          }
+        } else {
+          // Royal Claymore add stack on non-crit hit
+          if (currentActiveChar.equippedWeaponName?.includes('Royal Claymore')) {
+            currentActiveChar.royalStacks = Math.min(5, (currentActiveChar.royalStacks || 0) + 1);
+          }
+        }
 
         applySkillDamage(enemy, baseDmg, currentActiveChar.element, false, crit, 'basic');
+
+        // Primordial Jade Spear double strike combo
+        if (currentActiveChar.equippedWeaponName?.includes('Primordial Jade') && (!currentActiveChar.spearDoubleCd || currentActiveChar.spearDoubleCd <= 0)) {
+          applySkillDamage(enemy, baseDmg * 0.75, currentActiveChar.element, false, crit, 'basic');
+          currentActiveChar.spearDoubleCd = 30; // 0.5s cd
+          spawnTextRef.current(enemy.x + 10, enemy.y - 20, '⚔️ Dual Strike!', '#eab308', 10);
+        }
+
+        // Abyssal Ocean Scepter Bubble Splash
+        if (currentActiveChar.equippedWeaponName?.includes('Abyssal Ocean Scepter') && (!currentActiveChar.scepterBubbleCd || currentActiveChar.scepterBubbleCd <= 0)) {
+          enemiesRef.current.forEach(other => {
+            if (other.hp > 0 && Math.hypot(other.x - enemy.x, other.y - enemy.y) < 90) {
+              applySkillDamage(other, currentActiveChar.atk * 0.40, 'Hydro', false, false, 'basic');
+            }
+          });
+          for (let k = 0; k < 12; k++) {
+            particlesRef.current.push(new CombatParticle(enemy.x, enemy.y, '#3b82f6', 4));
+          }
+          currentActiveChar.scepterBubbleCd = 45; // 0.75s cd
+          spawnTextRef.current(enemy.x, enemy.y - 30, '🌊 Bubble Splash!', '#3b82f6', 10);
+        }
+
+        // Debate Club Blunt conclusion AoE explosion
+        if (currentActiveChar.equippedWeaponName?.includes('Debate Club') && currentActiveChar.debateClubTimer > 0 && (!currentActiveChar.debateClubCd || currentActiveChar.debateClubCd <= 0)) {
+          enemiesRef.current.forEach(other => {
+            if (other.hp > 0 && Math.hypot(other.x - enemy.x, other.y - enemy.y) < 75) {
+              applySkillDamage(other, currentActiveChar.atk * 0.60, currentActiveChar.element, false, false, 'basic');
+            }
+          });
+          for (let k = 0; k < 10; k++) {
+            particlesRef.current.push(new CombatParticle(enemy.x, enemy.y, '#e2e8f0', 3.5));
+          }
+          currentActiveChar.debateClubCd = 90; // 1.5s cd
+          spawnTextRef.current(enemy.x, enemy.y - 25, '💥 Blunt conclusion!', '#e2e8f0', 10);
+        }
+
         hitSomething = true;
       }
     });
@@ -1181,7 +1428,9 @@ export default function CombatArena({
     // Award energy build on every basic attack swing! Fills the gauge nicely
     setCombatParty(pList => pList.map((c, i) => {
       if (i === currentPartyIndex) {
-        const energyMultiplier = dungeonMode && dungeonBuffs.includes('Recharge Matrix') ? 1.5 : 1.0;
+        const has2Hydro = activeResonances.some(r => r.key === 'hydro');
+        const resonanceEnergyMult = has2Hydro ? 1.20 : 1.0;
+        const energyMultiplier = (dungeonMode && dungeonBuffs.includes('Recharge Matrix') ? 1.5 : 1.0) * resonanceEnergyMult;
         const energyGain = (hitSomething ? 2 : 1) * energyMultiplier; // bonus reward for hitting targets
         return { ...c, ultimateEnergy: Math.min(c.ultimateMaxEnergy, c.ultimateEnergy + energyGain) };
       }
@@ -1190,17 +1439,122 @@ export default function CombatArena({
   };
 
   const applySkillDamage = (enemy: any, baseDmg: number, type: ElementType, isUlt: boolean = false, isCrit: boolean = false, source: 'basic' | 'skill' | 'ultimate' = 'skill') => {
-    let finalDmg = Math.round(baseDmg);
+    const { combatParty: currentParty, activePartyIndex: currentPartyIndex, shieldWeight: currentShieldWeight } = loopStateRef.current;
+    const currentActiveChar = currentParty[currentPartyIndex] || null;
+    if (!currentActiveChar) return;
+
+    let finalDmg = baseDmg;
+
+    // Apply Widsith theme song buff
+    if (currentActiveChar.widsithBuffTimer && currentActiveChar.widsithBuffTimer > 0) {
+      if (currentActiveChar.widsithBuffAtk && currentActiveChar.widsithBuffAtk > 0) {
+        finalDmg *= (1 + currentActiveChar.widsithBuffAtk);
+      }
+      if (currentActiveChar.widsithBuffEle && currentActiveChar.widsithBuffEle > 0) {
+        finalDmg *= (1 + currentActiveChar.widsithBuffEle);
+      }
+    }
+
+    // Apply Thrilling Tales buff
+    if (currentActiveChar.swapBuffTimer && currentActiveChar.swapBuffTimer > 0 && currentActiveChar.swapBuffAtk) {
+      finalDmg *= (1 + currentActiveChar.swapBuffAtk);
+    }
+
+    // Apply Solar Searing Blade (+10% elemental damage)
+    if (currentActiveChar.equippedWeaponName?.includes('Solar Searing Blade')) {
+      finalDmg *= 1.10;
+    }
+
+    // Apply 4 Unique element resonance (+15% DMG)
+    const has4Unique = activeResonances.some(r => r.key === 'unique');
+    if (has4Unique) {
+      finalDmg *= 1.15;
+    }
+
+    // Apply 2 Geo resonance (+15% DMG when protected by a shield)
+    const has2Geo = activeResonances.some(r => r.key === 'geo');
+    if (has2Geo && currentShieldWeight > 0) {
+      finalDmg *= 1.15;
+    }
+
     let reactionName = '';
     let damageColor = '#ffffff';
 
     // Apply weather Pyro damage multiplier (+10% under Sunny weather)
     if (weatherRef.current === 'Sunny' && type === 'Pyro') {
-      finalDmg = Math.round(finalDmg * 1.1);
+      finalDmg *= 1.1;
     }
 
     // Apply element reaction engine
     const activeDebuffs = enemy.activeElements as ElementType[];
+
+    // --- APPLY CONDITIONAL WEAPON DAMAGE MODIFIERS ---
+    // Cool Steel (+12% DMG against Hydro/Cryo affected targets)
+    if (currentActiveChar.equippedWeaponName?.includes('Cool Steel') && 
+        (activeDebuffs.includes('Hydro') || activeDebuffs.includes('Cryo') || enemy.isFrozen > 0)) {
+      finalDmg *= 1.12;
+    }
+
+    // Bloodtainted Greatsword (+16% DMG against Pyro/Electro affected targets)
+    if (currentActiveChar.equippedWeaponName?.includes('Bloodtainted Greatsword') && 
+        (activeDebuffs.includes('Pyro') || activeDebuffs.includes('Electro'))) {
+      finalDmg *= 1.16;
+    }
+
+    // Raven Bow (+12% DMG against Pyro/Hydro affected targets)
+    if (currentActiveChar.equippedWeaponName?.includes('Raven Bow') && 
+        (activeDebuffs.includes('Pyro') || activeDebuffs.includes('Hydro'))) {
+      finalDmg *= 1.12;
+    }
+
+    // Magic Guide (+12% DMG against Hydro/Electro affected targets)
+    if (currentActiveChar.equippedWeaponName?.includes('Magic Guide') && 
+        (activeDebuffs.includes('Hydro') || activeDebuffs.includes('Electro'))) {
+      finalDmg *= 1.12;
+    }
+
+    // Dragon's Bane (+20% DMG against Hydro/Pyro affected targets)
+    if (currentActiveChar.equippedWeaponName?.includes('Dragon\'s Bane') && 
+        (activeDebuffs.includes('Hydro') || activeDebuffs.includes('Pyro'))) {
+      finalDmg *= 1.20;
+    }
+
+    // Black Tassel (+40% DMG against slimes)
+    if (currentActiveChar.equippedWeaponName?.includes('Black Tassel') && 
+        enemy.name?.toLowerCase().includes('slime')) {
+      finalDmg *= 1.40;
+    }
+
+    // Calamity Blaze staggered knockback
+    if (currentActiveChar.equippedWeaponName?.includes('Calamity Blaze')) {
+      const pushAngle = Math.atan2(enemy.y - playerRef.current.y, enemy.x - playerRef.current.x);
+      enemy.x = Math.max(50, Math.min(WORLD_WIDTH - 50, enemy.x + Math.cos(pushAngle) * 35));
+      enemy.y = Math.max(50, Math.min(WORLD_HEIGHT - 50, enemy.y + Math.sin(pushAngle) * 35));
+    }
+
+    // Favonius Windfall energy generation
+    if (isCrit && currentActiveChar.equippedWeaponName?.includes('Favonius') && Math.random() < 0.60) {
+      setCombatParty(pList => pList.map((c, i) => {
+        if (i === currentPartyIndex) {
+          return { ...c, ultimateEnergy: Math.min(c.ultimateMaxEnergy, c.ultimateEnergy + 6) };
+        }
+        return c;
+      }));
+      spawnTextRef.current(playerRef.current.x, playerRef.current.y - 30, '+6 ENERGY ⚡', '#a855f7', 10);
+    }
+
+    // Sacrificial Cooldown Reset
+    if (source === 'skill' && currentActiveChar.equippedWeaponName?.includes('Sacrificial') && (!currentActiveChar.sacrificialCooldown || currentActiveChar.sacrificialCooldown <= 0)) {
+      if (Math.random() < 0.40) {
+        setCombatParty(pList => pList.map((c, i) => {
+          if (i === currentPartyIndex) {
+            return { ...c, skillCooldownRemaining: 0, sacrificialCooldown: 1800 }; // 30s cd
+          }
+          return c;
+        }));
+        spawnTextRef.current(playerRef.current.x, playerRef.current.y - 45, '🔄 SACRIFICIAL RESET!', '#38bdf8', 12, true);
+      }
+    }
     const index = activeDebuffs.indexOf(type);
     
     // Check Shatter Combo (Frozen State broken by heavy elemental strikes)
@@ -1409,6 +1763,7 @@ export default function CombatArena({
     }
 
     // Decrease enemy HP
+    finalDmg = Math.round(finalDmg);
     enemy.hp = Math.max(0, enemy.hp - finalDmg);
     
     // Play crispy hit sound!
@@ -1467,7 +1822,7 @@ export default function CombatArena({
         // Hero's Wit bonus on boss kill
         if (!dungeonMode) onAddItems?.('char_xp', 8);
         setBossHp(0);
-        spawnTextRef.current(enemy.x, enemy.y, '🏆 DRAKE DEFEATED! 🏆', '#f59e0b', 24, true);
+        spawnTextRef.current(enemy.x, enemy.y, `🏆 ${enemy.name.toUpperCase()} DEFEATED! 🏆`, '#f59e0b', 24, true);
       } else {
         onEarnRewards(50, 400, 15); // Standard mob payout
       }
@@ -1803,7 +2158,17 @@ export default function CombatArena({
 
       if (isMoving) {
         const mag = Math.hypot(dx, dy);
-        const currentSpeed = (currentIsDashing ? 8.2 : runningSpeed) * speedModifier;
+        const has2Anemo = activeResonances.some(r => r.key === 'anemo');
+        const resonanceSpeedMultiplier = has2Anemo ? 1.15 : 1.0;
+        let finalPlayerSpeed = currentIsDashing ? 8.2 : runningSpeed;
+        
+        const standsOnIcePatch = bossProjectilesRef.current.some(
+          proj => proj.type === 'ice_patch' && Math.hypot(playerRef.current.x - proj.x, playerRef.current.y - proj.y) < proj.radius
+        );
+        if (standsOnIcePatch) {
+          finalPlayerSpeed *= 0.5;
+        }
+        const currentSpeed = finalPlayerSpeed * speedModifier * resonanceSpeedMultiplier;
         playerRef.current.x = Math.max(25, Math.min(WORLD_WIDTH - 25, playerRef.current.x + (dx / mag) * currentSpeed));
         playerRef.current.y = Math.max(25, Math.min(WORLD_HEIGHT - 25, playerRef.current.y + (dy / mag) * currentSpeed));
 
@@ -1838,16 +2203,201 @@ export default function CombatArena({
       }
 
       // Automatically tick down character skill cooldowns (scaled by combatSpeed)
-      setCombatParty(pList => {
-        const hasCooldown = pList.some((c, idx) => idx === currentPartyIndex && c.skillCooldownRemaining > 0);
-        if (!hasCooldown) return pList;
-        return pList.map((c, idx) => {
-          if (idx === currentPartyIndex && c.skillCooldownRemaining > 0) {
-            return { ...c, skillCooldownRemaining: Math.max(0, c.skillCooldownRemaining - 0.016 * combatSpeed) };
+      // Automatically tick down character skill cooldowns and buff timers (scaled by combatSpeed)
+      setCombatParty(pList => pList.map((c) => {
+        let skillCD = c.skillCooldownRemaining;
+        if (skillCD > 0) {
+          skillCD = Math.max(0, skillCD - 0.016 * combatSpeed);
+        }
+        let sacCD = c.sacrificialCooldown || 0;
+        if (sacCD > 0) {
+          sacCD = Math.max(0, sacCD - 1 * combatSpeed);
+        }
+        let widsithCD = c.widsithCooldown || 0;
+        if (widsithCD > 0) {
+          widsithCD = Math.max(0, widsithCD - 1 * combatSpeed);
+        }
+        let widsithTimer = c.widsithBuffTimer || 0;
+        if (widsithTimer > 0) {
+          widsithTimer = Math.max(0, widsithTimer - 1 * combatSpeed);
+        }
+        let swapBuffTimer = c.swapBuffTimer || 0;
+        if (swapBuffTimer > 0) {
+          swapBuffTimer = Math.max(0, swapBuffTimer - 1 * combatSpeed);
+        }
+        let crescentPikeTimer = c.crescentPikeTimer || 0;
+        if (crescentPikeTimer > 0) {
+          crescentPikeTimer = Math.max(0, crescentPikeTimer - 1 * combatSpeed);
+        }
+        let debateClubTimer = c.debateClubTimer || 0;
+        if (debateClubTimer > 0) {
+          debateClubTimer = Math.max(0, debateClubTimer - 1 * combatSpeed);
+        }
+        let debateClubCd = c.debateClubCd || 0;
+        if (debateClubCd > 0) {
+          debateClubCd = Math.max(0, debateClubCd - 1 * combatSpeed);
+        }
+        let scepterBubbleCd = c.scepterBubbleCd || 0;
+        if (scepterBubbleCd > 0) {
+          scepterBubbleCd = Math.max(0, scepterBubbleCd - 1 * combatSpeed);
+        }
+        let spearDoubleCd = c.spearDoubleCd || 0;
+        if (spearDoubleCd > 0) {
+          spearDoubleCd = Math.max(0, spearDoubleCd - 1 * combatSpeed);
+        }
+
+        return {
+          ...c,
+          skillCooldownRemaining: skillCD,
+          sacrificialCooldown: sacCD,
+          widsithCooldown: widsithCD,
+          widsithBuffTimer: widsithTimer,
+          swapBuffTimer: swapBuffTimer,
+          crescentPikeTimer: crescentPikeTimer,
+          debateClubTimer: debateClubTimer,
+          debateClubCd: debateClubCd,
+          scepterBubbleCd: scepterBubbleCd,
+          spearDoubleCd: spearDoubleCd
+        };
+      }));
+
+      // --- UPDATE & DRAW BOSS PROJECTILES/HAZARDS ---
+      const activeProjectiles: any[] = [];
+      bossProjectilesRef.current.forEach(proj => {
+        proj.timer -= 1 * combatSpeed;
+
+        if (proj.vx !== undefined && proj.vy !== undefined) {
+          proj.x += proj.vx * speedModifier * combatSpeed;
+          proj.y += proj.vy * speedModifier * combatSpeed;
+        }
+
+        let isExpired = proj.timer <= 0;
+
+        // Collision check with player
+        const distToPlayer = Math.hypot(playerRef.current.x - proj.x, playerRef.current.y - proj.y);
+
+        if (proj.type === 'fireball' || proj.type === 'ice_shard' || proj.type === 'lightning_orb') {
+          if (distToPlayer < playerRef.current.radius + proj.radius) {
+            handlePlayerHit(null, proj.damage);
+            isExpired = true;
+
+            // Spawn hit particles
+            for (let i = 0; i < 8; i++) {
+              particlesRef.current.push(new CombatParticle(proj.x, proj.y, proj.color, 2));
+            }
           }
-          return c;
-        });
+          // Out of bounds check
+          if (proj.x < 0 || proj.x > 2000 || proj.y < 0 || proj.y > 2000) {
+            isExpired = true;
+          }
+        } 
+        else if (proj.type === 'ice_patch' || proj.type === 'fire_patch') {
+          // Continuous damage check
+          if (distToPlayer < proj.radius) {
+            if (Math.floor(proj.timer) % 25 === 0) {
+              handlePlayerHit(null, proj.damage);
+            }
+          }
+        }
+        else if (proj.type === 'meteor_warning' || proj.type === 'lightning_strike_warning') {
+          if (isExpired) {
+            // Detonate / strike!
+            if (distToPlayer < proj.radius) {
+              handlePlayerHit(null, proj.damage);
+              if (proj.type === 'meteor_warning') {
+                // Knockback player away from center of explosion
+                const angle = Math.atan2(playerRef.current.y - proj.y, playerRef.current.x - proj.x);
+                playerRef.current.x = Math.max(25, Math.min(WORLD_WIDTH - 25, playerRef.current.x + Math.cos(angle) * 75));
+                playerRef.current.y = Math.max(25, Math.min(WORLD_HEIGHT - 25, playerRef.current.y + Math.sin(angle) * 75));
+              }
+            }
+            // Spawn explosion particles
+            const particleColor = proj.type === 'meteor_warning' ? '#dc2626' : '#a855f7';
+            for (let i = 0; i < 20; i++) {
+              const part = new CombatParticle(proj.x, proj.y, particleColor, proj.type === 'meteor_warning' ? 4.5 : 3);
+              part.vx *= 2.2;
+              part.vy *= 2.2;
+              particlesRef.current.push(part);
+            }
+            if (proj.type === 'meteor_warning') {
+              spawnTextRef.current(proj.x, proj.y, '💥 METEOR! 💥', '#f97316', 12, true);
+            } else {
+              spawnTextRef.current(proj.x, proj.y, '⚡ BOLT! ⚡', '#a855f7', 11, true);
+            }
+          }
+        }
+
+        // Draw projectile/hazard on canvas
+        ctx.save();
+        if (proj.type === 'fireball') {
+          ctx.shadowBlur = 12;
+          ctx.shadowColor = proj.color;
+          ctx.fillStyle = proj.color;
+          ctx.beginPath();
+          ctx.arc(proj.x, proj.y, proj.radius, 0, Math.PI * 2);
+          ctx.fill();
+        } 
+        else if (proj.type === 'ice_shard') {
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = proj.color;
+          ctx.fillStyle = proj.color;
+          ctx.beginPath();
+          ctx.arc(proj.x, proj.y, proj.radius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        else if (proj.type === 'lightning_orb') {
+          ctx.shadowBlur = 15;
+          ctx.shadowColor = proj.color;
+          ctx.fillStyle = proj.color;
+          ctx.beginPath();
+          ctx.arc(proj.x, proj.y, proj.radius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        else if (proj.type === 'fire_patch') {
+          ctx.globalAlpha = 0.45;
+          ctx.fillStyle = 'rgba(239, 68, 68, 0.45)';
+          ctx.strokeStyle = '#dc2626';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(proj.x, proj.y, proj.radius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+        else if (proj.type === 'ice_patch') {
+          ctx.globalAlpha = 0.45;
+          ctx.fillStyle = 'rgba(186, 230, 253, 0.45)';
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(proj.x, proj.y, proj.radius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+        else if (proj.type === 'meteor_warning' || proj.type === 'lightning_strike_warning') {
+          ctx.globalAlpha = 0.25;
+          ctx.fillStyle = 'rgba(239, 68, 68, 0.2)';
+          ctx.strokeStyle = '#ef4444';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(proj.x, proj.y, proj.radius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          // expanding progress ring
+          const pct = 1 - (proj.timer / proj.maxTimer);
+          ctx.globalAlpha = 0.45;
+          ctx.fillStyle = 'rgba(239, 68, 68, 0.5)';
+          ctx.beginPath();
+          ctx.arc(proj.x, proj.y, proj.radius * pct, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+
+        if (!isExpired) {
+          activeProjectiles.push(proj);
+        }
       });
+      bossProjectilesRef.current = activeProjectiles;
 
       // --- DRAW CRYSTAL PICKUP SHARDS ---
       for (let i = shardsRef.current.length - 1; i >= 0; i--) {
@@ -1860,8 +2410,10 @@ export default function CombatArena({
           // Grant custom bubble shield relative to element
           setShieldActive(shard.element);
           
-          // Apply Bulwark Guard rogue-like buff (+40% shield strength)
-          const baseShield = dungeonMode && dungeonBuffs.includes('Bulwark Guard') ? 840 : 600;
+          // Apply Bulwark Guard rogue-like buff (+40% shield strength) & Geo element resonance (+15%)
+          const has2Geo = activeResonances.some(r => r.key === 'geo');
+          const geoMult = has2Geo ? 1.15 : 1.0;
+          const baseShield = Math.round((dungeonMode && dungeonBuffs.includes('Bulwark Guard') ? 840 : 600) * geoMult);
           setShieldWeight(baseShield); // Shield HP buffer
           
           spawnFloatingDamageText(
@@ -1871,6 +2423,16 @@ export default function CombatArena({
             getElementColorHex(shard.element),
             11
           );
+
+          // Crescent Pike infusion needle trigger
+          setCombatParty(pList => pList.map((c, idx) => {
+            if (idx === currentPartyIndex && c.equippedWeaponName?.includes('Crescent Pike')) {
+              spawnFloatingDamageText(playerRef.current.x, playerRef.current.y - 45, '💉 INFUSION NEEDLE ACTIVE!', '#a78bfa', 11, true);
+              return { ...c, crescentPikeTimer: 300 }; // 5s
+            }
+            return c;
+          }));
+
           shardsRef.current.splice(i, 1);
         }
       }
@@ -1878,6 +2440,257 @@ export default function CombatArena({
       // --- ENEMIES AI AND DRAW STEP ---
       enemiesRef.current.forEach(enemy => {
         if (enemy.hp <= 0) return;
+
+        // --- REAL BOSS MECHANICS AI STEP ---
+        if (enemy.type === 'Boss') {
+          // Detect phase transitions
+          const hpPct = enemy.hp / enemy.maxHp;
+          let newPhase = 1;
+          if (hpPct <= 0.20) {
+            newPhase = 3;
+          } else if (hpPct <= 0.50) {
+            newPhase = 2;
+          }
+
+          if (enemy.phase !== newPhase) {
+            enemy.phase = newPhase;
+            spawnTextRef.current(
+              enemy.x,
+              enemy.y - enemy.radius - 40,
+              `⚠️ ${enemy.name.toUpperCase()} ENTERED PHASE ${newPhase}! ⚠️`,
+              '#ef4444',
+              16,
+              true
+            );
+            if (screenShakeEnabled) {
+              shakeRef.current.intensity = 15;
+            }
+          }
+
+          // Attack logic
+          if (enemy.attackCooldown === undefined) {
+            enemy.attackCooldown = 0;
+          }
+          if (enemy.attackCooldown > 0) {
+            enemy.attackCooldown -= 1 * combatSpeed;
+          }
+
+          const targetX = playerRef.current.x;
+          const targetY = playerRef.current.y;
+          const angle = Math.atan2(targetY - enemy.y, targetX - enemy.x);
+
+          if (enemy.bossType === 'fire_dragon') {
+            // FIRE DRAGON MECHANICS
+            // Phase 1+: Fireballs every 110 frames
+            if (enemy.attackCooldown <= 0) {
+              enemy.attackCooldown = 110;
+              const speed = 4.5;
+              bossProjectilesRef.current.push({
+                id: 'fireball_' + Date.now(),
+                type: 'fireball',
+                x: enemy.x,
+                y: enemy.y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                radius: 12,
+                damage: 260,
+                element: 'Pyro',
+                color: '#f97316',
+                timer: 400
+              });
+              spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 20, '🔥 Fireball!', '#f97316', 10);
+            }
+
+            // Phase 2+: Arena burns - spawn random fire patches
+            if (enemy.phase >= 2) {
+              if (enemy.firePatchTimer === undefined) enemy.firePatchTimer = 0;
+              enemy.firePatchTimer += 1 * combatSpeed;
+              if (enemy.firePatchTimer > 180) {
+                enemy.firePatchTimer = 0;
+                for (let k = 0; k < 3; k++) {
+                  const px = targetX + (Math.random() - 0.5) * 350;
+                  const py = targetY + (Math.random() - 0.5) * 350;
+                  bossProjectilesRef.current.push({
+                    id: 'fire_patch_' + Date.now() + '_' + k,
+                    type: 'fire_patch',
+                    x: px,
+                    y: py,
+                    radius: 45,
+                    damage: 50,
+                    element: 'Pyro',
+                    color: '#ef4444',
+                    timer: 300 // 5 seconds
+                  });
+                }
+                spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 25, '🔥 Arena Burns!', '#ef4444', 11);
+              }
+            }
+
+            // Phase 3: Meteor attack - falling meteors
+            if (enemy.phase === 3) {
+              if (enemy.meteorTimer === undefined) enemy.meteorTimer = 0;
+              enemy.meteorTimer += 1 * combatSpeed;
+              if (enemy.meteorTimer > 90) {
+                enemy.meteorTimer = 0;
+                bossProjectilesRef.current.push({
+                  id: 'meteor_' + Date.now(),
+                  type: 'meteor_warning',
+                  x: targetX,
+                  y: targetY,
+                  radius: 70,
+                  damage: 600,
+                  element: 'Pyro',
+                  color: '#dc2626',
+                  timer: 60, // 1s warning
+                  maxTimer: 60
+                });
+                spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 30, '💥 Meteors Falling!', '#dc2626', 12, true);
+              }
+            }
+          } 
+          else if (enemy.bossType === 'ice_golem') {
+            // ICE GOLEM MECHANICS
+            // Phase 1+: Ice shards spread every 130 frames
+            if (enemy.attackCooldown <= 0) {
+              enemy.attackCooldown = 130;
+              const speed = 4.0;
+              const angles = [angle - 0.25, angle, angle + 0.25];
+              angles.forEach((ang, idx) => {
+                bossProjectilesRef.current.push({
+                  id: 'ice_shard_' + Date.now() + '_' + idx,
+                  type: 'ice_shard',
+                  x: enemy.x,
+                  y: enemy.y,
+                  vx: Math.cos(ang) * speed,
+                  vy: Math.sin(ang) * speed,
+                  radius: 10,
+                  damage: 220,
+                  element: 'Cryo',
+                  color: '#38bdf8',
+                  timer: 400
+                });
+              });
+              spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 20, '❄️ Ice Shards!', '#38bdf8', 10);
+            }
+
+            // Phase 2+: Blizzard - spawn cold ice patches
+            if (enemy.phase >= 2) {
+              if (enemy.icePatchTimer === undefined) enemy.icePatchTimer = 0;
+              enemy.icePatchTimer += 1 * combatSpeed;
+              if (enemy.icePatchTimer > 200) {
+                enemy.icePatchTimer = 0;
+                for (let k = 0; k < 2; k++) {
+                  const px = targetX + (Math.random() - 0.5) * 300;
+                  const py = targetY + (Math.random() - 0.5) * 300;
+                  bossProjectilesRef.current.push({
+                    id: 'ice_patch_' + Date.now() + '_' + k,
+                    type: 'ice_patch',
+                    x: px,
+                    y: py,
+                    radius: 50,
+                    damage: 40,
+                    element: 'Cryo',
+                    color: '#bae6fd',
+                    timer: 360 // 6 seconds
+                  });
+                }
+                spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 25, '❄️ Blizzard slow fields!', '#bae6fd', 11);
+              }
+            }
+
+            // Phase 3: Frozen Tomb field
+            if (enemy.phase === 3) {
+              const playerDist = Math.hypot(targetX - enemy.x, targetY - enemy.y);
+              if (playerDist < 250) {
+                if (Math.random() < 0.05) {
+                  handlePlayerHit(null, 100);
+                  spawnTextRef.current(targetX, targetY - 20, '❄️ FROZEN FIELD -100', '#0284c7', 10);
+                }
+              }
+
+              ctx.save();
+              ctx.globalAlpha = 0.08;
+              ctx.fillStyle = '#0284c7';
+              ctx.strokeStyle = 'rgba(2, 132, 199, 0.4)';
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.arc(enemy.x, enemy.y, 250, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.stroke();
+              ctx.restore();
+            }
+          }
+          else if (enemy.bossType === 'thunderbird') {
+            // TEMPEST THUNDERBIRD MECHANICS
+            // Phase 1+: Rapid lightning warnings/strikes every 90 frames
+            if (enemy.attackCooldown <= 0) {
+              enemy.attackCooldown = 90;
+              bossProjectilesRef.current.push({
+                id: 'lightning_' + Date.now(),
+                type: 'lightning_strike_warning',
+                x: targetX,
+                y: targetY,
+                radius: 40,
+                damage: 280,
+                element: 'Electro',
+                color: '#a855f7',
+                timer: 45, // 0.75s warning
+                maxTimer: 45
+              });
+              spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 20, '⚡ Lightning strike targeting!', '#a855f7', 10);
+            }
+
+            // Phase 2+: Lightning walls
+            if (enemy.phase >= 2) {
+              if (enemy.lightningWallTimer === undefined) enemy.lightningWallTimer = 0;
+              enemy.lightningWallTimer += 1 * combatSpeed;
+              if (enemy.lightningWallTimer > 210) {
+                enemy.lightningWallTimer = 0;
+                const offsets = [
+                  { dx: -120, dy: 60 },
+                  { dx: 120, dy: 60 },
+                  { dx: 0, dy: -120 }
+                ];
+                offsets.forEach((off, idx) => {
+                  bossProjectilesRef.current.push({
+                    id: 'lightning_wall_' + Date.now() + '_' + idx,
+                    type: 'lightning_strike_warning',
+                    x: targetX + off.dx,
+                    y: targetY + off.dy,
+                    radius: 35,
+                    damage: 250,
+                    element: 'Electro',
+                    color: '#a855f7',
+                    timer: 40,
+                    maxTimer: 40
+                  });
+                });
+                spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 25, '⚡ Lightning Wall!', '#a855f7', 11);
+              }
+            }
+
+            // Phase 3: Continuous thunderstorm strikes
+            if (enemy.phase === 3) {
+              if (enemy.thunderstormTimer === undefined) enemy.thunderstormTimer = 0;
+              enemy.thunderstormTimer += 1 * combatSpeed;
+              if (enemy.thunderstormTimer > 45) {
+                enemy.thunderstormTimer = 0;
+                bossProjectilesRef.current.push({
+                  id: 'thunderstorm_' + Date.now(),
+                  type: 'lightning_strike_warning',
+                  x: targetX + (Math.random() - 0.5) * 60,
+                  y: targetY + (Math.random() - 0.5) * 60,
+                  radius: 30,
+                  damage: 320,
+                  element: 'Electro',
+                  color: '#a855f7',
+                  timer: 35,
+                  maxTimer: 35
+                });
+              }
+            }
+          }
+        }
 
         // Apply Superconduct DEF Shred timer checks
         if (enemy.defShredTimer && enemy.defShredTimer > 0) {
@@ -2486,6 +3299,19 @@ export default function CombatArena({
             <p className="text-[10.5px] text-slate-400 mt-1 uppercase font-mono tracking-wide">
               Score: <span className="text-white font-bold">{gameScore} pts</span> • Aim Option: <span className="text-cyan-400">Mouse Click Strike</span>
             </p>
+          )}
+          {activeResonances.length > 0 && (
+            <div className="flex gap-1.5 flex-wrap items-center mt-2">
+              {activeResonances.map(res => (
+                <span 
+                  key={res.key} 
+                  title={res.desc}
+                  className="text-[9px] font-black uppercase px-2 py-0.5 rounded border bg-emerald-500/10 border-emerald-500/35 text-emerald-400 flex items-center gap-1 shadow-sm select-none font-mono"
+                >
+                  ✨ {res.name}
+                </span>
+              ))}
+            </div>
           )}
         </div>
 
