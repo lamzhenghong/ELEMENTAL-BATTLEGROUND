@@ -195,6 +195,46 @@ export default function App() {
   });
 
   const [partySearchQuery, setPartySearchQuery] = useState('');
+  const [showResonanceSheet, setShowResonanceSheet] = useState(false);
+
+  const partyResonances = React.useMemo(() => {
+    const activeChars = PLAYABLE_CHARACTERS.filter(c => saveState.partyIds.includes(c.id));
+    const elementCounts: Record<ElementType, number> = {} as any;
+    activeChars.forEach(c => {
+      elementCounts[c.element] = (elementCounts[c.element] || 0) + 1;
+    });
+
+    const uniqueElements = Object.keys(elementCounts).length;
+    const list: { name: string; desc: string; key: string }[] = [];
+
+    if ((elementCounts['Pyro'] || 0) >= 2) {
+      list.push({ name: 'Fervent Flames (2 Pyro)', desc: '+15% ATK boost', key: 'pyro' });
+    }
+    if ((elementCounts['Hydro'] || 0) >= 2) {
+      list.push({ name: 'Soothing Waters (2 Hydro)', desc: '+20% Energy Recharge rate boost', key: 'hydro' });
+    }
+    if ((elementCounts['Cryo'] || 0) >= 2) {
+      list.push({ name: 'Shattering Ice (2 Cryo)', desc: '+15% Crit Rate against Frozen/Cryo targets', key: 'cryo' });
+    }
+    if ((elementCounts['Electro'] || 0) >= 2) {
+      list.push({ name: 'High Voltage (2 Electro)', desc: '-20% Skill Cooldown reduction', key: 'electro' });
+    }
+    if ((elementCounts['Geo'] || 0) >= 2) {
+      list.push({ name: 'Enduring Rock (2 Geo)', desc: '+15% Shield Strength and +15% DMG when shielded', key: 'geo' });
+    }
+    if ((elementCounts['Anemo'] || 0) >= 2) {
+      list.push({ name: 'Impetuous Winds (2 Anemo)', desc: '+15% Move Speed and -15% Skill cooldown', key: 'anemo' });
+    }
+    if ((elementCounts['Dendro'] || 0) >= 2) {
+      list.push({ name: 'Sprawling Greenery (2 Dendro)', desc: '+50 Elemental Mastery', key: 'dendro' });
+    }
+    if (uniqueElements >= 4) {
+      list.push({ name: 'Protective Canopy (4 Unique)', desc: '+15% All Elemental/Physical DMG', key: 'unique' });
+    }
+
+    return list;
+  }, [saveState.partyIds]);
+
   const [language, setLanguage] = useState<LanguageType>(() => {
     return (localStorage.getItem('rpg_language') as LanguageType) || 'en';
   });
@@ -1987,6 +2027,72 @@ export default function App() {
                           >
                             ✕
                           </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Elemental Resonances (Team Bonuses) Section */}
+                    <div className="bg-slate-950/40 border border-white/10 p-4.5 rounded-xl space-y-4 shadow-inner">
+                      <div>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block font-mono mb-2 flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                          Active Resonance Bonuses
+                        </span>
+                        {partyResonances.length > 0 ? (
+                          <div className="flex gap-2.5 flex-wrap">
+                            {partyResonances.map(res => (
+                              <div 
+                                key={res.key}
+                                className="flex flex-col p-3 rounded-lg border bg-emerald-500/5 border-emerald-500/25 text-left font-mono shadow-sm animate-fadeIn"
+                              >
+                                <span className="text-[10.5px] font-black text-emerald-400 flex items-center gap-1 uppercase">
+                                  ✨ {res.name}
+                                </span>
+                                <span className="text-[9.5px] text-slate-300 mt-1">{res.desc}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-[10px] text-slate-450 italic font-mono uppercase bg-black/20 p-3 rounded-lg border border-white/5 select-none">
+                            No active resonances. Deploy 2 heroes of the same element or 4 unique elements to unlock team bonus matrix.
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="border-t border-white/5 pt-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            AetheriaAudioEngine.playClick();
+                            setShowResonanceSheet(!showResonanceSheet);
+                          }}
+                          className="text-[10.5px] font-black uppercase text-indigo-400 hover:text-indigo-300 transition-all flex items-center gap-1.5 cursor-pointer font-mono select-none"
+                        >
+                          {showResonanceSheet ? '📖 Hide Elemental Resonance Sheet' : '📖 View Elemental Resonance Sheet'}
+                        </button>
+                        
+                        {showResonanceSheet && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3.5 animate-fadeIn">
+                            {[
+                              { name: 'Fervent Flames (2 Pyro)', desc: '+15% ATK boost.', element: 'Pyro', color: 'border-red-500/20 text-red-400 bg-red-500/5' },
+                              { name: 'Soothing Waters (2 Hydro)', desc: '+20% Energy Recharge rate boost.', element: 'Hydro', color: 'border-blue-500/20 text-blue-400 bg-blue-500/5' },
+                              { name: 'Shattering Ice (2 Cryo)', desc: '+15% Crit Rate against Frozen/Cryo targets.', element: 'Cryo', color: 'border-sky-500/20 text-sky-400 bg-sky-500/5' },
+                              { name: 'High Voltage (2 Electro)', desc: '-20% Skill Cooldown reduction.', element: 'Electro', color: 'border-purple-500/20 text-purple-400 bg-purple-500/5' },
+                              { name: 'Enduring Rock (2 Geo)', desc: '+15% Shield Strength and +15% DMG when shielded.', element: 'Geo', color: 'border-amber-500/20 text-amber-400 bg-amber-500/5' },
+                              { name: 'Impetuous Winds (2 Anemo)', desc: '+15% Move Speed and -15% Skill cooldown.', element: 'Anemo', color: 'border-emerald-500/20 text-emerald-400 bg-emerald-500/5' },
+                              { name: 'Sprawling Greenery (2 Dendro)', desc: '+50 Elemental Mastery.', element: 'Dendro', color: 'border-green-500/20 text-green-400 bg-green-500/5' },
+                              { name: 'Protective Canopy (4 Unique)', desc: '+15% All Elemental/Physical DMG.', element: 'Unique', color: 'border-slate-550/20 text-slate-350 bg-slate-800/10' }
+                            ].map(res => (
+                              <div key={res.name} className={`p-3 rounded-xl border ${res.color} text-left font-mono flex flex-col justify-between shadow-sm`}>
+                                <div className="text-[10px] font-black uppercase tracking-tight">
+                                  {res.name}
+                                </div>
+                                <div className="text-[9.2px] text-slate-300 mt-1.5 leading-relaxed font-sans font-medium">
+                                  {res.desc}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         )}
                       </div>
                     </div>

@@ -236,6 +236,7 @@ export default function CombatArena({
   onAddItems
 }: CombatArenaProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const minimapCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   // Active party list mapped to combat instances
@@ -334,7 +335,9 @@ export default function CombatArena({
   const [gameScore, setGameScore] = useState(0);
   const [bossHp, setBossHp] = useState<number | null>(null);
   const [bossMaxHp, setBossMaxHp] = useState<number>(25000);
+  const [bossName, setBossName] = useState<string>('');
   const bossProjectilesRef = useRef<any[]>([]);
+  const hasRevivedRef = useRef<boolean>(false);
 
   // Weather, stamina and premium visual states
   const [currentWeather, setCurrentWeather] = useState<'Sunny' | 'Rain' | 'Thunderstorm' | 'Snow'>('Sunny');
@@ -810,6 +813,7 @@ export default function CombatArena({
         const boss = spawnRandomBoss('dungeon_boss_' + Date.now(), scaleMultiplier);
         setBossMaxHp(boss.maxHp);
         setBossHp(boss.hp);
+        setBossName(boss.name);
         list.push(boss);
       } else if (dungeonRoomType === 'elite') {
         setSpawnerPreset('elites');
@@ -840,6 +844,7 @@ export default function CombatArena({
         const boss = spawnRandomBoss('world_boss_' + Date.now(), scaleMultiplier);
         setBossMaxHp(boss.maxHp);
         setBossHp(boss.hp);
+        setBossName(boss.name);
         list.push(boss);
       } else {
         const themes = ['slimes', 'elites', 'mix'] as const;
@@ -883,6 +888,7 @@ export default function CombatArena({
     shardsRef.current = [];
     particlesRef.current = [];
     bossProjectilesRef.current = [];
+    hasRevivedRef.current = false;
   };
 
   // Run on startup to spawn correct wave/dungeon enemies once battle starts
@@ -2846,104 +2852,112 @@ export default function CombatArena({
         ctx.restore();
       }
 
-      // --- DRAW MINI-MAP OVERLAY (Screen Space, Top-Right) ---
-      const mapSize = 90; // compact size to fit layout perfectly
-      const mapRadius = mapSize / 2;
-      const mapX = dimensions.width - mapSize - 15;
-      const mapY = isMobile ? 55 : 70; // Below the top HUD bar
-      const centerX = mapX + mapRadius;
-      const centerY = mapY + mapRadius;
+      // --- DRAW MINI-MAP OVERLAY (Separate canvas, Top-Right) ---
+      const miniCanvas = minimapCanvasRef.current;
+      if (miniCanvas) {
+        const miniCtx = miniCanvas.getContext('2d');
+        if (miniCtx) {
+          const mapSize = 90; // compact size to fit layout perfectly
+          const mapRadius = mapSize / 2;
+          const centerX = mapRadius;
+          const centerY = mapRadius;
+          const mapX = 0;
+          const mapY = 0;
 
-      ctx.save();
-      // Draw circular clip path
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, mapRadius, 0, Math.PI * 2);
-      ctx.clip();
+          miniCtx.clearRect(0, 0, mapSize, mapSize);
 
-      // Semi-transparent dark slate background
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-      ctx.fillRect(mapX, mapY, mapSize, mapSize);
+          miniCtx.save();
+          // Draw circular clip path
+          miniCtx.beginPath();
+          miniCtx.arc(centerX, centerY, mapRadius, 0, Math.PI * 2);
+          miniCtx.clip();
 
-      // Grid lines (500px spacing in world space)
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-      ctx.lineWidth = 1;
-      for (let g = 500; g < 2000; g += 500) {
-        const gx = mapX + (g / 2000) * mapSize;
-        ctx.beginPath();
-        ctx.moveTo(gx, mapY);
-        ctx.lineTo(gx, mapY + mapSize);
-        ctx.stroke();
+          // Semi-transparent dark slate background
+          miniCtx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+          miniCtx.fillRect(mapX, mapY, mapSize, mapSize);
 
-        const gy = mapY + (g / 2000) * mapSize;
-        ctx.beginPath();
-        ctx.moveTo(mapX, gy);
-        ctx.lineTo(mapX + mapSize, gy);
-        ctx.stroke();
-      }
+          // Grid lines (500px spacing in world space)
+          miniCtx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+          miniCtx.lineWidth = 1;
+          for (let g = 500; g < 2000; g += 500) {
+            const gx = mapX + (g / 2000) * mapSize;
+            miniCtx.beginPath();
+            miniCtx.moveTo(gx, mapY);
+            miniCtx.lineTo(gx, mapY + mapSize);
+            miniCtx.stroke();
 
-      // Draw active enemies
-      enemiesRef.current.forEach(enemy => {
-        if (enemy.hp > 0) {
-          const ex = enemy.x;
-          const ey = enemy.y;
-          const enemyMapX = mapX + (ex / 2000) * mapSize;
-          const enemyMapY = mapY + (ey / 2000) * mapSize;
-          
-          if (enemy.type === 'Boss') {
-            ctx.fillStyle = '#f97316'; // Orange for boss
-            ctx.beginPath();
-            ctx.arc(enemyMapX, enemyMapY, 4, 0, Math.PI * 2);
-            ctx.fill();
-            
-            ctx.strokeStyle = 'rgba(249, 115, 22, 0.5)';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.arc(enemyMapX, enemyMapY, 6.5, 0, Math.PI * 2);
-            ctx.stroke();
-          } else {
-            ctx.fillStyle = '#ef4444'; // Red for normal enemies
-            ctx.beginPath();
-            ctx.arc(enemyMapX, enemyMapY, 2.2, 0, Math.PI * 2);
-            ctx.fill();
+            const gy = mapY + (g / 2000) * mapSize;
+            miniCtx.beginPath();
+            miniCtx.moveTo(mapX, gy);
+            miniCtx.lineTo(mapX + mapSize, gy);
+            miniCtx.stroke();
           }
+
+          // Draw active enemies
+          enemiesRef.current.forEach(enemy => {
+            if (enemy.hp > 0) {
+              const ex = enemy.x;
+              const ey = enemy.y;
+              const enemyMapX = mapX + (ex / 2000) * mapSize;
+              const enemyMapY = mapY + (ey / 2000) * mapSize;
+              
+              if (enemy.type === 'Boss') {
+                miniCtx.fillStyle = '#f97316'; // Orange for boss
+                miniCtx.beginPath();
+                miniCtx.arc(enemyMapX, enemyMapY, 4, 0, Math.PI * 2);
+                miniCtx.fill();
+                
+                miniCtx.strokeStyle = 'rgba(249, 115, 22, 0.5)';
+                miniCtx.lineWidth = 1;
+                miniCtx.beginPath();
+                miniCtx.arc(enemyMapX, enemyMapY, 6.5, 0, Math.PI * 2);
+                miniCtx.stroke();
+              } else {
+                miniCtx.fillStyle = '#ef4444'; // Red for normal enemies
+                miniCtx.beginPath();
+                miniCtx.arc(enemyMapX, enemyMapY, 2.2, 0, Math.PI * 2);
+                miniCtx.fill();
+              }
+            }
+          });
+
+          // Draw player dot
+          const px = playerRef.current.x;
+          const py = playerRef.current.y;
+          const playerMapX = mapX + (px / 2000) * mapSize;
+          const playerMapY = mapY + (py / 2000) * mapSize;
+          
+          miniCtx.fillStyle = '#10b981'; // Green for player
+          miniCtx.beginPath();
+          miniCtx.arc(playerMapX, playerMapY, 3, 0, Math.PI * 2);
+          miniCtx.fill();
+
+          // Subtle pulse around player
+          miniCtx.strokeStyle = 'rgba(16, 185, 129, 0.4)';
+          miniCtx.lineWidth = 1;
+          miniCtx.beginPath();
+          miniCtx.arc(playerMapX, playerMapY, 4.5 + Math.sin(Date.now() / 150) * 1.2, 0, Math.PI * 2);
+          miniCtx.stroke();
+
+          miniCtx.restore(); // Restore clipping region
+
+          // Mini-map border
+          miniCtx.save();
+          miniCtx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+          miniCtx.lineWidth = 1.5;
+          miniCtx.beginPath();
+          miniCtx.arc(centerX, centerY, mapRadius, 0, Math.PI * 2);
+          miniCtx.stroke();
+          
+          // Compass label
+          miniCtx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+          miniCtx.font = 'bold 7px monospace';
+          miniCtx.textBaseline = 'middle';
+          miniCtx.textAlign = 'center';
+          miniCtx.fillText('N', centerX, mapY + 7);
+          miniCtx.restore();
         }
-      });
-
-      // Draw player dot
-      const px = playerRef.current.x;
-      const py = playerRef.current.y;
-      const playerMapX = mapX + (px / 2000) * mapSize;
-      const playerMapY = mapY + (py / 2000) * mapSize;
-      
-      ctx.fillStyle = '#10b981'; // Green for player
-      ctx.beginPath();
-      ctx.arc(playerMapX, playerMapY, 3, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Subtle pulse around player
-      ctx.strokeStyle = 'rgba(16, 185, 129, 0.4)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.arc(playerMapX, playerMapY, 4.5 + Math.sin(Date.now() / 150) * 1.2, 0, Math.PI * 2);
-      ctx.stroke();
-
-      ctx.restore(); // Restore clipping region
-
-      // Mini-map border
-      ctx.save();
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, mapRadius, 0, Math.PI * 2);
-      ctx.stroke();
-      
-      // Compass label
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-      ctx.font = 'bold 7px monospace';
-      ctx.textBaseline = 'middle';
-      ctx.textAlign = 'center';
-      ctx.fillText('N', centerX, mapY + 7);
-      ctx.restore();
+      }
 
       animationId = requestAnimationFrame(updateGameLoop);
     };
@@ -3040,15 +3054,27 @@ export default function CombatArena({
 
     // Decrease active character dynamic hp with proper gameover checks
     setCombatParty(pList => {
+      let revived = false;
       const updatedParty = pList.map((c, idx) => {
         if (idx === currentPartyIndex) {
-          return { ...c, currentHp: Math.max(0, c.currentHp - amount) };
+          const nextHp = c.currentHp - amount;
+          if (nextHp <= 0 && dungeonMode && dungeonBuffs.includes('Aetheric Revival') && !hasRevivedRef.current) {
+            hasRevivedRef.current = true;
+            revived = true;
+            return { ...c, currentHp: Math.round(c.maxHp * 0.5) };
+          }
+          return { ...c, currentHp: Math.max(0, nextHp) };
         }
         return c;
       });
 
-      // Show float
-      spawnFloatingDamageText(playerRef.current.x, playerRef.current.y, `-${amount}`, '#f43f5e', 14, true);
+      if (revived) {
+        spawnFloatingDamageText(playerRef.current.x, playerRef.current.y - 30, '💖 REVIVED! +50% HP', '#fb7185', 14, true);
+        AetheriaAudioEngine.playUltimate();
+      } else {
+        // Show float
+        spawnFloatingDamageText(playerRef.current.x, playerRef.current.y, `-${amount}`, '#f43f5e', 14, true);
+      }
 
       // Check if all party members are dead
       const anyAlive = updatedParty.some(c => c.currentHp > 0);
@@ -3368,7 +3394,7 @@ export default function CombatArena({
               <div className="flex justify-between items-center text-[10px]">
                 <span className="font-extrabold text-red-400 tracking-wider uppercase font-display flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
-                  THE CALAMITY EROSION DRAKE
+                  {bossName || 'THE CALAMITY EROSION DRAKE'}
                 </span>
                 <span className="font-black text-slate-200 font-mono text-[11px]">{bossHp} / {bossMaxHp} HP</span>
               </div>
@@ -3677,6 +3703,14 @@ export default function CombatArena({
           className="w-full flex-1 touch-none cursor-crosshair block bg-[#02050c]"
           onPointerDown={handleCanvasPointerDown}
           onPointerMove={handleCanvasPointerMove}
+        />
+
+        {/* Fixed Mini-Map HUD Overlay */}
+        <canvas 
+          ref={minimapCanvasRef} 
+          width={90} 
+          height={90}
+          className="absolute top-[60px] md:top-[70px] right-4 w-[90px] h-[90px] rounded-full border border-white/20 shadow-2xl z-40 bg-slate-950/85 backdrop-blur-md pointer-events-none select-none"
         />
 
         {/* On screen active controls overlay for mobile and clicking explorers */}

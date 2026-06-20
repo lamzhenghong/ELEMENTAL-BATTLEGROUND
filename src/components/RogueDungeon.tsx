@@ -36,6 +36,7 @@ const DUNGEON_BUFFS = [
   { name: 'Crystalline Focus', desc: '🎯 Critical Strike Rate increased by +15%.' },
   { name: 'Vampiric Grace', desc: '🧛 Life Steal: Heals active character for 3% of all damage dealt.' },
   { name: 'Zephyr Pace', desc: '💨 Movement Speed +15% & Dodge Dash cooldown reduced by -30%.' },
+  { name: 'Aetheric Revival', desc: '💖 Extra Life: Automatically revives the active character with 50% HP once per battle upon taking fatal damage.' },
 ];
 
 export default function RogueDungeon({
@@ -599,7 +600,7 @@ export default function RogueDungeon({
                                '⚔️ CONFLICT ZONE: Battle Room'}
                             </span>
                             <h4 className="text-lg font-black text-slate-100 uppercase tracking-widest font-display">
-                              {currentRoomType === 'boss' ? 'THE DRAKE CALAMITY RIFT' :
+                              {currentRoomType === 'boss' ? 'Calamity Rift Overlord' :
                                currentRoomType === 'elite' ? 'Epoch Ruin Sentinel guard' :
                                'Cognitive Slime Matrix'}
                             </h4>
