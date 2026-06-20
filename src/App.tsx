@@ -111,6 +111,63 @@ const formatPlayTime = (seconds: number = 0) => {
 export default function App() {
   const [saveState, setSaveState] = useState<SaveState>(getInitialSaveState());
 
+  // PWA installation states
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallBtn, setShowInstallBtn] = useState(false);
+  const [showIosInstructions, setShowIosInstructions] = useState(false);
+
+  useEffect(() => {
+    // Check if already running in standalone mode
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
+    if (isStandalone) {
+      return;
+    }
+
+    // For iOS Safari (which doesn't support beforeinstallprompt)
+    const isIos = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isIos) {
+      setShowInstallBtn(true);
+    }
+
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallBtn(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    const handleAppInstalled = () => {
+      setShowInstallBtn(false);
+      setDeferredPrompt(null);
+    };
+
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    AetheriaAudioEngine.playClick();
+    const isIos = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isIos) {
+      setShowIosInstructions(true);
+      return;
+    }
+
+    if (!deferredPrompt) return;
+    
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setShowInstallBtn(false);
+    }
+    setDeferredPrompt(null);
+  };
+
   // Robust play time tracking using Date.now() and refs
   const sessionStartRef = useRef<number>(Date.now());
   const basePlayTimeRef = useRef<number>(0);
@@ -1259,6 +1316,74 @@ export default function App() {
         <footer className="p-6 text-center text-[10px] text-slate-500 font-mono uppercase tracking-wider">
           © 2026 Aetheria AAA Game Development Studio. All modules loaded correctly.
         </footer>
+
+        {showInstallBtn && (
+          <button
+            onClick={handleInstallClick}
+            className="fixed bottom-6 left-6 z-30 p-2.5 px-4 bg-indigo-650 hover:bg-indigo-600 border border-indigo-500/40 text-indigo-100 text-xs font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer shadow-[0_0_15px_rgba(99,102,241,0.25)] flex items-center gap-2 active:scale-95 hover:scale-105"
+          >
+            📥 Install App
+          </button>
+        )}
+
+        {/* iOS PWA Installation instructions */}
+        <AnimatePresence>
+          {showIosInstructions && (
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              className="fixed inset-0 bg-slate-950/95 z-55 flex items-center justify-center p-4 backdrop-blur-md"
+              onClick={() => setShowIosInstructions(false)}
+            >
+              <motion.div 
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: -20 }}
+                className="bg-[#0b101e] max-w-sm w-full border border-white/10 rounded-2xl p-6 shadow-2xl relative space-y-4"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                  <h3 className="text-xs font-black text-slate-100 uppercase tracking-widest font-display flex items-center gap-2">
+                    📥 Install on iPhone / iPad
+                  </h3>
+                  <button 
+                    onClick={() => setShowIosInstructions(false)} 
+                    className="p-1 text-slate-400 hover:text-white cursor-pointer hover:bg-white/5 rounded"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="space-y-4 text-xs text-slate-350">
+                  <p className="leading-relaxed">
+                    To install this game on your iPhone/iPad, please follow these instructions:
+                  </p>
+                  <ol className="list-decimal list-inside space-y-3 font-medium">
+                    <li>
+                      Tap the <span className="text-indigo-400 font-bold">Share button</span> (the rectangle with an arrow pointing up) at the bottom of Safari.
+                    </li>
+                    <li>
+                      Scroll down the list of options and tap <span className="text-indigo-400 font-bold">"Add to Home Screen"</span>.
+                    </li>
+                    <li>
+                      Tap <span className="text-amber-400 font-bold">"Add"</span> at the top-right corner of the screen to complete installation.
+                    </li>
+                  </ol>
+                </div>
+
+                <div className="pt-2 border-t border-white/5 flex justify-end">
+                  <button
+                    onClick={() => setShowIosInstructions(false)}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-widest rounded-xl transition-all cursor-pointer"
+                  >
+                    Got it
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Dynamic Credits Modal popup */}
         <AnimatePresence>
