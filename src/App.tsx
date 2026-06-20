@@ -1204,7 +1204,7 @@ export default function App() {
             >
               <div className="bg-slate-900 border border-white/5 p-4 py-6 rounded-xl">
                 <span className="text-[9px] font-mono tracking-[0.3em] text-[#818cf8] uppercase block mb-1">Dawning Core Client</span>
-                <h1 className="text-3xl font-black uppercase tracking-[0.1em] text-white font-display leading-none">
+                <h1 className="text-3xl font-black tracking-[0.1em] text-white font-display leading-none">
                   Elemental Battleground
                 </h1>
                 <p className="text-[10px] text-slate-400 mt-2 font-mono uppercase tracking-wide">
