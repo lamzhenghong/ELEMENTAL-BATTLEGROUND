@@ -118,3 +118,18 @@
   animation: pulse-dendro 2.5s infinite ease-in-out;
 }
 
+html,
+body,
+#root {
+  touch-action: none;
+  overscroll-behavior: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+canvas {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+

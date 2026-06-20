@@ -15,9 +15,12 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AetheriaAudioEngine } from '../utils/audio';
 import { getAccumulatedPortraitBuffs } from '../utils/portraits';
 import { WEAPONS_DATABASE } from '../data/weapons';
+import MobileJoystick from './MobileJoystick';
+import MobileControls from './MobileControls';
 
 const WORLD_WIDTH = 2000;
 const WORLD_HEIGHT = 2000;
+const IS_MOBILE_DEVICE = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
 interface CombatArenaProps {
   onEarnRewards: (gems: number, mora: number, exp: number) => void;
@@ -79,8 +82,10 @@ class CombatParticle {
     ctx.beginPath();
     ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
     ctx.fillStyle = this.color;
-    ctx.shadowBlur = 10;
-    ctx.shadowColor = this.color;
+    if (!IS_MOBILE_DEVICE) {
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = this.color;
+    }
     ctx.fill();
     ctx.restore();
   }
@@ -345,6 +350,8 @@ export default function CombatArena({
 
   // Refs for keyboard controls to prevent scope-binding loss in standard fast loops
   const keyboardState = useRef<Record<string, boolean>>({});
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const mobileJoystickState = useRef({ active: false, x: 0, y: 0 });
   const playerRef = useRef({ x: 1000, y: 1000, radius: 26, lastDirX: 1, lastDirY: 0, skillCc: 0 });
   const enemiesRef = useRef<any[]>([]);
   const particlesRef = useRef<CombatParticle[]>([]);
@@ -535,19 +542,20 @@ export default function CombatArena({
       const resizeObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
           const { width, height } = entry.contentRect;
-          const w = Math.max(width, 400);
+          const w = Math.max(width, 320);
+          const h = isMobile ? Math.max(height, 200) : 400;
           setDimensions(prev => {
-            if (prev.width === w && prev.height === 400) {
+            if (prev.width === w && prev.height === h) {
               return prev;
             }
-            return { width: w, height: 400 };
+            return { width: w, height: h };
           });
         }
       });
       resizeObserver.observe(containerRef.current);
       return () => resizeObserver.disconnect();
     }
-  }, []);
+  }, [isMobile]);
 
 // Keyboard binding trackers moved below trigger functions to satisfy block scope compilation rules
 
@@ -1596,7 +1604,8 @@ export default function CombatArena({
 
       // Apply screenshake
       if (shakeRef.current.intensity > 0.5) {
-        ctx.translate(shakeRef.current.x, shakeRef.current.y);
+        const shakeMod = isMobile ? 0.5 : 1.0;
+        ctx.translate(shakeRef.current.x * shakeMod, shakeRef.current.y * shakeMod);
         shakeRef.current.intensity *= 0.8;
         shakeRef.current.x = (Math.random() - 0.5) * shakeRef.current.intensity;
         shakeRef.current.y = (Math.random() - 0.5) * shakeRef.current.intensity;
@@ -1644,6 +1653,13 @@ export default function CombatArena({
       if (keyboardState.current['s'] || keyboardState.current['arrowdown']) dy += 1;
       if (keyboardState.current['a'] || keyboardState.current['arrowleft']) dx -= 1;
       if (keyboardState.current['d'] || keyboardState.current['arrowright']) dx += 1;
+
+      // Mobile joystick inputs overrides keyboard WASD
+      const joystickActive = mobileJoystickState.current.active && Math.hypot(mobileJoystickState.current.x, mobileJoystickState.current.y) > 0.05;
+      if (joystickActive) {
+        dx = mobileJoystickState.current.x;
+        dy = mobileJoystickState.current.y;
+      }
 
       // Normalize speed
       const isMoving = dx !== 0 || dy !== 0;
@@ -1941,6 +1957,9 @@ export default function CombatArena({
         p.draw(ctx);
       });
       particlesRef.current = particlesRef.current.filter(p => p.life < p.maxLife);
+      if (isMobile && particlesRef.current.length > 50) {
+        particlesRef.current = particlesRef.current.slice(-50);
+      }
 
       textsRef.current.forEach((t) => {
         t.update();
@@ -2201,7 +2220,10 @@ export default function CombatArena({
 
   return (
     <div 
-      className={`bg-[#0b0f19]/85 border rounded-xl overflow-hidden flex flex-col h-full min-h-[600px] backdrop-blur-md transition-all duration-500 ${activeTheme.borderClass} ${activeTheme.shadowGlow} ${activeTheme.pulseGlowClass} ${isUiShaking ? 'animate-shake' : ''}`} 
+      className={isMobile 
+        ? `fixed inset-0 z-50 w-screen h-screen bg-slate-950 overflow-hidden flex flex-col min-h-0 ${isUiShaking ? 'animate-shake' : ''}`
+        : `bg-[#0b0f19]/85 border rounded-xl overflow-hidden flex flex-col h-full min-h-[600px] backdrop-blur-md transition-all duration-500 ${activeTheme.borderClass} ${activeTheme.shadowGlow} ${activeTheme.pulseGlowClass} ${isUiShaking ? 'animate-shake' : ''}`
+      }
       id="arena_main_root"
       style={{
         backgroundImage: `linear-gradient(to bottom right, ${activeTheme.bgGradient.replace('from-', '').split(' ')[0]}, #0b0f19)`
@@ -2209,7 +2231,7 @@ export default function CombatArena({
     >
       
       {/* Top Combat Info HUD */}
-      <div className="bg-[#060810]/95 px-5 py-4 border-b border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className={`bg-[#060810]/95 ${isMobile ? 'px-4 py-2.5 flex-row items-center justify-between' : 'px-5 py-4 flex-col md:flex-row items-start md:items-center justify-between'} border-b border-white/10 flex gap-4`}>
         <div>
           <div className="flex items-center gap-2">
             <div className="w-1.5 h-3.5 bg-red-500 rounded-sm"></div>
@@ -2230,17 +2252,21 @@ export default function CombatArena({
               </span>
             </h3>
           </div>
-          <p className="text-[10.5px] text-slate-400 mt-1 uppercase font-mono tracking-wide">
-            Score: <span className="text-white font-bold">{gameScore} pts</span> • Aim Option: <span className="text-cyan-400">Mouse Click Strike</span>
-          </p>
+          {!isMobile && (
+            <p className="text-[10.5px] text-slate-400 mt-1 uppercase font-mono tracking-wide">
+              Score: <span className="text-white font-bold">{gameScore} pts</span> • Aim Option: <span className="text-cyan-400">Mouse Click Strike</span>
+            </p>
+          )}
         </div>
 
         {/* Live Records and settings trigger */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Highscore indicator badges */}
-          <div className="bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono text-[9px] font-black uppercase rounded py-1 px-2.5 flex items-center gap-1">
-            <Trophy className="w-2.5 h-2.5" /> High Score: Wave {highScoreWave}
-          </div>
+          {!isMobile && (
+            <div className="bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono text-[9px] font-black uppercase rounded py-1 px-2.5 flex items-center gap-1">
+              <Trophy className="w-2.5 h-2.5" /> High Score: Wave {highScoreWave}
+            </div>
+          )}
 
           <div className="flex gap-2">
             {/* System Audio buttons */}
@@ -2256,20 +2282,21 @@ export default function CombatArena({
               {audioMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
             </button>
 
-            <button
-              onClick={toggleArenaMusic}
-              title="Toggle retro BGM tune"
-              className={`p-2 rounded-lg border transition-all text-xs font-bold uppercase tracking-wider cursor-pointer flex items-center gap-1 ${
-                musicPlaying 
-                  ? 'bg-indigo-500/20 border-indigo-500 text-indigo-300' 
-                  : 'bg-black/40 border-white/10 text-slate-400'
-              }`}
-            >
-              🎵 BGM: {musicPlaying ? "ON" : "OFF"}
-            </button>
+            {!isMobile && (
+              <button
+                onClick={toggleArenaMusic}
+                title="Toggle retro BGM tune"
+                className={`p-2 rounded-lg border transition-all text-xs font-bold uppercase tracking-wider cursor-pointer flex items-center gap-1 ${
+                  musicPlaying 
+                    ? 'bg-indigo-500/20 border-indigo-500 text-indigo-300' 
+                    : 'bg-black/40 border-white/10 text-slate-400'
+                }`}
+              >
+                🎵 BGM: {musicPlaying ? "ON" : "OFF"}
+              </button>
+            )}
 
-            {/* Manual Preset selectors */}
-            {(['slimes', 'elites', 'boss'] as const).map((preset) => (
+            {!isMobile && (['slimes', 'elites', 'boss'] as const).map((preset) => (
               <button
                 key={preset}
                 onClick={() => triggerSpawnEnemies(preset)}
@@ -2288,8 +2315,17 @@ export default function CombatArena({
               onClick={() => { AetheriaAudioEngine.playClick(); setIsPaused(p => !p); }}
               className="p-1.5 px-3 bg-red-600 hover:bg-red-700 text-white text-[9.5px] rounded-md font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 shadow-md shadow-red-950/40"
             >
-              <Pause className="w-3 h-3" /> Pause
+              <Pause className="w-3 h-3" /> <span className="hidden sm:inline">Pause</span>
             </button>
+
+            {isMobile && onBackToMenu && (
+              <button
+                onClick={() => { AetheriaAudioEngine.playClick(); onBackToMenu(); }}
+                className="p-1.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-100 text-[9.5px] rounded-md font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 shadow-md border border-white/5"
+              >
+                Exit
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -2606,7 +2642,7 @@ export default function CombatArena({
         />
 
         {/* On screen active controls overlay for mobile and clicking explorers */}
-        <div className="bg-[#060810]/95 border-t border-white/10 p-5 md:p-6 grid grid-cols-1 md:grid-cols-3 items-center gap-6 z-10 w-full backdrop-blur-md">
+        <div className="hidden md:grid bg-[#060810]/95 border-t border-white/10 p-5 md:p-6 grid-cols-1 md:grid-cols-3 items-center gap-6 z-10 w-full backdrop-blur-md">
           
           {/* Party setup swaps row */}
           <div className="flex gap-3 justify-start">
@@ -2718,6 +2754,68 @@ export default function CombatArena({
           </div>
         </div>
       </div>
+
+      {isMobile && (
+        <>
+          {/* Party setup swaps column (floating vertically on the right below HUD) */}
+          <div className="fixed right-4 top-24 z-40 flex flex-col gap-2.5 pointer-events-auto">
+            {combatParty.map((c, i) => {
+              const activeRatio = (c.currentHp / c.maxHp) * 100;
+              const charTemplate = PLAYABLE_CHARACTERS.find(p => p.id === c.id);
+              const isCurrent = activePartyIndex === i;
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => swapPartyIndex(i)}
+                  disabled={c.currentHp <= 0 || isCurrent}
+                  className={`p-1.5 rounded-lg border text-center transition-all relative overflow-hidden cursor-pointer w-12 h-12 flex flex-col items-center justify-center ${
+                    c.currentHp <= 0
+                      ? 'opacity-40 bg-zinc-950/85 border-red-900 text-slate-600'
+                      : isCurrent
+                        ? 'bg-indigo-950/80 border-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.4)]'
+                        : 'bg-slate-950/85 border-white/10 text-slate-405'
+                  }`}
+                  style={{
+                    touchAction: 'none'
+                  }}
+                  onPointerDown={(e) => e.stopPropagation()} // Stop propagation to canvas
+                >
+                  <span className="text-[9px] font-black uppercase truncate max-w-[42px] text-slate-200">{c.name.substring(0, 4)}</span>
+                  <span className="text-[8px] font-bold text-amber-500 font-mono">L.{c.level}</span>
+                  <div className="w-full bg-black/50 h-1 rounded overflow-hidden mt-1">
+                    <div 
+                      className={`h-full ${activeRatio > 50 ? 'bg-emerald-400' : activeRatio > 20 ? 'bg-amber-400' : 'bg-red-500 shadow-[0_0_5px_red]'}`} 
+                      style={{ width: `${activeRatio}%` }} 
+                    />
+                  </div>
+                  {c.ultimateEnergy >= c.ultimateMaxEnergy && c.currentHp > 0 && (
+                    <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          <MobileJoystick 
+            onMove={(x, y, active) => {
+              mobileJoystickState.current = { active, x, y };
+            }}
+          />
+          <MobileControls 
+            onAttack={triggerBasicAttack}
+            onSkill={triggerElementalSkill}
+            onUltimate={triggerUltimate}
+            onDodge={triggerDodgeDash}
+            onParry={triggerParryBlock}
+            skillCooldown={activeChar?.skillCooldownRemaining || 0}
+            dodgeCooldown={dodgeCd}
+            parryCooldown={parryCd}
+            ultimateEnergy={activeChar?.ultimateEnergy || 0}
+            ultimateMaxEnergy={activeChar?.ultimateMaxEnergy || 100}
+            activeElement={activeChar?.element || 'Anemo'}
+          />
+        </>
+      )}
     </div>
   );
 }
