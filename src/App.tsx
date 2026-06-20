@@ -26,6 +26,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AetheriaAudioEngine } from './utils/audio';
 import mainMenuBg from '../assets/main_menu_bg.png';
 import gameLogoImg from '../assets/game_logo.png';
+import { Analytics } from '@vercel/analytics/react';
 
 const INITIAL_SAVE_STATE: SaveState = {
   mora: 30000, 
@@ -2154,6 +2155,7 @@ export default function App() {
           />
         )}
       </AnimatePresence>
+      <Analytics />
     </div>
   );
 }
