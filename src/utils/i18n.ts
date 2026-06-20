@@ -135,6 +135,24 @@ export const TRANSLATIONS: Record<string, Record<LanguageType, string>> = {
     zh: '搜索名称...',
     ko: '이름 검색...'
   },
+  'filter_all': {
+    en: 'All',
+    jp: 'すべて',
+    zh: '全部',
+    ko: '전체'
+  },
+  'filter_owned': {
+    en: 'Owned',
+    jp: '所持',
+    zh: '已拥有',
+    ko: '보유'
+  },
+  'filter_unowned': {
+    en: 'Not Owned',
+    jp: '未所持',
+    zh: '未拥有',
+    ko: '미보유'
+  },
 
   // Currencies / Materials
   'mora': {

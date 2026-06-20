@@ -11,7 +11,7 @@ import { WEAPONS_DATABASE } from '../data/weapons';
 import { AetheriaAudioEngine } from '../utils/audio';
 import { getPortraitInfoList } from '../utils/portraits';
 import { Shield, Sparkles, BookOpen, Compass, Sword, Landmark, Hammer, Coins, Trophy, DollarSign, Image, Eye, User, Star, Flame, Droplet, Snowflake, Zap, Wind, Mountain, Leaf, Check } from 'lucide-react';
-import { ElementType, WeaponType } from '../types';
+import { ElementType, WeaponType, Weapon } from '../types';
 import { LanguageType, t } from '../utils/i18n';
 
 import aureliaBanner from '../../assets/aurelia_banner.png';
@@ -65,16 +65,25 @@ interface GDDViewerProps {
   onUnlockCharacter?: (id: string) => void;
   ownedCharacterIds: string[];
   characterPortraits?: Record<string, number>;
+  inventoryWeapons?: Weapon[];
   language?: LanguageType;
 }
 
-export default function GDDViewer({ onUnlockCharacter, ownedCharacterIds, characterPortraits = {}, language = 'en' }: GDDViewerProps) {
+export default function GDDViewer({ 
+  onUnlockCharacter, 
+  ownedCharacterIds, 
+  characterPortraits = {}, 
+  inventoryWeapons = [], 
+  language = 'en' 
+}: GDDViewerProps) {
   const [activeTab, setActiveTab] = useState<'lore' | 'nations' | 'characters' | 'weapons' | 'systems' | 'tutorial'>('lore');
   const [selectedCharacterId, setSelectedCharacterId] = useState<string>(PLAYABLE_CHARACTERS[0].id);
   const [selectedWeaponName, setSelectedWeaponName] = useState<string>(WEAPONS_DATABASE[0].name);
   const [selectedNationName, setSelectedNationName] = useState<string>(GDD_DATA.nations[0].name);
   const [charSearch, setCharSearch] = useState('');
   const [weapSearch, setWeapSearch] = useState('');
+  const [charOwnershipFilter, setCharOwnershipFilter] = useState<'all' | 'owned' | 'unowned'>('all');
+  const [weapOwnershipFilter, setWeapOwnershipFilter] = useState<'all' | 'owned' | 'unowned'>('all');
 
   const getElementColor = (element: ElementType) => {
     switch (element) {
@@ -369,13 +378,38 @@ export default function GDDViewer({ onUnlockCharacter, ownedCharacterIds, charac
                     placeholder={t('search_placeholder', language)}
                     className="w-full bg-slate-900/60 border border-white/10 hover:border-white/20 focus:border-amber-400 rounded-lg px-2.5 py-1 text-[10px] text-slate-200 placeholder-slate-500 focus:outline-none transition-all uppercase tracking-wide font-mono font-bold"
                   />
+                  <div className="flex gap-1 mt-1.5">
+                    {(['all', 'owned', 'unowned'] as const).map((filterOpt) => (
+                      <button
+                        key={filterOpt}
+                        onClick={() => {
+                          setCharOwnershipFilter(filterOpt);
+                          AetheriaAudioEngine.playClick();
+                        }}
+                        className={`flex-1 text-center py-1 text-[9px] font-bold uppercase tracking-wider rounded-md border transition-all ${
+                          charOwnershipFilter === filterOpt
+                            ? 'bg-amber-500/20 border-amber-500/50 text-amber-300 shadow-sm shadow-amber-500/10'
+                            : 'bg-slate-900/40 border-white/5 hover:border-white/15 text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        {t(`filter_${filterOpt}`, language)}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 {(() => {
-                  const filtered = PLAYABLE_CHARACTERS.filter(char => 
-                    char.name.toLowerCase().includes(charSearch.toLowerCase()) ||
-                    char.element.toLowerCase().includes(charSearch.toLowerCase()) ||
-                    char.weaponType.toLowerCase().includes(charSearch.toLowerCase())
-                  );
+                  const filtered = PLAYABLE_CHARACTERS.filter(char => {
+                    const isOwned = ownedCharacterIds.includes(char.id);
+                    const matchesOwnership = charOwnershipFilter === 'all' || 
+                      (charOwnershipFilter === 'owned' && isOwned) || 
+                      (charOwnershipFilter === 'unowned' && !isOwned);
+                    
+                    const matchesSearch = char.name.toLowerCase().includes(charSearch.toLowerCase()) ||
+                      char.element.toLowerCase().includes(charSearch.toLowerCase()) ||
+                      char.weaponType.toLowerCase().includes(charSearch.toLowerCase());
+
+                    return matchesOwnership && matchesSearch;
+                  });
                   if (filtered.length === 0) {
                     return (
                       <div className="text-center py-8 text-slate-500 text-xs italic font-mono uppercase">
@@ -631,12 +665,37 @@ export default function GDDViewer({ onUnlockCharacter, ownedCharacterIds, charac
                     placeholder={t('search_placeholder', language)}
                     className="w-full bg-slate-900/60 border border-white/10 hover:border-white/20 focus:border-amber-400 rounded-lg px-2.5 py-1 text-[10px] text-slate-200 placeholder-slate-500 focus:outline-none transition-all uppercase tracking-wide font-mono font-bold"
                   />
+                  <div className="flex gap-1 mt-1.5">
+                    {(['all', 'owned', 'unowned'] as const).map((filterOpt) => (
+                      <button
+                        key={filterOpt}
+                        onClick={() => {
+                          setWeapOwnershipFilter(filterOpt);
+                          AetheriaAudioEngine.playClick();
+                        }}
+                        className={`flex-1 text-center py-1 text-[9px] font-bold uppercase tracking-wider rounded-md border transition-all ${
+                          weapOwnershipFilter === filterOpt
+                            ? 'bg-amber-500/20 border-amber-500/50 text-amber-300 shadow-sm shadow-amber-500/10'
+                            : 'bg-slate-900/40 border-white/5 hover:border-white/15 text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        {t(`filter_${filterOpt}`, language)}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 {(() => {
-                  const filtered = WEAPONS_DATABASE.filter(weap => 
-                    weap.name.toLowerCase().includes(weapSearch.toLowerCase()) ||
-                    weap.weaponType.toLowerCase().includes(weapSearch.toLowerCase())
-                  );
+                  const filtered = WEAPONS_DATABASE.filter(weap => {
+                    const isOwned = inventoryWeapons.some(w => w.name === weap.name);
+                    const matchesOwnership = weapOwnershipFilter === 'all' || 
+                      (weapOwnershipFilter === 'owned' && isOwned) || 
+                      (weapOwnershipFilter === 'unowned' && !isOwned);
+                    
+                    const matchesSearch = weap.name.toLowerCase().includes(weapSearch.toLowerCase()) ||
+                      weap.weaponType.toLowerCase().includes(weapSearch.toLowerCase());
+
+                    return matchesOwnership && matchesSearch;
+                  });
                   if (filtered.length === 0) {
                     return (
                       <div className="text-center py-8 text-slate-500 text-xs italic font-mono uppercase">
@@ -646,6 +705,7 @@ export default function GDDViewer({ onUnlockCharacter, ownedCharacterIds, charac
                   }
                   return filtered.map((weap) => {
                     const isSelected = selectedWeaponName === weap.name;
+                    const isOwned = inventoryWeapons.some(w => w.name === weap.name);
                     return (
                       <button
                         key={weap.name}
@@ -655,7 +715,7 @@ export default function GDDViewer({ onUnlockCharacter, ownedCharacterIds, charac
                         }}
                         className={`w-full text-left p-2.5 rounded-xl border transition-all flex items-center justify-between cursor-pointer ${
                           isSelected
-                            ? 'bg-slate-800 border-slate-705 shadow text-slate-100 border-slate-700'
+                            ? 'bg-slate-800 border-slate-700 shadow text-slate-100'
                             : 'bg-slate-900/30 border-slate-900/80 text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
                         }`}
                       >
@@ -676,6 +736,13 @@ export default function GDDViewer({ onUnlockCharacter, ownedCharacterIds, charac
                               {weap.weaponType} • {weap.rarity}★
                             </div>
                           </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {isOwned ? (
+                            <span className="text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded font-black">OWNED</span>
+                          ) : (
+                            <span className="text-[9px] bg-slate-800 text-slate-500 border border-slate-900 px-1.5 py-0.5 rounded font-black">LOCKED</span>
+                          )}
                         </div>
                       </button>
                     );

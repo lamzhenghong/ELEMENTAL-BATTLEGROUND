@@ -1791,6 +1791,7 @@ export default function App() {
                   <GDDViewer 
                     ownedCharacterIds={saveState.unlockedCharacterIds || []}
                     characterPortraits={saveState.characterPortraits || {}}
+                    inventoryWeapons={saveState.inventoryWeapons || []}
                     language={language}
                   />
                 </motion.div>
