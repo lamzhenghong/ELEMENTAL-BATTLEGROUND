@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import GDDViewer from './components/GDDViewer';
 import GachaSimulator from './components/GachaSimulator';
 import CombatArena from './components/CombatArena';
@@ -108,6 +108,14 @@ const formatPlayTime = (seconds: number = 0) => {
 
 export default function App() {
   const [saveState, setSaveState] = useState<SaveState>(getInitialSaveState());
+
+  // Robust play time tracking using Date.now() and refs
+  const sessionStartRef = useRef<number>(Date.now());
+  const basePlayTimeRef = useRef<number>(0);
+  const [displayPlayTime, setDisplayPlayTime] = useState(0);
+  const getCurrentPlayTime = useCallback(() => {
+    return basePlayTimeRef.current + Math.floor((Date.now() - sessionStartRef.current) / 1000);
+  }, []);
   // Default to Main Menu as requested: 'menu'
   const [activeScreen, setActiveScreen] = useState<'menu' | 'wiki' | 'arena' | 'wish' | 'inventory' | 'quest' | 'dungeon'>('menu');
   const [pullHistory, setPullHistory] = useState<{ name: string; rarity: number; time: string }[]>([]);
@@ -226,22 +234,44 @@ export default function App() {
       });
     }, 1800);
 
-    // Track play time every second
+    // Track play time every second using Date.now() for reliability
     const playTimeInterval = setInterval(() => {
-      setSaveState(prev => {
-        const statsCopy = { ...prev.stats };
-        statsCopy.playTime = (statsCopy.playTime || 0) + 1;
-        return {
-          ...prev,
-          stats: statsCopy
-        };
-      });
+      setDisplayPlayTime(basePlayTimeRef.current + Math.floor((Date.now() - sessionStartRef.current) / 1000));
     }, 1000);
+
+    // Auto-save play time to localStorage every 30 seconds
+    const playTimeSaveInterval = setInterval(() => {
+      try {
+        const stored = localStorage.getItem('aetheria_rpg_save_v3');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          const currentPT = basePlayTimeRef.current + Math.floor((Date.now() - sessionStartRef.current) / 1000);
+          parsed.stats = { ...(parsed.stats || {}), playTime: currentPT };
+          localStorage.setItem('aetheria_rpg_save_v3', JSON.stringify(parsed));
+        }
+      } catch (_e) { /* silent */ }
+    }, 30000);
+
+    // Save play time when the user leaves/closes the tab
+    const handleBeforeUnload = () => {
+      try {
+        const stored = localStorage.getItem('aetheria_rpg_save_v3');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          const currentPT = basePlayTimeRef.current + Math.floor((Date.now() - sessionStartRef.current) / 1000);
+          parsed.stats = { ...(parsed.stats || {}), playTime: currentPT };
+          localStorage.setItem('aetheria_rpg_save_v3', JSON.stringify(parsed));
+        }
+      } catch (_e) { /* silent */ }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
 
     return () => {
       cancelAnimationFrame(animId);
       clearInterval(msInterval);
       clearInterval(playTimeInterval);
+      clearInterval(playTimeSaveInterval);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, []);
 
@@ -353,6 +383,11 @@ export default function App() {
           merged.loginRewardClaimedDays = [];
         }
 
+        // Initialize play time refs from the loaded save
+        basePlayTimeRef.current = merged.stats?.playTime || 0;
+        sessionStartRef.current = Date.now();
+        setDisplayPlayTime(merged.stats?.playTime || 0);
+
         setSaveState(merged);
       }
 
@@ -367,14 +402,20 @@ export default function App() {
 
   // Update save states dynamically
   const triggerSaveUpdate = (updater: (prev: SaveState) => SaveState) => {
+    const currentPlayTime = getCurrentPlayTime();
     setSaveState(prev => {
       const updated = updater(prev);
+      // Always include the latest play time in saves
+      const withPlayTime = {
+        ...updated,
+        stats: { ...updated.stats, playTime: currentPlayTime }
+      };
       try {
-        localStorage.setItem('aetheria_rpg_save_v3', JSON.stringify(updated));
+        localStorage.setItem('aetheria_rpg_save_v3', JSON.stringify(withPlayTime));
       } catch (err) {
         console.error("Local save persistence error", err);
       }
-      return updated;
+      return withPlayTime;
     });
   };
 
@@ -1016,6 +1057,10 @@ export default function App() {
     localStorage.removeItem('aetheria_pull_history');
     setSaveState(getInitialSaveState());
     setPullHistory([]);
+    // Reset play time tracking
+    basePlayTimeRef.current = 0;
+    sessionStartRef.current = Date.now();
+    setDisplayPlayTime(0);
     setActiveScreen('menu'); // back to menu
     setShowSettingsModal(false);
     
@@ -1029,7 +1074,12 @@ export default function App() {
   // Save progress toast feedback
   const handleSaveProgress = () => {
     try {
-      localStorage.setItem('aetheria_rpg_save_v3', JSON.stringify(saveState));
+      const currentPlayTime = getCurrentPlayTime();
+      const stateToSave = {
+        ...saveState,
+        stats: { ...saveState.stats, playTime: currentPlayTime }
+      };
+      localStorage.setItem('aetheria_rpg_save_v3', JSON.stringify(stateToSave));
       showInGameAlert(
         "State synchronization completed!",
         "Successfully saved character status, gems, mora level, unlocked weapons, and quest logs to cache.",
@@ -1820,7 +1870,7 @@ export default function App() {
               </div>
               <div className="flex justify-between items-center border-b border-white/5 pb-1">
                 <span className="uppercase text-[9px] tracking-wider text-slate-500">Play Time</span>
-                <span className="font-black text-slate-300 font-mono text-xs">{formatPlayTime(saveState.stats.playTime)}</span>
+                <span className="font-black text-slate-300 font-mono text-xs">{formatPlayTime(displayPlayTime)}</span>
               </div>
               <div className="flex justify-between items-center border-b border-white/5 pb-1">
                 <span className="uppercase text-[9px] tracking-wider text-slate-500">Adventure Level</span>
