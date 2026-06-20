@@ -32,6 +32,7 @@ interface CombatArenaProps {
   onUpdateHighScore?: (wave: number, score: number) => void;
   onBackToMenu?: () => void;
   onExitToWiki?: () => void;
+  onAddItems?: (itemType: 'char_xp' | 'ascension', amount: number) => void;
   characterLevels?: Record<string, number>;
   characterEquippedWeapon?: Record<string, string>;
   inventoryWeapons?: Weapon[];
@@ -195,7 +196,8 @@ export default function CombatArena({
   dungeonPartyUlt = {},
   dungeonRoomType,
   onDungeonBattleEnd,
-  onExitToWiki
+  onExitToWiki,
+  onAddItems
 }: CombatArenaProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -1404,10 +1406,18 @@ export default function CombatArena({
         shardsRef.current.push(new CrystalShard(enemy.x, enemy.y, type, getElementColorHex(type)));
       }
 
+      // Hero's Wit drop on enemy kill (30% chance per enemy, 1 book)
+      if (!dungeonMode && Math.random() < 0.30) {
+        onAddItems?.('char_xp', 1);
+        spawnFloatingDamageText(enemy.x, enemy.y - 20, `📖 +1 Hero's Wit`, '#a78bfa', 11, false);
+      }
+
       // Check if boss beaten
       if (enemy.type === 'Boss') {
         onIncrementStat('bossesBeaten');
         onEarnRewards(500, 25000, 150); // Massive boss payout!
+        // Hero's Wit bonus on boss kill
+        if (!dungeonMode) onAddItems?.('char_xp', 8);
         setBossHp(0);
         spawnTextRef.current(enemy.x, enemy.y, '🏆 DRAKE DEFEATED! 🏆', '#f59e0b', 24, true);
       } else {
@@ -1428,6 +1438,11 @@ export default function CombatArena({
           
           AetheriaAudioEngine.playWaveClear();
           onEarnRewards(rewardGems, rewardMora, rewardExp);
+
+          // Award Hero's Wit books on wave clear: 1 + 1 per 3 waves
+          const witReward = 1 + Math.floor(currentWave / 3);
+          onAddItems?.('char_xp', witReward);
+          spawnFloatingDamageText(playerRef.current.x, playerRef.current.y - 60, `📖 +${witReward} Hero's Wit`, '#a78bfa', 13, true);
 
           const nextWave = currentWave + 1;
           if (onUpdateHighScore) {

@@ -82,6 +82,7 @@ interface InventoryManagerProps {
   onModifyCurrencies: (gemsDiff: number, moraDiff: number) => void;
   onUpgradeWeapon?: (weaponUid: string) => void;
   onShowAlert: (msg: string, solution?: string, type?: 'success' | 'error' | 'info') => void;
+  onAddItems?: (itemType: 'char_xp' | 'ascension', amount: number) => void;
   activeQuests?: Quest[];
   onClaimQuestReward?: (qId: string) => void;
   characterPortraits?: Record<string, number>;
@@ -100,6 +101,7 @@ export default function InventoryManager({
   onModifyCurrencies,
   onUpgradeWeapon,
   onShowAlert,
+  onAddItems,
   activeQuests = [],
   onClaimQuestReward,
   characterPortraits = {},
@@ -117,6 +119,7 @@ export default function InventoryManager({
   const charLevel = characterLevels[selectedChar.id] || 1;
 
   // Level Up requirement calculation
+  // Level 1-50: uses Hero's Wit (char_xp); Level 50-80: uses Myconid Spore Catalyst (ascension)
   const getLevelUpCost = (currentLvl: number) => {
     return {
       mora: currentLvl * 800,
@@ -125,8 +128,13 @@ export default function InventoryManager({
   };
 
   const costSpecs = getLevelUpCost(charLevel);
+  const usesWit = charLevel < 50; // true = Hero's Wit, false = Myconid Spore Catalyst
   const xpBooksItem = inventoryItems.find(i => i.type === 'char_xp');
+  const catalystItem = inventoryItems.find(i => i.type === 'ascension');
   const availableBooks = xpBooksItem ? xpBooksItem.count : 0;
+  const availableCatalyst = catalystItem ? catalystItem.count : 0;
+  const availableMaterial = usesWit ? availableBooks : availableCatalyst;
+  const materialName = usesWit ? "Hero's Wit" : 'Myconid Spore Catalyst';
 
   const handleLevelUpClick = () => {
     if (charLevel >= 80) {
@@ -145,12 +153,20 @@ export default function InventoryManager({
       );
       return;
     }
-    if (availableBooks < costSpecs.materials) {
-      onShowAlert(
-        "Insufficient Hero's Wit (Character XP Books) materials.",
-        "Perform wish summons in the Celestial Wishes tab. Any duplicate rolls will automatically compensate you with 5 additional XP Books, or claim completed achievements!",
-        "error"
-      );
+    if (availableMaterial < costSpecs.materials) {
+      if (usesWit) {
+        onShowAlert(
+          "Insufficient Hero's Wit (Character XP Books) materials.",
+          "Kill enemies and clear waves in Combat Arena, or complete kill/boss/parry/reaction quests to earn Hero's Wit books!",
+          "error"
+        );
+      } else {
+        onShowAlert(
+          "Insufficient Myconid Spore Catalyst materials.",
+          "Clear rooms in Rogue Ruins to earn Myconid Spore Catalysts! Higher rooms drop more — rooms 7-9 give 4-6, and the Boss room gives 8-12!",
+          "error"
+        );
+      }
       return;
     }
 
@@ -229,6 +245,26 @@ export default function InventoryManager({
     onShowAlert(
       "Developer Cheat Bypass Activated!",
       "Successfully loaded +100,000 Mora gold into your local save registry.",
+      "success"
+    );
+    AetheriaAudioEngine.playWaveClear();
+  };
+
+  const handleCheatHeroWit = () => {
+    onAddItems?.('char_xp', 100000);
+    onShowAlert(
+      "Developer Cheat: Hero's Wit Loaded!",
+      "Successfully added +100,000 Hero's Wit (Character XP Boost) books to your inventory.",
+      "success"
+    );
+    AetheriaAudioEngine.playWaveClear();
+  };
+
+  const handleCheatMyconid = () => {
+    onAddItems?.('ascension', 100000);
+    onShowAlert(
+      "Developer Cheat: Myconid Spore Catalyst Loaded!",
+      "Successfully added +100,000 Myconid Spore Catalyst to your inventory.",
       "success"
     );
     AetheriaAudioEngine.playWaveClear();
@@ -772,12 +808,21 @@ export default function InventoryManager({
               </div>
             </div>
 
-            {/* Level up action box */}
             <div className="p-4 bg-black/45 border border-white/10 rounded-xl flex flex-col md:flex-row justify-between items-center gap-4 relative overflow-hidden">
               <div className="space-y-1 text-center md:text-left">
                 <h5 className="text-xs font-black text-slate-300 uppercase tracking-widest">Ascend Attunement Sphere</h5>
                 <p className="text-xs text-slate-450 leading-relaxed font-mono uppercase text-slate-300">
-                  REQUIRED: <b className="text-[#fbbf24] font-black">{costSpecs.mora.toLocaleString()} MORA</b> FORGE REQUISITE & <b className="text-indigo-400 font-mono font-black">{costSpecs.materials} HERO'S WIT</b> BOOKS (REMAINING: {availableBooks})
+                  REQUIRED: <b className="text-[#fbbf24] font-black">{costSpecs.mora.toLocaleString()} MORA</b> FORGE REQUISITE &{' '}
+                  {usesWit ? (
+                    <><b className="text-indigo-400 font-mono font-black">{costSpecs.materials} HERO'S WIT</b> BOOKS (REMAINING: {availableBooks})</>
+                  ) : (
+                    <><b className="text-emerald-400 font-mono font-black">{costSpecs.materials} MYCONID SPORE CATALYST</b> (REMAINING: {availableCatalyst})</>
+                  )}
+                </p>
+                <p className="text-[10px] text-slate-500 font-mono">
+                  {usesWit
+                    ? 'LV.1•50: Uses Hero’s Wit • LV.50•80: Uses Myconid Spore Catalyst'
+                    : 'LV.50•80: Requires Myconid Spore Catalyst from Rogue Ruins'}
                 </p>
               </div>
 
@@ -789,6 +834,26 @@ export default function InventoryManager({
                 <span>Ascend Character (LV.{charLevel + 1})</span>
               </button>
             </div>
+
+            {/* Developer cheat buttons for materials */}
+            {devCheatsEnabled && (
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={handleCheatHeroWit}
+                  className="bg-indigo-950/60 hover:bg-indigo-900/80 text-indigo-300 border border-indigo-500/20 text-xs font-black uppercase tracking-wider px-4 py-2 rounded-lg transition-all active:scale-95 cursor-pointer shadow-sm hover:border-indigo-400/40"
+                >
+                  +100,000 Hero's Wit
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCheatMyconid}
+                  className="bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-500/20 text-xs font-black uppercase tracking-wider px-4 py-2 rounded-lg transition-all active:scale-95 cursor-pointer shadow-sm hover:border-emerald-400/40"
+                >
+                  +100,000 Myconid Catalyst
+                </button>
+              </div>
+            )}
 
             {/* --- ELEMENTAL REACTIONS CHEAT SHEET --- BELOW CHARACTER --- */}
             <div className="mt-8 pt-6 border-t border-white/10 space-y-4">

@@ -20,6 +20,7 @@ interface RogueDungeonProps {
   onIncrementStat: (pk: any, val?: number) => void;
   onBackToMenu: () => void;
   onExitToWiki?: () => void;
+  onAddItems?: (itemType: 'char_xp' | 'ascension', amount: number) => void;
   devCheatsEnabled?: boolean;
   screenShakeEnabled?: boolean;
   combatSpeed?: number;
@@ -45,6 +46,7 @@ export default function RogueDungeon({
   onIncrementStat,
   onBackToMenu,
   onExitToWiki,
+  onAddItems,
   devCheatsEnabled = true,
   screenShakeEnabled = true,
   combatSpeed = 1.0
@@ -245,6 +247,21 @@ export default function RogueDungeon({
         setPartyUlt(remainingUlts);
       }
       setRoomCompleted(true);
+      
+      // Award Myconid Spore Catalyst on room clear — scales with room depth
+      // Rooms 1-3: 1-2, Rooms 4-6: 2-4, Rooms 7-9: 4-6, Room 10 (Boss): 8-12
+      const roomDepth = currentRoomIdx + 1;
+      let catalystAmount: number;
+      if (dungeonMap[currentRoomIdx] === 'boss') {
+        catalystAmount = 8 + Math.floor(Math.random() * 5); // 8-12
+      } else if (roomDepth >= 7) {
+        catalystAmount = 4 + Math.floor(Math.random() * 3); // 4-6
+      } else if (roomDepth >= 4) {
+        catalystAmount = 2 + Math.floor(Math.random() * 3); // 2-4
+      } else {
+        catalystAmount = 1 + Math.floor(Math.random() * 2); // 1-2
+      }
+      onAddItems?.('ascension', catalystAmount);
       
       // If it was the final room (Boss), trigger victory!
       if (dungeonMap[currentRoomIdx] === 'boss') {

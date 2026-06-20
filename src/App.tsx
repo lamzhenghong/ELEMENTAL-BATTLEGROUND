@@ -43,8 +43,8 @@ const INITIAL_SAVE_STATE: SaveState = {
     { id: 'start_w_5', name: 'Beginner Pole (Polearm)', rarity: 3, weaponType: 'Polearm', baseAtk: 20, statBonus: 'Physical DMG +2%', level: 1 }
   ],
   inventoryItems: [
-    { id: 'wit_exp', name: "Hero's Wit (Character XP Boost)", count: 35, type: 'char_xp', rarity: 4, desc: 'Grants raw energy to attune character levels.' },
-    { id: 'ore_exp', name: "Myconid Spore Catalyst", count: 20, type: 'ascension', rarity: 3, desc: 'Dropped by slimes in the Combat Arena.' }
+    { id: 'wit_exp', name: "Hero's Wit (Character XP Boost)", count: 35, type: 'char_xp', rarity: 4, desc: 'Earned by clearing waves in Combat Arena, defeating enemies, and completing quests. Used to level up characters from Lv.1 to Lv.50.' },
+    { id: 'ore_exp', name: "Myconid Spore Catalyst", count: 20, type: 'ascension', rarity: 3, desc: 'Drops from clearing rooms in Rogue Ruins — higher rooms grant more. Required to advance characters from Lv.50 to Lv.80.' }
   ],
   characterLevels: {
     'marina': 1
@@ -657,6 +657,16 @@ export default function App() {
     });
   };
 
+  // Add inventory items (Hero's Wit / Myconid Spore Catalyst)
+  const handleAddItems = (itemType: 'char_xp' | 'ascension', amount: number) => {
+    triggerSaveUpdate(prev => ({
+      ...prev,
+      inventoryItems: prev.inventoryItems.map(item =>
+        item.type === itemType ? { ...item, count: item.count + amount } : item
+      )
+    }));
+  };
+
   const handleLevelUpCharacter = (id: string, costMora: number, costItems: number) => {
     triggerSaveUpdate(prev => {
       const currentLevel = prev.characterLevels[id] || 1;
@@ -674,8 +684,10 @@ export default function App() {
 
       const newLevels = { ...prev.characterLevels, [id]: nextLevel };
       const newMora = Math.max(0, prev.mora - costMora);
+      // Level 1-50: consume Hero's Wit (char_xp); Level 50-80: consume Myconid Spore Catalyst (ascension)
+      const consumeType = currentLevel < 50 ? 'char_xp' : 'ascension';
       const newItems = prev.inventoryItems.map(item => {
-        if (item.type === 'char_xp') {
+        if (item.type === consumeType) {
           return { ...item, count: Math.max(0, item.count - costItems) };
         }
         return item;
@@ -842,17 +854,26 @@ export default function App() {
     const quest = saveState.activeQuests.find(q => q.id === questId);
     if (!quest || !quest.completed) return;
 
-    triggerSaveUpdate(prev => ({
-      ...prev,
-      aetherGems: prev.aetherGems + quest.rewardTokens,
-      mora: prev.mora + quest.rewardMora,
-      activeQuests: prev.activeQuests.filter(q => q.id !== questId),
-      completedQuestIds: [...prev.completedQuestIds, questId]
-    }));
+    triggerSaveUpdate(prev => {
+      // Kill/boss/parry/reaction quests also reward Hero's Wit books
+      const witBonus = (['kill_enemy','kill_boss','parry','reaction'].includes(quest.type)) ? 3 : 0;
+      return {
+        ...prev,
+        aetherGems: prev.aetherGems + quest.rewardTokens,
+        mora: prev.mora + quest.rewardMora,
+        inventoryItems: prev.inventoryItems.map(item =>
+          item.type === 'char_xp' ? { ...item, count: item.count + witBonus } : item
+        ),
+        activeQuests: prev.activeQuests.filter(q => q.id !== questId),
+        completedQuestIds: [...prev.completedQuestIds, questId]
+      };
+    });
 
+    const quest2 = saveState.activeQuests.find(q => q.id === questId);
+    const witBonus2 = quest2 && ['kill_enemy','kill_boss','parry','reaction'].includes(quest2.type) ? 3 : 0;
     showInGameAlert(
       "Claimed Quest Reward Successfully!",
-      `Received +${quest.rewardTokens} Aether Gems and +${quest.rewardMora.toLocaleString()} Mora. Spend them right away in wishes loop!`,
+      `Received +${quest.rewardTokens} Aether Gems and +${quest.rewardMora.toLocaleString()} Mora${ witBonus2 > 0 ? ` and +${witBonus2} Hero's Wit` : '' }. Spend them right away in wishes loop!`,
       "success"
     );
     AetheriaAudioEngine.playWaveClear();
@@ -1791,6 +1812,7 @@ export default function App() {
                     }}
                     onBackToMenu={() => setActiveScreen('menu')}
                     onExitToWiki={() => setActiveScreen('wiki')}
+                    onAddItems={handleAddItems}
                     devCheatsEnabled={devCheatsEnabled}
                     screenShakeEnabled={screenShakeEnabled}
                     combatSpeed={combatSpeed}
@@ -1818,6 +1840,7 @@ export default function App() {
                     onIncrementStat={(pk) => handleIncrementStat(pk)}
                     onBackToMenu={() => setActiveScreen('menu')}
                     onExitToWiki={() => setActiveScreen('wiki')}
+                    onAddItems={handleAddItems}
                     devCheatsEnabled={devCheatsEnabled}
                     screenShakeEnabled={screenShakeEnabled}
                     combatSpeed={combatSpeed}
@@ -1871,6 +1894,7 @@ export default function App() {
                     onModifyCurrencies={(g, m) => handleModifyCurrencies(g, m)}
                     onUpgradeWeapon={(wuid) => handleUpgradeWeapon(wuid)}
                     onShowAlert={(msg, sol, typ) => showInGameAlert(msg, sol, typ)}
+                    onAddItems={handleAddItems}
                     activeQuests={saveState.activeQuests}
                     onClaimQuestReward={claimQuestReward}
                     characterPortraits={saveState.characterPortraits || {}}
