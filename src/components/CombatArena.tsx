@@ -8,7 +8,7 @@ import { PLAYABLE_CHARACTERS } from '../data/characters';
 import { PlayableCharacter, ElementType, CombatCharacter, Weapon } from '../types';
 import { 
   Sword, Zap, ShieldAlert, Sparkles, HelpCircle, Trophy, RefreshCw, RefreshCcw, 
-  Swords, Plus, Star, Pause, Play, Volume2, VolumeX, Save, Home,
+  Swords, Plus, Star, Pause, Play, Volume2, VolumeX, Save, Home, BookOpen,
   Sun, CloudRain, CloudLightning, Snowflake
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -31,6 +31,7 @@ interface CombatArenaProps {
   highScoreWave?: number;
   onUpdateHighScore?: (wave: number, score: number) => void;
   onBackToMenu?: () => void;
+  onExitToWiki?: () => void;
   characterLevels?: Record<string, number>;
   characterEquippedWeapon?: Record<string, string>;
   inventoryWeapons?: Weapon[];
@@ -193,7 +194,8 @@ export default function CombatArena({
   dungeonPartyHp = {},
   dungeonPartyUlt = {},
   dungeonRoomType,
-  onDungeonBattleEnd
+  onDungeonBattleEnd,
+  onExitToWiki
 }: CombatArenaProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -205,6 +207,39 @@ export default function CombatArena({
 
   // Level selector for test items
   const [battleStarted, setBattleStarted] = useState<boolean>(false);
+  const [countdownValue, setCountdownValue] = useState<number | null>(null);
+  const [pendingAction, setPendingAction] = useState<'restart' | 'home' | 'wiki' | null>(null);
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Clear countdown interval on unmount
+  useEffect(() => {
+    return () => {
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    };
+  }, []);
+
+  const startCountdown = (onComplete: () => void) => {
+    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    setCountdownValue(3);
+    AetheriaAudioEngine.playClick();
+    
+    let val = 3;
+    countdownIntervalRef.current = setInterval(() => {
+      val--;
+      if (val <= 0) {
+        if (countdownIntervalRef.current) {
+          clearInterval(countdownIntervalRef.current);
+          countdownIntervalRef.current = null;
+        }
+        setCountdownValue(null);
+        onComplete();
+      } else {
+        setCountdownValue(val);
+        AetheriaAudioEngine.playClick();
+      }
+    }, 1000);
+  };
+
   const [showPartySelector, setShowPartySelector] = useState(false);
   const [spawnerPreset, setSpawnerPreset] = useState<'slimes' | 'elites' | 'boss'>('slimes');
 
@@ -371,7 +406,8 @@ export default function CombatArena({
     activeChar,
     isPaused,
     isGameOver,
-    battleStarted: false
+    battleStarted: false,
+    countdownValue: null as number | null
   });
 
   // Screenshake ref
@@ -391,9 +427,10 @@ export default function CombatArena({
       activeChar,
       isPaused,
       isGameOver,
-      battleStarted
+      battleStarted,
+      countdownValue
     };
-  });
+  }, [combatParty, activePartyIndex, isParrying, isDashing, shieldActive, shieldWeight, dimensions, timeDisordered, activeChar, isPaused, isGameOver, battleStarted, countdownValue]);
 
   // Start music loop once battle starts
   useEffect(() => {
@@ -843,6 +880,7 @@ export default function CombatArena({
 
   const swapPartyIndex = (idx: number) => {
     const { combatParty: currentParty, activePartyIndex: currentPartyIndex } = loopStateRef.current;
+    if (isPaused || isGameOver || countdownValue !== null) return;
     if (idx >= currentParty.length || idx < 0 || idx === currentPartyIndex) return;
     setActivePartyIndex(idx);
     const swapped = currentParty[idx];
@@ -1423,7 +1461,8 @@ export default function CombatArena({
         timeDisordered: currentTimeDisordered,
         isPaused: currentIsPaused,
         isGameOver: currentIsGameOver,
-        battleStarted: currentBattleStarted
+        battleStarted: currentBattleStarted,
+        countdownValue: currentCountdownValue
       } = loopStateRef.current;
 
       const currentActiveChar = currentParty[currentPartyIndex] || null;
@@ -1432,21 +1471,23 @@ export default function CombatArena({
         return;
       }
 
-      if (!currentBattleStarted || currentIsPaused || currentIsGameOver) {
+      if (!currentBattleStarted || currentIsPaused || currentIsGameOver || currentCountdownValue !== null) {
         // Redraw current frozen state but add a beautiful overlay
         ctx.save();
         ctx.fillStyle = 'rgba(2, 6, 23, 0.05)'; // Very faint fade transition look
         ctx.fillRect(0, 0, currentDimensions.width, currentDimensions.height);
         
-        ctx.fillStyle = '#6366f1';
-        ctx.font = 'bold 20px "Space Grotesk", sans-serif';
-        ctx.textAlign = 'center';
-        if (currentIsGameOver) {
-          ctx.fillText('🎮 GAME OVER 🎮', currentDimensions.width / 2, currentDimensions.height / 2);
-        } else if (currentIsPaused) {
-          ctx.fillText('⏸️ GAME PAUSED ⏸️', currentDimensions.width / 2, currentDimensions.height / 2);
-        } else {
-          ctx.fillText('⚔️ PREPARING COMBAT ⚔️', currentDimensions.width / 2, currentDimensions.height / 2);
+        if (currentCountdownValue === null) {
+          ctx.fillStyle = '#6366f1';
+          ctx.font = 'bold 20px "Space Grotesk", sans-serif';
+          ctx.textAlign = 'center';
+          if (currentIsGameOver) {
+            ctx.fillText('🎮 GAME OVER 🎮', currentDimensions.width / 2, currentDimensions.height / 2);
+          } else if (currentIsPaused) {
+            ctx.fillText('⏸️ GAME PAUSED ⏸️', currentDimensions.width / 2, currentDimensions.height / 2);
+          } else {
+            ctx.fillText('⚔️ PREPARING COMBAT ⚔️', currentDimensions.width / 2, currentDimensions.height / 2);
+          }
         }
         ctx.restore();
 
@@ -2012,7 +2053,7 @@ export default function CombatArena({
         return;
       }
 
-      if (!loopStateRef.current.battleStarted || loopStateRef.current.isPaused || loopStateRef.current.isGameOver) return;
+      if (!loopStateRef.current.battleStarted || loopStateRef.current.isPaused || loopStateRef.current.isGameOver || loopStateRef.current.countdownValue !== null) return;
 
       keyboardState.current[key] = true;
 
@@ -2139,7 +2180,7 @@ export default function CombatArena({
 
   // Handlers for mouse aiming and click strikes on the canvas
   const handleCanvasPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (isPaused || isGameOver) return;
+    if (isPaused || isGameOver || countdownValue !== null) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
@@ -2167,7 +2208,7 @@ export default function CombatArena({
   };
 
   const handleCanvasPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (isPaused || isGameOver) return;
+    if (isPaused || isGameOver || countdownValue !== null) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
@@ -2512,6 +2553,7 @@ export default function CombatArena({
                     onClick={() => {
                       AetheriaAudioEngine.playClick();
                       setBattleStarted(true);
+                      startCountdown(() => {});
                     }}
                     className="w-full p-4 bg-indigo-650 hover:bg-indigo-550 active:scale-95 text-white text-xs rounded-xl font-black uppercase tracking-widest shadow-[0_0_20px_rgba(99,102,241,0.3)] transition-all cursor-pointer"
                   >
@@ -2547,26 +2589,96 @@ export default function CombatArena({
                 <div>⚔️ SHARDS COLLECTIBLE: <b className="text-cyan-400">GEO REACTIONS</b></div>
               </div>
 
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2 relative">
                 <button
-                  onClick={() => { AetheriaAudioEngine.playClick(); setIsPaused(false); }}
+                  onClick={() => {
+                    AetheriaAudioEngine.playClick();
+                    setIsPaused(false);
+                    startCountdown(() => {});
+                  }}
                   className="w-full p-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded-lg font-black uppercase tracking-wider cursor-pointer"
                 >
-                  Resume Campaign
+                  RESUME CAMPAIGN
                 </button>
                 <button
-                  onClick={handleRestartCombat}
+                  onClick={() => {
+                    AetheriaAudioEngine.playClick();
+                    setPendingAction('restart');
+                  }}
                   className="w-full p-2.5 bg-black/45 hover:bg-black/75 border border-white/10 text-slate-200 text-xs rounded-lg font-black uppercase tracking-wider cursor-pointer"
                 >
-                  Restart Wave 1
+                  RESTART WAVE {currentWave}
                 </button>
                 {onBackToMenu && (
                   <button
-                    onClick={() => { AetheriaAudioEngine.playClick(); onBackToMenu(); }}
+                    onClick={() => {
+                      AetheriaAudioEngine.playClick();
+                      setPendingAction('home');
+                    }}
                     className="w-full p-2.5 bg-red-650/20 hover:bg-red-600/30 border border-red-500/20 text-red-400 text-xs rounded-lg font-black uppercase tracking-wider cursor-pointer flex items-center justify-center gap-1.5"
                   >
-                    <Home className="w-3.5 h-3.5" /> Return To Home Menu
+                    <Home className="w-3.5 h-3.5" /> RETURN TO HOME MENU
                   </button>
+                )}
+                {onExitToWiki && (
+                  <button
+                    onClick={() => {
+                      AetheriaAudioEngine.playClick();
+                      setPendingAction('wiki');
+                    }}
+                    className="w-full p-2.5 bg-sky-955/20 hover:bg-sky-600/30 border border-sky-500/20 text-sky-400 text-xs rounded-lg font-black uppercase tracking-wider cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <BookOpen className="w-3.5 h-3.5" /> EXIT TO WIKI
+                  </button>
+                )}
+
+                {pendingAction && (
+                  <div className="absolute inset-[-1.5rem] bg-slate-950/95 backdrop-blur-sm rounded-xl p-4 flex flex-col justify-center items-center space-y-4 z-30">
+                    <div className="w-10 h-10 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center">
+                      <HelpCircle className="w-5 h-5 text-amber-400 animate-pulse" />
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="text-xs font-black text-amber-400 uppercase tracking-widest">
+                        Are you sure?
+                      </h4>
+                      <p className="text-[10px] text-slate-300 max-w-[200px] leading-relaxed">
+                        {pendingAction === 'restart' && `Restart wave ${currentWave}? This resets your active wave progress.`}
+                        {pendingAction === 'home' && "Return to home menu? This forfeits your current run."}
+                        {pendingAction === 'wiki' && "Exit to GDD Wiki? This forfeits your current run."}
+                      </p>
+                    </div>
+                    <div className="flex gap-2 w-full max-w-[220px]">
+                      <button
+                        onClick={() => {
+                          AetheriaAudioEngine.playClick();
+                          const act = pendingAction;
+                          setPendingAction(null);
+                          if (act === 'restart') {
+                            setIsPaused(false);
+                            handleRestartCombat();
+                          } else if (act === 'home') {
+                            setIsPaused(false);
+                            onBackToMenu?.();
+                          } else if (act === 'wiki') {
+                            setIsPaused(false);
+                            onExitToWiki?.();
+                          }
+                        }}
+                        className="flex-1 py-1.5 bg-red-650 hover:bg-red-600 text-white text-[10px] rounded font-black uppercase tracking-wider cursor-pointer active:scale-95 transition-transform"
+                      >
+                        Confirm
+                      </button>
+                      <button
+                        onClick={() => {
+                          AetheriaAudioEngine.playClick();
+                          setPendingAction(null);
+                        }}
+                        className="flex-1 py-1.5 bg-slate-800 hover:bg-slate-750 text-slate-200 text-[10px] rounded font-black uppercase tracking-wider cursor-pointer active:scale-95 transition-transform"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
@@ -2628,6 +2740,24 @@ export default function CombatArena({
             </div>
           </div>
         )}
+
+        {/* Countdown display timer overlay */}
+        <AnimatePresence>
+          {countdownValue !== null && (
+            <div className="absolute inset-0 bg-slate-950/40 flex items-center justify-center z-50 pointer-events-none select-none">
+              <motion.div
+                key={countdownValue}
+                initial={{ opacity: 0, scale: 0.3 }}
+                animate={{ opacity: 1, scale: 1.5 }}
+                exit={{ opacity: 0, scale: 2 }}
+                transition={{ duration: 0.8 }}
+                className="text-center font-display font-black text-7xl md:text-9xl text-indigo-400 drop-shadow-[0_0_25px_rgba(99,102,241,0.65)]"
+              >
+                {countdownValue}
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
 
         {/* Game Canvas */}
         <canvas 
@@ -2757,11 +2887,9 @@ export default function CombatArena({
 
       {isMobile && (
         <>
-          {/* Party setup swaps column (floating horizontally below HUD) */}
-          <div className="fixed left-4 top-14 z-40 flex flex-row gap-2 pointer-events-auto">
+          <div className="fixed left-4 top-14 z-40 flex flex-col gap-2 pointer-events-auto">
             {combatParty.map((c, i) => {
               const activeRatio = (c.currentHp / c.maxHp) * 100;
-              const charTemplate = PLAYABLE_CHARACTERS.find(p => p.id === c.id);
               const isCurrent = activePartyIndex === i;
               return (
                 <button
@@ -2804,11 +2932,26 @@ export default function CombatArena({
             }}
           />
           <MobileControls 
-            onAttack={triggerBasicAttack}
-            onSkill={triggerElementalSkill}
-            onUltimate={triggerUltimate}
-            onDodge={triggerDodgeDash}
-            onParry={triggerParryBlock}
+            onAttack={() => {
+              if (isPaused || isGameOver || countdownValue !== null) return;
+              triggerBasicAttack();
+            }}
+            onSkill={() => {
+              if (isPaused || isGameOver || countdownValue !== null) return;
+              triggerElementalSkill();
+            }}
+            onUltimate={() => {
+              if (isPaused || isGameOver || countdownValue !== null) return;
+              triggerUltimate();
+            }}
+            onDodge={() => {
+              if (isPaused || isGameOver || countdownValue !== null) return;
+              triggerDodgeDash();
+            }}
+            onParry={() => {
+              if (isPaused || isGameOver || countdownValue !== null) return;
+              triggerParryBlock();
+            }}
             onParryEnd={() => setIsParrying(false)}
             skillCooldown={activeChar?.skillCooldownRemaining || 0}
             dodgeCooldown={dodgeCd}

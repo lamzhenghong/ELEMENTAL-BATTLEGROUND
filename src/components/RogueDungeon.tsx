@@ -19,6 +19,7 @@ interface RogueDungeonProps {
   onEarnRewards: (gems: number, mora: number, exp: number) => void;
   onIncrementStat: (pk: any, val?: number) => void;
   onBackToMenu: () => void;
+  onExitToWiki?: () => void;
   devCheatsEnabled?: boolean;
   screenShakeEnabled?: boolean;
   combatSpeed?: number;
@@ -43,6 +44,7 @@ export default function RogueDungeon({
   onEarnRewards,
   onIncrementStat,
   onBackToMenu,
+  onExitToWiki,
   devCheatsEnabled = true,
   screenShakeEnabled = true,
   combatSpeed = 1.0
@@ -350,6 +352,7 @@ export default function RogueDungeon({
           dungeonPartyUlt={partyUlt}
           dungeonRoomType={currentRoomType === 'elite' ? 'elite' : currentRoomType === 'boss' ? 'boss' : 'battle'}
           onDungeonBattleEnd={handleDungeonBattleEnd}
+          onExitToWiki={onExitToWiki}
           devCheatsEnabled={devCheatsEnabled}
           screenShakeEnabled={screenShakeEnabled}
           combatSpeed={combatSpeed}

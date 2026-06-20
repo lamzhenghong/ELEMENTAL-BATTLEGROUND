@@ -1790,6 +1790,7 @@ export default function App() {
                       });
                     }}
                     onBackToMenu={() => setActiveScreen('menu')}
+                    onExitToWiki={() => setActiveScreen('wiki')}
                     devCheatsEnabled={devCheatsEnabled}
                     screenShakeEnabled={screenShakeEnabled}
                     combatSpeed={combatSpeed}
@@ -1816,6 +1817,7 @@ export default function App() {
                     onEarnRewards={(gems, mora, exp) => handleModifyCurrencies(gems, mora, exp)}
                     onIncrementStat={(pk) => handleIncrementStat(pk)}
                     onBackToMenu={() => setActiveScreen('menu')}
+                    onExitToWiki={() => setActiveScreen('wiki')}
                     devCheatsEnabled={devCheatsEnabled}
                     screenShakeEnabled={screenShakeEnabled}
                     combatSpeed={combatSpeed}
