@@ -58,7 +58,7 @@ export default function MobileControls({
 
   return (
     <div 
-      className="fixed bottom-4 right-4 z-50 select-none touch-none w-56 h-56 pointer-events-auto"
+      className="fixed bottom-12 right-12 z-50 select-none touch-none w-56 h-56 pointer-events-auto"
       onPointerDown={(e) => e.stopPropagation()} // Stop propagation to canvas
     >
       {/* 1. Attack Button (Center, largest) */}

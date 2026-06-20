@@ -1019,7 +1019,7 @@ export default function CombatArena({
         const energyMultiplier = dungeonMode && dungeonBuffs.includes('Recharge Matrix') ? 1.5 : 1.0;
         return { 
           ...c, 
-          skillCooldownRemaining: currentActiveChar.skills.skill.cooldown, 
+          skillCooldownRemaining: 10.0, 
           ultimateEnergy: Math.min(c.ultimateMaxEnergy, c.ultimateEnergy + 25 * energyMultiplier) 
         };
       }
@@ -1135,7 +1135,7 @@ export default function CombatArena({
     setCombatParty(pList => pList.map((c, i) => {
       if (i === currentPartyIndex) {
         const energyMultiplier = dungeonMode && dungeonBuffs.includes('Recharge Matrix') ? 1.5 : 1.0;
-        const energyGain = (hitSomething ? 8 : 4) * energyMultiplier; // bonus reward for hitting targets
+        const energyGain = (hitSomething ? 2 : 1) * energyMultiplier; // bonus reward for hitting targets
         return { ...c, ultimateEnergy: Math.min(c.ultimateMaxEnergy, c.ultimateEnergy + energyGain) };
       }
       return c;
