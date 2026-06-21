@@ -1591,26 +1591,26 @@ export default function App() {
         </div>
 
         {/* Global HUD Stats: Client Data, Active FPS, Live Latency */}
-        <div className="flex flex-row flex-nowrap overflow-x-auto scrollbar-none items-center gap-2.5 w-full lg:w-auto py-1 text-xs select-none">
+        <div className="flex flex-row flex-nowrap overflow-x-auto scrollbar-none items-center justify-center lg:justify-start gap-1.5 md:gap-2.5 w-full lg:w-auto py-1 text-xs select-none">
           
           {/* Functional Dynamic FPS Display */}
-          <div className="bg-black/45 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 flex items-center gap-2 shrink-0">
-            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></span>
-            <span className="text-[10px] font-mono font-black tracking-wider text-indigo-300 uppercase">
+          <div className="bg-black/45 backdrop-blur-md px-1.5 py-1 md:px-3 md:py-1.5 rounded-lg border border-white/10 flex items-center gap-1 md:gap-2 shrink-0">
+            <span className="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-indigo-400 animate-pulse"></span>
+            <span className="text-[9px] md:text-[10px] font-mono font-black tracking-wider text-indigo-300 uppercase">
               FPS: {fps}
             </span>
           </div>
 
           {/* Connection Latency Pill */}
-          <div className="bg-black/45 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 flex items-center gap-2 shrink-0">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400"></div>
-            <span className="text-[10px] font-mono font-bold tracking-wider text-emerald-400 uppercase">
-              {latency}ms Stable
+          <div className="bg-black/45 backdrop-blur-md px-1.5 py-1 md:px-3 md:py-1.5 rounded-lg border border-white/10 flex items-center gap-1 md:gap-2 shrink-0">
+            <div className="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-emerald-400"></div>
+            <span className="text-[9px] md:text-[10px] font-mono font-bold tracking-wider text-emerald-400 uppercase">
+              {latency}ms<span className="hidden md:inline"> Stable</span>
             </span>
           </div>
 
           {/* Player profile quick status */}
-          <div className="hidden sm:flex bg-slate-900/60 border border-white/10 px-3 py-1.5 rounded-lg flex-col items-start justify-center min-w-[145px] shrink-0">
+          <div className="hidden md:flex bg-slate-900/60 border border-white/10 px-3 py-1.5 rounded-lg flex-col items-start justify-center min-w-[145px] shrink-0">
             <div className="flex items-center gap-1.5 w-full justify-between">
               <span className="text-[10px] font-bold tracking-tighter text-slate-300 uppercase">Eldric Thorne</span>
               <div className="flex items-center gap-1">
@@ -1637,17 +1637,17 @@ export default function App() {
           </div>
 
           {/* Mora Currency */}
-          <div className="flex items-center gap-1.5 p-1 px-3 rounded-lg bg-black/40 border border-white/15 shrink-0">
+          <div className="flex items-center gap-1 md:gap-1.5 p-1 px-2 md:px-3 rounded-lg bg-black/40 border border-white/15 shrink-0">
             <Coins className="w-3.5 h-3.5 text-amber-400" />
-            <span className="text-slate-400 font-mono text-[10px] uppercase">Mora:</span>
-            <span className="font-black text-amber-305 font-mono text-[11px] text-amber-400">{saveState.mora.toLocaleString()}</span>
+            <span className="hidden md:inline text-slate-400 font-mono text-[10px] uppercase">Mora:</span>
+            <span className="font-black text-amber-305 font-mono text-[10px] md:text-[11px] text-amber-400">{saveState.mora.toLocaleString()}</span>
           </div>
 
           {/* Aether Gems */}
-          <div className="flex items-center gap-1.5 p-1 px-3 rounded-lg bg-black/40 border border-white/15 shrink-0">
+          <div className="flex items-center gap-1 md:gap-1.5 p-1 px-2 md:px-3 rounded-lg bg-black/40 border border-white/15 shrink-0">
             <Sparkles className="w-3.5 h-3.5 text-sky-450 text-sky-400" />
-            <span className="text-slate-400 font-mono text-[10px] uppercase">Gems:</span>
-            <span className="font-black text-sky-450 font-mono text-[11px] text-sky-400">{saveState.aetherGems.toLocaleString()}</span>
+            <span className="hidden md:inline text-slate-400 font-mono text-[10px] uppercase">Gems:</span>
+            <span className="font-black text-sky-400 font-mono text-[10px] md:text-[11px] text-sky-400">{saveState.aetherGems.toLocaleString()}</span>
           </div>
 
           {/* Global Quick Quest Claim Button */}
@@ -1656,11 +1656,13 @@ export default function App() {
               onClick={() => {
                 claimAllQuestRewards();
               }}
-              className="p-1.5 px-3 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/30 rounded-lg text-[10px] uppercase font-black tracking-wider transition-all active:scale-95 cursor-pointer flex items-center gap-1.5 shadow-[0_0_15px_rgba(52,211,153,0.2)] text-emerald-350 font-sans shrink-0"
+              className="p-1 md:p-1.5 px-2 md:px-3 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/30 rounded-lg text-[9px] md:text-[10px] uppercase font-black tracking-wider transition-all active:scale-95 cursor-pointer flex items-center gap-1 md:gap-1.5 shadow-[0_0_15px_rgba(52,211,153,0.2)] text-emerald-350 font-sans shrink-0"
               title="Quick Claim All Completed Quests"
             >
               <Trophy className="w-3.5 h-3.5 text-amber-400 animate-bounce" />
-              Claim Quests ({saveState.activeQuests.filter(q => q.completed).length})
+              <span className="hidden md:inline">Claim Quests </span>
+              <span className="md:hidden">Claim </span>
+              ({saveState.activeQuests.filter(q => q.completed).length})
             </button>
           )}
 
@@ -1671,9 +1673,11 @@ export default function App() {
               setShowSettingsModal(true);
               AetheriaAudioEngine.playClick();
             }}
-            className="p-1.5 px-3 bg-slate-900 border border-white/10 hover:border-[#6366f1]/40 rounded-lg text-[10px] uppercase font-black tracking-wider transition-all active:scale-95 cursor-pointer flex items-center gap-1 shadow-md hover:shadow-indigo-500/10 text-white font-sans shrink-0"
+            className="p-1 md:p-1.5 px-2 md:px-3 bg-slate-900 border border-white/10 hover:border-[#6366f1]/40 rounded-lg text-[9px] md:text-[10px] uppercase font-black tracking-wider transition-all active:scale-95 cursor-pointer flex items-center gap-1 shadow-md hover:shadow-indigo-500/10 text-white font-sans shrink-0"
+            title="Settings Panel"
           >
-            <LayoutGrid className="w-3.5 h-3.5 text-indigo-400" /> Settings Panel
+            <LayoutGrid className="w-3.5 h-3.5 text-indigo-400" />
+            <span className="hidden md:inline">Settings Panel</span>
           </button>
 
           {/* FULLSCREEN TOGGLE */}
@@ -1681,7 +1685,7 @@ export default function App() {
             type="button"
             onClick={toggleFullscreen}
             title={isFullscreen ? 'Exit Fullscreen (Esc)' : 'Enter Fullscreen'}
-            className="p-1.5 px-2.5 bg-slate-900 border border-white/10 hover:border-amber-500/40 rounded-lg text-[10px] uppercase font-black tracking-wider transition-all active:scale-95 cursor-pointer flex items-center gap-1 shadow-md hover:shadow-amber-500/10 text-white font-sans shrink-0"
+            className="p-1 md:p-1.5 px-2 md:px-2.5 bg-slate-900 border border-white/10 hover:border-amber-500/40 rounded-lg text-[9px] md:text-[10px] uppercase font-black tracking-wider transition-all active:scale-95 cursor-pointer flex items-center gap-1 shadow-md hover:shadow-amber-500/10 text-white font-sans shrink-0"
           >
             {isFullscreen
               ? <Minimize2 className="w-3.5 h-3.5 text-amber-400" />
