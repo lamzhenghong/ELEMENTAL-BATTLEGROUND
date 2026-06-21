@@ -1962,18 +1962,18 @@ export default function App() {
       <main className="flex-1 max-w-[1500px] w-full mx-auto p-4 md:p-6 grid grid-cols-1 xl:grid-cols-4 gap-6 items-start">
         
         {/* Left Side: Main screens container (takes 3 grid cells) */}
-        <div className="xl:col-span-3 space-y-6 flex flex-col h-full">
+        <div className="xl:col-span-3 space-y-6">
           
           {/* Main Action tab selectors */}
-          <div className="grid grid-cols-4 md:flex bg-[#0b0f19]/80 backdrop-blur-md border border-white/10 p-1.5 rounded-xl w-full md:w-fit gap-1 shadow-[0_0_20px_rgba(0,0,0,0.5)]">
+          <div className="flex overflow-x-auto whitespace-nowrap scrollbar-none bg-[#0b0f19]/80 backdrop-blur-md border border-white/10 p-1.5 rounded-xl w-full gap-1 shadow-[0_0_20px_rgba(0,0,0,0.5)]">
             <button
               onClick={() => {
                 setActiveScreen('wiki');
                 AetheriaAudioEngine.playClick();
               }}
-              className={`p-2 px-1 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 flex-1 md:flex-initial cursor-pointer ${
+              className={`p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 md:flex-initial cursor-pointer ${
                 activeScreen === 'wiki'
-                  ? 'bg-amber-400 text-slate-950 shadow-[0_0_15px_rgba(251,191,36,0.35)]'
+                  ? 'bg-amber-400 text-slate-955 shadow-[0_0_15px_rgba(251,191,36,0.35)]'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
               }`}
               id="dash_screen_wiki"
@@ -1988,14 +1988,14 @@ export default function App() {
                 setActiveScreen('story');
                 AetheriaAudioEngine.playClick();
               }}
-              className={`p-2 px-1 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 flex-1 md:flex-initial cursor-pointer ${
+              className={`p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 md:flex-initial cursor-pointer ${
                 activeScreen === 'story'
                   ? 'bg-indigo-600 text-white shadow-[0_0_15px_rgba(99,102,241,0.35)] font-black'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-black'
               }`}
               id="dash_screen_story"
             >
-              <BookOpen className="w-3.5 h-3.5 shrink-0 text-slate-950" />
+              <BookOpen className="w-3.5 h-3.5 shrink-0 text-slate-955 text-slate-950" />
               <span className="hidden md:inline">Story Campaign</span>
               <span className="md:hidden">Story</span>
             </button>
@@ -2005,7 +2005,7 @@ export default function App() {
                 setActiveScreen('arena');
                 AetheriaAudioEngine.playClick();
               }}
-              className={`p-2 px-1 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 flex-1 md:flex-initial cursor-pointer ${
+              className={`p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 md:flex-initial cursor-pointer ${
                 activeScreen === 'arena'
                   ? 'bg-red-500 text-slate-950 shadow-[0_0_15px_rgba(239,68,68,0.35)] font-black'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-black'
@@ -2028,7 +2028,7 @@ export default function App() {
                     "error"
                   );
                 }}
-                className="relative p-2 px-1 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all cursor-pointer bg-slate-900/30 border border-slate-800/80 text-slate-500 hover:bg-slate-900/40 hover:text-slate-450 flex flex-col md:flex-row items-center justify-center gap-1.5 flex-1 md:flex-initial"
+                className="relative p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all cursor-pointer bg-slate-900/30 border border-slate-800/80 text-slate-500 hover:bg-slate-900/40 hover:text-slate-450 flex flex-col md:flex-row items-center justify-center gap-1.5 shrink-0 md:flex-initial"
                 title={`Unlocks at Player Level 10 (Current: Level ${saveState.playerLevel || 1}/10)`}
               >
                 <div className="flex items-center gap-1.5">
@@ -2047,7 +2047,7 @@ export default function App() {
                   setActiveScreen('dungeon');
                   AetheriaAudioEngine.playClick();
                 }}
-                className={`p-2 px-1 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 flex-1 md:flex-initial cursor-pointer ${
+                className={`p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 md:flex-initial cursor-pointer ${
                   activeScreen === 'dungeon'
                     ? 'bg-violet-600 text-slate-950 shadow-[0_0_15px_rgba(124,58,237,0.35)] font-black'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-black'
@@ -2071,7 +2071,7 @@ export default function App() {
                     "error"
                   );
                 }}
-                className="relative p-2 px-1 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all cursor-pointer bg-slate-900/30 border border-slate-800/80 text-slate-500 hover:bg-slate-900/40 hover:text-slate-450 flex flex-col md:flex-row items-center justify-center gap-1.5 flex-1 md:flex-initial"
+                className="relative p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all cursor-pointer bg-slate-900/30 border border-slate-800/80 text-slate-500 hover:bg-slate-900/40 hover:text-slate-450 flex flex-col md:flex-row items-center justify-center gap-1.5 shrink-0 md:flex-initial"
                 title={`Unlocks at Player Level 5 (Current: Level ${saveState.playerLevel || 1}/5)`}
               >
                 <div className="flex items-center gap-1.5">
@@ -2090,9 +2090,9 @@ export default function App() {
                   setActiveScreen('wish');
                   AetheriaAudioEngine.playClick();
                 }}
-                className={`p-2 px-1 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 flex-1 md:flex-initial cursor-pointer ${
+                className={`p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 md:flex-initial cursor-pointer ${
                   activeScreen === 'wish'
-                    ? 'bg-sky-400 text-slate-950 shadow-[0_0_15px_rgba(52,211,153,0.35)] font-black'
+                    ? 'bg-sky-400 text-slate-955 text-slate-950 shadow-[0_0_15px_rgba(52,211,153,0.35)] font-black'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-black'
                 }`}
                 id="dash_screen_wish"
@@ -2108,7 +2108,7 @@ export default function App() {
                 setActiveScreen('inventory');
                 AetheriaAudioEngine.playClick();
               }}
-              className={`p-2 px-1 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 flex-1 md:flex-initial cursor-pointer ${
+              className={`p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 md:flex-initial cursor-pointer ${
                 activeScreen === 'inventory'
                   ? 'bg-indigo-500 text-slate-950 shadow-[0_0_15px_rgba(99,102,241,0.35)] font-black'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
@@ -2125,7 +2125,7 @@ export default function App() {
                 setActiveScreen('quest');
                 AetheriaAudioEngine.playClick();
               }}
-              className={`p-2 px-1 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 flex-1 md:flex-initial cursor-pointer ${
+              className={`p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 md:flex-initial cursor-pointer ${
                 activeScreen === 'quest'
                   ? 'bg-amber-400 text-slate-955 text-slate-950 shadow-[0_0_15px_rgba(251,191,36,0.35)] font-black'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-black'
@@ -2133,7 +2133,8 @@ export default function App() {
               id="dash_screen_quest"
             >
               <Trophy className="w-3.5 h-3.5 shrink-0 text-slate-955 text-slate-950" />
-              <span>{t('quest_log', language)}</span>
+              <span className="hidden md:inline">{t('quest_log', language)}</span>
+              <span className="md:hidden">Quest</span>
             </button>
 
             <button
@@ -2141,7 +2142,7 @@ export default function App() {
                 setActiveScreen('party');
                 AetheriaAudioEngine.playClick();
               }}
-              className={`p-2 px-1 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 flex-1 md:flex-initial cursor-pointer ${
+              className={`p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 md:flex-initial cursor-pointer ${
                 activeScreen === 'party'
                   ? 'bg-emerald-500 text-slate-950 shadow-[0_0_15px_rgba(16,185,129,0.35)] font-black'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-black'
