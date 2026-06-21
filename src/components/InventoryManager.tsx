@@ -151,7 +151,9 @@ export default function InventoryManager({
     if (mora < costSpecs.mora) {
       onShowAlert(
         "Insufficient Mora! Gold is required to complete Forge activities.",
-        "Defeat more standard monsters / world bosses in the Active Combat Arena to gather Mora, or tap client-side '+100,000 Mora' fast developer helper button!",
+        devCheatsEnabled
+          ? "Defeat more standard monsters / world bosses in the Active Combat Arena to gather Mora, or tap client-side '+100,000 Mora' fast developer helper button!"
+          : "Defeat more standard monsters / world bosses in the Active Combat Arena to gather Mora!",
         "error"
       );
       return;

@@ -69,6 +69,8 @@ interface GDDViewerProps {
   language?: LanguageType;
   unlockedLoreEntries?: string[];
   completedCharacterStoryActs?: Record<string, number>;
+  initialTab?: 'lore' | 'nations' | 'characters' | 'weapons' | 'systems' | 'tutorial';
+  initialCharacterId?: string;
 }
 
 export default function GDDViewer({ 
@@ -76,18 +78,33 @@ export default function GDDViewer({
   ownedCharacterIds, 
   characterPortraits = {}, 
   inventoryWeapons = [], 
+  initialTab,
+  initialCharacterId,
   language = 'en',
   unlockedLoreEntries = [],
   completedCharacterStoryActs = {}
 }: GDDViewerProps) {
-  const [activeTab, setActiveTab] = useState<'lore' | 'nations' | 'characters' | 'weapons' | 'systems' | 'tutorial'>('lore');
-  const [selectedCharacterId, setSelectedCharacterId] = useState<string>(PLAYABLE_CHARACTERS[0].id);
+  const [activeTab, setActiveTab] = React.useState<'lore' | 'nations' | 'characters' | 'weapons' | 'systems' | 'tutorial'>(initialTab || 'lore');
+  const [selectedCharacterId, setSelectedCharacterId] = React.useState<string>(initialCharacterId || PLAYABLE_CHARACTERS[0].id);
   const [selectedWeaponName, setSelectedWeaponName] = useState<string>(WEAPONS_DATABASE[0].name);
   const [selectedNationName, setSelectedNationName] = useState<string>(GDD_DATA.nations[0].name);
   const [charSearch, setCharSearch] = useState('');
   const [weapSearch, setWeapSearch] = useState('');
   const [charOwnershipFilter, setCharOwnershipFilter] = useState<'all' | 'owned' | 'unowned'>('all');
+  const [charElementFilter, setCharElementFilter] = useState<'all' | ElementType>('all');
   const [weapOwnershipFilter, setWeapOwnershipFilter] = useState<'all' | 'owned' | 'unowned'>('all');
+
+  React.useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
+
+  React.useEffect(() => {
+    if (initialCharacterId) {
+      setSelectedCharacterId(initialCharacterId);
+    }
+  }, [initialCharacterId]);
 
   const getElementColor = (element: ElementType) => {
     switch (element) {
@@ -436,6 +453,31 @@ export default function GDDViewer({
                       </button>
                     ))}
                   </div>
+                  {/* Element filter row */}
+                  <div className="flex flex-wrap gap-1 mt-1.5 pt-1.5 border-t border-white/5">
+                    {(['all', 'Pyro', 'Hydro', 'Cryo', 'Electro', 'Anemo', 'Geo', 'Dendro'] as const).map((elemOpt) => {
+                      const colors = elemOpt !== 'all' ? getElementColor(elemOpt) : null;
+                      return (
+                        <button
+                          key={elemOpt}
+                          onClick={() => {
+                            setCharElementFilter(elemOpt);
+                            AetheriaAudioEngine.playClick();
+                          }}
+                          className={`px-1.5 py-0.5 text-[8px] font-bold uppercase rounded transition-all flex items-center gap-0.5 border ${
+                            charElementFilter === elemOpt
+                              ? elemOpt === 'all'
+                                ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
+                                : `${colors?.bg} ${colors?.border} ${colors?.text}`
+                              : 'bg-slate-900/40 border-white/5 hover:border-white/15 text-slate-400 hover:text-slate-200'
+                          }`}
+                        >
+                          {elemOpt !== 'all' && getElementIcon(elemOpt)}
+                          <span>{elemOpt}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
                 {(() => {
                   const filtered = PLAYABLE_CHARACTERS.filter(char => {
@@ -444,20 +486,24 @@ export default function GDDViewer({
                       (charOwnershipFilter === 'owned' && isOwned) || 
                       (charOwnershipFilter === 'unowned' && !isOwned);
                     
+                    const matchesElement = charElementFilter === 'all' || char.element === charElementFilter;
+
                     const matchesSearch = char.name.toLowerCase().includes(charSearch.toLowerCase()) ||
                       char.element.toLowerCase().includes(charSearch.toLowerCase()) ||
                       char.weaponType.toLowerCase().includes(charSearch.toLowerCase());
 
-                    return matchesOwnership && matchesSearch;
+                    return matchesOwnership && matchesElement && matchesSearch;
                   });
-                  if (filtered.length === 0) {
+                  // Sort by rarity descending
+                  const sorted = [...filtered].sort((a, b) => b.rarity - a.rarity);
+                  if (sorted.length === 0) {
                     return (
                       <div className="text-center py-8 text-slate-500 text-xs italic font-mono uppercase">
                         No matches found
                       </div>
                     );
                   }
-                  return filtered.map((char) => {
+                  return sorted.map((char) => {
                     const colors = getElementColor(char.element);
                     const isOwned = ownedCharacterIds.includes(char.id);
                     return (
@@ -775,14 +821,16 @@ export default function GDDViewer({
 
                     return matchesOwnership && matchesSearch;
                   });
-                  if (filtered.length === 0) {
+                  // Sort by rarity descending
+                  const sorted = [...filtered].sort((a, b) => b.rarity - a.rarity);
+                  if (sorted.length === 0) {
                     return (
                       <div className="text-center py-8 text-slate-500 text-xs italic font-mono uppercase">
                         No matches found
                       </div>
                     );
                   }
-                  return filtered.map((weap) => {
+                  return sorted.map((weap) => {
                     const isSelected = selectedWeaponName === weap.name;
                     const isOwned = inventoryWeapons.some(w => w.name === weap.name);
                     return (

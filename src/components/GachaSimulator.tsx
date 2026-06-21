@@ -315,6 +315,7 @@ interface GachaSimulatorProps {
   onShowAlert: (msg: string, solution?: string, type?: 'success' | 'error' | 'info') => void;
   devCheatsEnabled?: boolean;
   language?: LanguageType;
+  onNavigateToWikiChar?: (charId: string) => void;
 }
 
 interface BannerDetails {
@@ -394,7 +395,8 @@ export default function GachaSimulator({
   pullHistoryList,
   onShowAlert,
   devCheatsEnabled = true,
-  language = 'en'
+  language = 'en',
+  onNavigateToWikiChar
 }: GachaSimulatorProps) {
   const [selectedBannerIdx, setSelectedBannerIdx] = useState(0);
   const [pulling, setPulling] = useState(false);
@@ -501,7 +503,9 @@ export default function GachaSimulator({
     if (aetherGems < cost) {
       onShowAlert(
         "Insufficient Aether Gems to perform celestial wishes.",
-        "Claim free developer rewards using '+20,000 Gems Tool' in the upper summon header, or clear campaign waves to claim massive quest tokens!",
+        devCheatsEnabled
+          ? "Claim free developer rewards using '+20,000 Gems Tool' in the upper summon header, or clear campaign waves to claim massive quest tokens!"
+          : "Clear campaign waves, complete quests, or advance in story mode to claim massive quest tokens!",
         "error"
       );
       return;
@@ -884,7 +888,16 @@ export default function GachaSimulator({
                         damping: 14, 
                         delay: i * 0.08 
                       }}
+                      onClick={() => {
+                        if (item.isCharacter && onNavigateToWikiChar) {
+                          AetheriaAudioEngine.playClick();
+                          setAnimationPhase('none');
+                          onNavigateToWikiChar(item.id);
+                        }
+                      }}
                       className={`relative rounded-xl border p-4 flex flex-col justify-between items-center text-center min-h-[190px] transition-all backdrop-blur-md overflow-hidden group ${
+                        item.isCharacter ? 'cursor-pointer hover:scale-[1.03] active:scale-[0.98]' : ''
+                      } ${
                         isGold 
                           ? 'bg-amber-955/20 border-amber-400/50 shadow-[0_0_25px_rgba(245,158,11,0.2)] hover:border-amber-400' 
                           : isPurple 
@@ -943,6 +956,11 @@ export default function GachaSimulator({
                         }`}>
                           {item.element ? item.element : item.rarity === 5 ? '5★ WEAPON' : item.rarity === 4 ? '4★ WEAPON' : '3★ WEAPON'}
                         </span>
+                        {item.isCharacter && (
+                          <span className="text-[7px] text-indigo-400/70 group-hover:text-indigo-300 font-black uppercase tracking-wider block font-sans mt-1 opacity-60 group-hover:opacity-100 transition-opacity">
+                            🔍 View Lore Wiki
+                          </span>
+                        )}
                       </div>
                     </motion.div>
                   );

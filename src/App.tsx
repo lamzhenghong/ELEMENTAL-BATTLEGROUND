@@ -217,6 +217,8 @@ export default function App() {
   });
 
   const [partySearchQuery, setPartySearchQuery] = useState('');
+  const [wikiInitialTab, setWikiInitialTab] = useState<'lore' | 'nations' | 'characters' | 'weapons' | 'systems' | 'tutorial'>('lore');
+  const [wikiInitialCharId, setWikiInitialCharId] = useState<string>('aurelia');
   const [showResonanceSheet, setShowResonanceSheet] = useState(false);
   const [partyElementFilter, setPartyElementFilter] = useState<'All' | ElementType>('All');
   const [partyWeaponFilter, setPartyWeaponFilter] = useState<'All' | 'Sword' | 'Claymore' | 'Polearm' | 'Bow' | 'Catalyst'>('All');
@@ -824,7 +826,9 @@ export default function App() {
       if (prev.mora < upgradeCost) {
         showInGameAlert(
           "Gold deficient! Mora is required to complete Forge activities.",
-          "Jump into the 'Combat Arena' tab to defeat ordinary slimes / world bosses, claim finished achievements in the 'Quest Log', or use the developer panel +100k cheats.",
+          devCheatsEnabled
+            ? "Jump into the 'Combat Arena' tab to defeat ordinary slimes / world bosses, claim finished achievements in the 'Quest Log', or use the developer panel +100k cheats."
+            : "Jump into the 'Combat Arena' tab to defeat ordinary slimes / world bosses, or claim finished achievements in the 'Quest Log'.",
           "error"
         );
         return prev;
@@ -1632,17 +1636,6 @@ export default function App() {
               <span>START SIMULATION</span>
             </button>
 
-            <button
-              onClick={() => {
-                setActiveScreen('story');
-                AetheriaAudioEngine.resume();
-                AetheriaAudioEngine.playClick();
-              }}
-              className="py-3.5 bg-indigo-650 hover:bg-indigo-550 text-white font-black text-xs uppercase tracking-widest rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2 hover:scale-105 active:scale-95"
-            >
-              <BookOpen className="w-4 h-4 text-white" />
-              <span>📖 STORY MODE</span>
-            </button>
 
             <button
               onClick={() => {
@@ -2178,6 +2171,8 @@ export default function App() {
                     language={language}
                     unlockedLoreEntries={saveState.storyProgress?.unlockedLoreEntries || []}
                     completedCharacterStoryActs={saveState.storyProgress?.completedCharacterStoryActs || {}}
+                    initialTab={wikiInitialTab}
+                    initialCharacterId={wikiInitialCharId}
                   />
                 </motion.div>
               )}
@@ -2288,6 +2283,11 @@ export default function App() {
                     onShowAlert={(msg, sol, typ) => showInGameAlert(msg, sol, typ)}
                     devCheatsEnabled={devCheatsEnabled}
                     language={language}
+                    onNavigateToWikiChar={(charId) => {
+                      setWikiInitialTab('characters');
+                      setWikiInitialCharId(charId);
+                      setActiveScreen('wiki');
+                    }}
                   />
                 </motion.div>
               )}
