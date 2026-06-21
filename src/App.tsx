@@ -10,7 +10,7 @@ import CombatArena from './components/CombatArena';
 import InventoryManager from './components/InventoryManager';
 import RogueDungeon from './components/RogueDungeon';
 import GemsShop, { DAMAGE_SKINS } from './components/GemsShop';
-import { SaveState, Weapon, Artifact, InventoryItem, Quest, ElementType, ArtifactSlot } from './types';
+import { SaveState, Weapon, Artifact, InventoryItem, Quest, ElementType, ArtifactSlot, UiThemeId } from './types';
 import { t, LanguageType } from './utils/i18n';
 import { PLAYABLE_CHARACTERS } from './data/characters';
 import { ARTIFACT_SETS } from './data/artifacts';
@@ -28,6 +28,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { AetheriaAudioEngine } from './utils/audio';
 import { getArtifactFusionRule, isSameArtifactPart } from './utils/artifactFusion';
+import { UI_THEMES, UI_THEME_UNLOCK_LEVEL, getUiTheme, isUiThemeUnlocked, normalizeUiTheme } from './utils/uiThemes';
 import mainMenuBg from '../assets/main_menu_bg.png';
 import gameLogoImg from '../assets/game_logo.png';
 import StoryMode from './components/StoryMode';
@@ -74,6 +75,7 @@ const INITIAL_SAVE_STATE: SaveState = {
   loginRewardClaimedDays: [],
   unlockedDamageSkins: ['Default'],
   activeDamageSkin: 'Default',
+  activeUiTheme: 'Blue',
   lastShopRefreshHour: 0,
   purchasedShopItemIds: [],
   unlockedDaysCount: 1,
@@ -404,6 +406,9 @@ export default function App() {
   const isDungeonLocked = !devCheatsEnabled && (saveState.playerLevel || 1) < 10;
   const isWishLocked = !devCheatsEnabled && (saveState.playerLevel || 1) < 5;
   const isShopLocked = !devCheatsEnabled && (saveState.playerLevel || 1) < 5;
+  const currentPlayerLevel = saveState.playerLevel || 1;
+  const activeUiThemeId = normalizeUiTheme(saveState.activeUiTheme, currentPlayerLevel);
+  const activeUiTheme = getUiTheme(activeUiThemeId);
 
   // Fullscreen handler
   const toggleFullscreen = () => {
@@ -678,6 +683,7 @@ export default function App() {
         if (!merged.activeDamageSkin || !validSkins.includes(merged.activeDamageSkin)) {
           merged.activeDamageSkin = 'Default';
         }
+        merged.activeUiTheme = normalizeUiTheme(merged.activeUiTheme, merged.playerLevel || 1);
         if (merged.lastShopRefreshHour === undefined) {
           merged.lastShopRefreshHour = 0;
         }
@@ -782,6 +788,31 @@ export default function App() {
       }
       return updater;
     });
+  };
+
+  const handleSelectUiTheme = (themeId: UiThemeId) => {
+    const level = saveState.playerLevel || 1;
+    const theme = getUiTheme(themeId);
+    AetheriaAudioEngine.playClick();
+
+    if (!isUiThemeUnlocked(themeId, level)) {
+      showInGameAlert(
+        `${theme.label} UI Theme unlocks at Player Level ${UI_THEME_UNLOCK_LEVEL}.`,
+        `Current progress: Level ${level} / ${UI_THEME_UNLOCK_LEVEL}`,
+        'error'
+      );
+      return;
+    }
+
+    triggerSaveUpdate(prev => ({
+      ...prev,
+      activeUiTheme: themeId
+    }));
+    showInGameAlert(
+      `${theme.label} UI Theme Equipped`,
+      'Menus and HUD will keep this theme on your next login.',
+      'success'
+    );
   };
 
   // Update save states dynamically
@@ -2384,9 +2415,9 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans relative antialiased leading-normal overflow-x-hidden">
       {/* Immersive Game World Backdrop Simulation gradients */}
-      <div className="absolute inset-0 bg-gradient-to-b from-[#101426] via-[#090b11] to-[#04060a] pointer-events-none" />
-      <div className="absolute top-0 right-1/4 w-[600px] h-[400px] bg-indigo-500/10 rounded-full blur-[130px] pointer-events-none" />
-      <div className="absolute bottom-10 left-1/4 w-[500px] h-[300px] bg-emerald-500/5 rounded-full blur-[120px] pointer-events-none" />
+      <div className={`absolute inset-0 bg-gradient-to-b ${activeUiTheme.backdropClass} pointer-events-none`} />
+      <div className={`absolute top-0 right-1/4 w-[600px] h-[400px] ${activeUiTheme.orbOneClass} rounded-full blur-[130px] pointer-events-none`} />
+      <div className={`absolute bottom-10 left-1/4 w-[500px] h-[300px] ${activeUiTheme.orbTwoClass} rounded-full blur-[120px] pointer-events-none`} />
 
       {/* FLOATING TOP-LEVEL SYSTEM HUD ALERT STATUS */}
       <AnimatePresence>
@@ -2421,7 +2452,7 @@ export default function App() {
       </AnimatePresence>
 
       {/* Top Main Navigation Header with Glass HUD styling */}
-      <header className="bg-slate-950/85 border-b border-white/10 sticky top-0 z-40 backdrop-blur-md px-6 py-3 flex flex-col lg:flex-row justify-between items-center gap-4 shadow-xl">
+      <header className={`border-b sticky top-0 z-40 backdrop-blur-md px-6 py-3 flex flex-col lg:flex-row justify-between items-center gap-4 shadow-xl transition-colors duration-300 ${activeUiTheme.headerClass}`}>
         {/* Logo and Game System Title */}
         <div className="flex items-center gap-3">
           <button 
@@ -2450,9 +2481,9 @@ export default function App() {
         <div className="flex flex-row flex-nowrap overflow-x-auto scrollbar-none items-center justify-center lg:justify-start gap-1.5 md:gap-2.5 w-full lg:w-auto py-1 text-xs select-none">
           
           {/* Functional Dynamic FPS Display */}
-          <div className="bg-black/45 backdrop-blur-md px-1.5 py-1 md:px-3 md:py-1.5 rounded-lg border border-white/10 flex items-center gap-1 md:gap-2 shrink-0">
-            <span className="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-indigo-400 animate-pulse"></span>
-            <span className="text-[9px] md:text-[10px] font-mono font-black tracking-wider text-indigo-300 uppercase">
+          <div className={`backdrop-blur-md px-1.5 py-1 md:px-3 md:py-1.5 rounded-lg border flex items-center gap-1 md:gap-2 shrink-0 ${activeUiTheme.pillClass}`}>
+            <span className="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-current animate-pulse"></span>
+            <span className="text-[9px] md:text-[10px] font-mono font-black tracking-wider uppercase">
               FPS: {fps}
             </span>
           </div>
@@ -2466,7 +2497,7 @@ export default function App() {
           </div>
 
           {/* Player profile quick status */}
-          <div className="hidden md:flex bg-slate-900/60 border border-white/10 px-3 py-1.5 rounded-lg flex-col items-start justify-center min-w-[145px] shrink-0">
+          <div className={`hidden md:flex border px-3 py-1.5 rounded-lg flex-col items-start justify-center min-w-[145px] shrink-0 ${activeUiTheme.panelClass}`}>
             <div className="flex items-center gap-1.5 w-full justify-between">
               <span className="text-[10px] font-bold tracking-tighter text-slate-300 uppercase">Eldric Thorne</span>
               <div className="flex items-center gap-1">
@@ -2500,10 +2531,10 @@ export default function App() {
           </div>
 
           {/* Aether Gems */}
-          <div className="flex items-center gap-1 md:gap-1.5 p-1 px-2 md:px-3 rounded-lg bg-black/40 border border-white/15 shrink-0">
-            <Sparkles className="w-3.5 h-3.5 text-sky-450 text-sky-400" />
+          <div className={`flex items-center gap-1 md:gap-1.5 p-1 px-2 md:px-3 rounded-lg border shrink-0 ${activeUiTheme.pillClass}`}>
+            <Sparkles className={`w-3.5 h-3.5 ${activeUiTheme.iconClass}`} />
             <span className="hidden md:inline text-slate-400 font-mono text-[10px] uppercase">Gems:</span>
-            <span className="font-black text-sky-400 font-mono text-[10px] md:text-[11px] text-sky-400">{saveState.aetherGems.toLocaleString()}</span>
+            <span className="font-black font-mono text-[10px] md:text-[11px]">{saveState.aetherGems.toLocaleString()}</span>
           </div>
 
           {/* Global Quick Quest Claim Button */}
@@ -2529,10 +2560,10 @@ export default function App() {
               setShowSettingsModal(true);
               AetheriaAudioEngine.playClick();
             }}
-            className="p-1 md:p-1.5 px-2 md:px-3 bg-slate-900 border border-white/10 hover:border-[#6366f1]/40 rounded-lg text-[9px] md:text-[10px] uppercase font-black tracking-wider transition-all active:scale-95 cursor-pointer flex items-center gap-1 shadow-md hover:shadow-indigo-500/10 text-white font-sans shrink-0"
+            className={`p-1 md:p-1.5 px-2 md:px-3 border rounded-lg text-[9px] md:text-[10px] uppercase font-black tracking-wider transition-all active:scale-95 cursor-pointer flex items-center gap-1 shadow-md text-white font-sans shrink-0 ${activeUiTheme.panelClass}`}
             title="Settings Panel"
           >
-            <LayoutGrid className="w-3.5 h-3.5 text-indigo-400" />
+            <LayoutGrid className={`w-3.5 h-3.5 ${activeUiTheme.iconClass}`} />
             <span className="hidden md:inline">Settings Panel</span>
           </button>
 
@@ -2557,7 +2588,7 @@ export default function App() {
         <div className="lg:col-span-3 space-y-6">
           
           {/* Main Action tab selectors */}
-          <div className="flex md:flex-wrap overflow-x-auto md:overflow-x-visible whitespace-nowrap md:whitespace-normal scrollbar-custom-tabs bg-[#0b0f19]/80 backdrop-blur-md border border-white/10 p-2 rounded-xl w-full gap-1 shadow-[0_0_20px_rgba(0,0,0,0.5)]">
+          <div className={`flex md:flex-wrap overflow-x-auto md:overflow-x-visible whitespace-nowrap md:whitespace-normal scrollbar-custom-tabs backdrop-blur-md border p-2 rounded-xl w-full gap-1 ${activeUiTheme.panelClass}`}>
             <button
               onClick={() => {
                 setActiveScreen('wiki');
@@ -2565,7 +2596,7 @@ export default function App() {
               }}
               className={`p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 md:flex-initial cursor-pointer ${
                 activeScreen === 'wiki'
-                  ? 'bg-amber-400 text-slate-955 shadow-[0_0_15px_rgba(251,191,36,0.35)]'
+                  ? activeUiTheme.activeNavClass
                   : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
               }`}
               id="dash_screen_wiki"
@@ -2582,7 +2613,7 @@ export default function App() {
               }}
               className={`p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 md:flex-initial cursor-pointer ${
                 activeScreen === 'story'
-                  ? 'bg-indigo-600 text-white shadow-[0_0_15px_rgba(99,102,241,0.35)] font-black'
+                  ? `${activeUiTheme.activeNavClass} font-black`
                   : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-black'
               }`}
               id="dash_screen_story"
@@ -2599,7 +2630,7 @@ export default function App() {
               }}
               className={`p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 md:flex-initial cursor-pointer ${
                 activeScreen === 'arena'
-                  ? 'bg-red-500 text-slate-950 shadow-[0_0_15px_rgba(239,68,68,0.35)] font-black'
+                  ? `${activeUiTheme.activeNavClass} font-black`
                   : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-black'
               }`}
               id="dash_screen_arena"
@@ -2641,7 +2672,7 @@ export default function App() {
                 }}
                 className={`p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 md:flex-initial cursor-pointer ${
                   activeScreen === 'dungeon'
-                    ? 'bg-violet-600 text-slate-950 shadow-[0_0_15px_rgba(124,58,237,0.35)] font-black'
+                    ? `${activeUiTheme.activeNavClass} font-black`
                     : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-black'
                 }`}
                 id="dash_screen_dungeon"
@@ -2684,7 +2715,7 @@ export default function App() {
                 }}
                 className={`p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 md:flex-initial cursor-pointer ${
                   activeScreen === 'wish'
-                    ? 'bg-sky-400 text-slate-955 text-slate-950 shadow-[0_0_15px_rgba(52,211,153,0.35)] font-black'
+                    ? `${activeUiTheme.activeNavClass} font-black`
                     : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-black'
                 }`}
                 id="dash_screen_wish"
@@ -2702,7 +2733,7 @@ export default function App() {
               }}
               className={`p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 md:flex-initial cursor-pointer ${
                 activeScreen === 'inventory'
-                  ? 'bg-indigo-500 text-slate-950 shadow-[0_0_15px_rgba(99,102,241,0.35)] font-black'
+                  ? `${activeUiTheme.activeNavClass} font-black`
                   : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
               }`}
               id="dash_screen_inventory"
@@ -2719,7 +2750,7 @@ export default function App() {
               }}
               className={`p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 md:flex-initial cursor-pointer ${
                 activeScreen === 'quest'
-                  ? 'bg-amber-400 text-slate-955 text-slate-950 shadow-[0_0_15px_rgba(251,191,36,0.35)] font-black'
+                  ? `${activeUiTheme.activeNavClass} font-black`
                   : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-black'
               }`}
               id="dash_screen_quest"
@@ -2736,7 +2767,7 @@ export default function App() {
               }}
               className={`p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 md:flex-initial cursor-pointer ${
                 activeScreen === 'party'
-                  ? 'bg-emerald-500 text-slate-950 shadow-[0_0_15px_rgba(16,185,129,0.35)] font-black'
+                  ? `${activeUiTheme.activeNavClass} font-black`
                   : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-black'
               }`}
               id="dash_screen_party"
@@ -2777,7 +2808,7 @@ export default function App() {
                 }}
                 className={`p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 md:flex-initial cursor-pointer ${
                   activeScreen === 'shop'
-                    ? 'bg-amber-400 text-slate-955 shadow-[0_0_15px_rgba(251,191,36,0.35)] font-black'
+                    ? `${activeUiTheme.activeNavClass} font-black`
                     : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-black'
                 }`}
                 id="dash_screen_shop"
@@ -3726,14 +3757,14 @@ export default function App() {
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: -20 }}
-              className="bg-[#0b101e] max-w-md w-full border border-indigo-500/20 rounded-2xl shadow-2xl relative flex flex-col"
+              className={`max-w-md w-full border rounded-2xl shadow-2xl relative flex flex-col ${activeUiTheme.panelClass}`}
               style={{ maxHeight: '90vh' }}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Sticky header */}
               <div className="flex justify-between items-center border-b border-white/10 px-6 py-4 shrink-0">
                 <h3 className="text-sm font-black text-slate-100 uppercase tracking-widest font-display flex items-center gap-2">
-                  <LayoutGrid className="w-4 h-4 text-indigo-400" />
+                  <LayoutGrid className={`w-4 h-4 ${activeUiTheme.iconClass}`} />
                   Aetheria Settings Control
                 </h3>
                 <button 
@@ -3748,7 +3779,7 @@ export default function App() {
 
                 {/* GAME AUDIO CONTROLS */}
                 <div className="bg-slate-950 p-4 rounded-xl border border-white/5 space-y-4">
-                  <span className="text-[9px] font-mono tracking-wider text-indigo-350 uppercase font-black block">SYSTEM HARDWARE CONTROLS</span>
+                  <span className={`text-[9px] font-mono tracking-wider uppercase font-black block ${activeUiTheme.textClass}`}>SYSTEM HARDWARE CONTROLS</span>
                   
                   <div className="flex justify-between items-center border-b border-white/5 pb-3">
                     <span className="text-[11px] text-slate-350 uppercase font-bold">Simulator sound effects</span>
@@ -3770,7 +3801,7 @@ export default function App() {
                   <div className="space-y-1.5">
                     <div className="flex justify-between text-[11px] text-slate-350 uppercase font-bold">
                       <span>BGM Volume</span>
-                      <span className="font-mono text-indigo-400 font-bold">{bgmVolume}%</span>
+                      <span className={`font-mono font-bold ${activeUiTheme.textClass}`}>{bgmVolume}%</span>
                     </div>
                     <input 
                       type="range" 
@@ -3782,7 +3813,8 @@ export default function App() {
                         setBgmVolume(val);
                         AetheriaAudioEngine.setBgmVolume(val / 100);
                       }}
-                      className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                      className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+                      style={{ accentColor: activeUiTheme.accent }}
                     />
                   </div>
 
@@ -3790,7 +3822,7 @@ export default function App() {
                   <div className="space-y-1.5">
                     <div className="flex justify-between text-[11px] text-slate-350 uppercase font-bold">
                       <span>SFX Volume</span>
-                      <span className="font-mono text-indigo-400 font-bold">{sfxVolume}%</span>
+                      <span className={`font-mono font-bold ${activeUiTheme.textClass}`}>{sfxVolume}%</span>
                     </div>
                     <input 
                       type="range" 
@@ -3802,14 +3834,15 @@ export default function App() {
                         setSfxVolume(val);
                         AetheriaAudioEngine.setSfxVolume(val / 100);
                       }}
-                      className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                      className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+                      style={{ accentColor: activeUiTheme.accent }}
                     />
                   </div>
                 </div>
 
                 {/* GENERAL PREFERENCES */}
                 <div className="bg-slate-950 p-4 rounded-xl border border-white/5 space-y-4 animate-fade-in">
-                  <span className="text-[9px] font-mono tracking-wider text-indigo-300 uppercase font-black block">GENERAL PREFERENCES</span>
+                  <span className={`text-[9px] font-mono tracking-wider uppercase font-black block ${activeUiTheme.textClass}`}>GENERAL PREFERENCES</span>
                   
                   <div className="flex justify-between items-center border-b border-white/5 pb-3">
                     <span className="text-[11px] text-slate-300 uppercase font-bold">Developer Cheats</span>
@@ -3819,11 +3852,69 @@ export default function App() {
                         AetheriaAudioEngine.playClick();
                       }}
                       className={`p-1.5 px-3 rounded text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
-                        devCheatsEnabled ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-800 text-slate-500 border border-white/5'
+                        devCheatsEnabled ? activeUiTheme.settingsButtonClass : 'bg-slate-800 text-slate-500 border border-white/5'
                       }`}
                     >
                       {devCheatsEnabled ? 'ENABLED' : 'DISABLED'}
                     </button>
+                  </div>
+
+                  <div className="space-y-2 border-b border-white/5 pb-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <span className="text-[11px] text-slate-300 uppercase font-bold block">UI Theme</span>
+                        <span className="text-[9px] text-slate-500">
+                          Crimson, Emerald, Gold, and Void unlock at Player Level {UI_THEME_UNLOCK_LEVEL}.
+                        </span>
+                      </div>
+                      <span className={`text-[9px] font-black px-2 py-1 rounded uppercase border ${activeUiTheme.pillClass}`}>
+                        {activeUiTheme.label}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                      {UI_THEMES.map(theme => {
+                        const isUnlocked = isUiThemeUnlocked(theme.id, currentPlayerLevel);
+                        const isActive = activeUiThemeId === theme.id;
+                        return (
+                          <button
+                            key={theme.id}
+                            type="button"
+                            onClick={() => handleSelectUiTheme(theme.id)}
+                            className={`min-h-16 rounded-lg border p-2 text-left transition-all active:scale-95 cursor-pointer relative overflow-hidden ${
+                              isActive
+                                ? 'bg-white/10 border-white/40 shadow-[0_0_16px_rgba(255,255,255,0.10)]'
+                                : isUnlocked
+                                  ? 'bg-black/35 border-white/10 hover:border-white/30'
+                                  : 'bg-slate-900/50 border-slate-800/80 opacity-70'
+                            }`}
+                          >
+                            <span
+                              className="absolute inset-x-0 top-0 h-1"
+                              style={{ backgroundColor: theme.accent }}
+                            />
+                            <span className="flex items-center justify-between gap-2">
+                              <span className="text-[10px] font-black uppercase tracking-wider text-slate-100">
+                                {theme.label}
+                              </span>
+                              {!isUnlocked ? (
+                                <Lock className="w-3 h-3 text-slate-500" />
+                              ) : isActive ? (
+                                <CheckCircle2 className="w-3 h-3" style={{ color: theme.accent }} />
+                              ) : (
+                                <Circle className="w-3 h-3 text-slate-600" />
+                              )}
+                            </span>
+                            <span className="mt-2 flex items-center gap-1">
+                              <span className="w-3 h-3 rounded-full border border-white/20" style={{ backgroundColor: theme.accent }} />
+                              <span className="text-[8px] font-mono uppercase text-slate-500">
+                                {isUnlocked ? 'Available' : `LV ${theme.unlockLevel}`}
+                              </span>
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   <div className="flex justify-between items-center border-b border-white/5 pb-3">
@@ -3834,7 +3925,7 @@ export default function App() {
                         AetheriaAudioEngine.playClick();
                       }}
                       className={`p-1.5 px-3 rounded text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
-                        screenShakeEnabled ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-800 text-slate-500 border border-white/5'
+                        screenShakeEnabled ? activeUiTheme.settingsButtonClass : 'bg-slate-800 text-slate-500 border border-white/5'
                       }`}
                     >
                       {screenShakeEnabled ? 'ENABLED' : 'DISABLED'}
@@ -3853,7 +3944,7 @@ export default function App() {
                           }}
                           className={`flex-1 text-center py-2 text-xs font-black rounded uppercase tracking-wider cursor-pointer transition-all ${
                             combatSpeed === s
-                              ? 'bg-indigo-600 text-white shadow-md'
+                              ? activeUiTheme.settingsButtonClass
                               : 'bg-black/40 text-slate-400 hover:text-slate-200 border border-white/5'
                           }`}
                         >

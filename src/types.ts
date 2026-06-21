@@ -5,6 +5,7 @@
 
 export type ElementType = 'Pyro' | 'Hydro' | 'Cryo' | 'Electro' | 'Anemo' | 'Geo' | 'Dendro';
 export type WeaponType = 'Sword' | 'Claymore' | 'Bow' | 'Catalyst' | 'Polearm';
+export type UiThemeId = 'Blue' | 'Crimson' | 'Emerald' | 'Gold' | 'Void';
 
 export interface SkillDetails {
   name: string;
@@ -169,6 +170,7 @@ export interface SaveState {
   storyProgress?: StoryProgress;
   unlockedDamageSkins?: string[];
   activeDamageSkin?: string;
+  activeUiTheme?: UiThemeId;
   lastShopRefreshHour?: number;
   purchasedShopItemIds?: string[];
   unlockedDaysCount?: number;
