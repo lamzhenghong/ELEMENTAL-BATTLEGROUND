@@ -3509,9 +3509,9 @@ export default function CombatArena({
               <Pause className="w-3 h-3" /> <span className="hidden sm:inline">Pause</span>
             </button>
 
-            {isMobile && onBackToMenu && (
+            {isMobile && onExitToWiki && (
               <button
-                onClick={() => { AetheriaAudioEngine.playClick(); onBackToMenu(); }}
+                onClick={() => { AetheriaAudioEngine.playClick(); onExitToWiki(); }}
                 className="p-1.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-100 text-[9.5px] rounded-md font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 shadow-md border border-white/5"
               >
                 Exit
@@ -3751,9 +3751,9 @@ export default function CombatArena({
                   >
                     ⚔️ START BATTLE ⚔️
                   </button>
-                  {onBackToMenu && (
+                  {onExitToWiki && (
                     <button
-                      onClick={() => { AetheriaAudioEngine.playClick(); onBackToMenu(); }}
+                      onClick={() => { AetheriaAudioEngine.playClick(); onExitToWiki(); }}
                       className="w-full p-2 md:p-2.5 bg-slate-900/60 hover:bg-slate-800 border border-white/10 text-slate-450 hover:text-white text-[9px] md:text-[10px] rounded-lg font-black uppercase tracking-widest cursor-pointer transition-all"
                     >
                       Abort and Exit
