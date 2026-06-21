@@ -198,7 +198,7 @@ export default function App() {
   const [showResonanceSheet, setShowResonanceSheet] = useState(false);
   const [partyElementFilter, setPartyElementFilter] = useState<'All' | ElementType>('All');
   const [partyWeaponFilter, setPartyWeaponFilter] = useState<'All' | 'Sword' | 'Claymore' | 'Polearm' | 'Bow' | 'Catalyst'>('All');
-  const [partyRarityFilter, setPartyRarityFilter] = useState<'All' | 4 | 5>('All');
+  const [partyRarityFilter, setPartyRarityFilter] = useState<'All' | 3 | 4 | 5>('All');
 
   const partyResonances = React.useMemo(() => {
     const activeChars = PLAYABLE_CHARACTERS.filter(c => saveState.partyIds.includes(c.id));
@@ -2120,15 +2120,17 @@ export default function App() {
                         <div className="flex flex-wrap gap-1.5">
                           {[
                             { value: 'All', label: 'All' },
-                            { value: 4, label: '⭐⭐⭐⭐ 4★' },
-                            { value: 5, label: '⭐⭐⭐⭐⭐ 5★' }
+                            { value: 5, label: '5★' },
+                            { value: 4, label: '4★' },
+                            { value: 3, label: '3★' }
                           ].map((item) => {
                             const isSelected = partyRarityFilter === item.value;
                             let colorClass = 'bg-slate-900/50 border-white/5 text-slate-450 hover:bg-slate-800 hover:text-slate-200';
                             if (isSelected) {
                               if (item.value === 'All') colorClass = 'bg-indigo-500/80 border-indigo-400 text-white shadow-[0_0_12px_rgba(99,102,241,0.35)]';
-                              else if (item.value === 4) colorClass = 'bg-purple-950/80 border-purple-500 text-purple-400 shadow-[0_0_12px_rgba(168,85,247,0.35)]';
                               else if (item.value === 5) colorClass = 'bg-amber-950/80 border-amber-500 text-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.35)]';
+                              else if (item.value === 4) colorClass = 'bg-purple-950/80 border-purple-500 text-purple-400 shadow-[0_0_12px_rgba(168,85,247,0.35)]';
+                              else if (item.value === 3) colorClass = 'bg-blue-950/80 border-blue-500 text-blue-400 shadow-[0_0_12px_rgba(59,130,246,0.35)]';
                             }
                             return (
                               <button
@@ -2137,7 +2139,7 @@ export default function App() {
                                   AetheriaAudioEngine.playClick();
                                   setPartyRarityFilter(item.value as any);
                                 }}
-                                className={`px-3 py-1.5 text-[10px] font-black uppercase rounded-lg border transition-all cursor-pointer select-none active:scale-95 ${colorClass}`}
+                                className={`px-3.5 py-1.5 text-[10px] font-black uppercase rounded-lg border transition-all cursor-pointer select-none active:scale-95 ${colorClass}`}
                               >
                                 {item.label}
                               </button>
