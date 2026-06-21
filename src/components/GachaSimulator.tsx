@@ -14,11 +14,13 @@ import { LanguageType, t } from '../utils/i18n';
 import aureliaBanner from '../../assets/aurelia_banner.png';
 import kaelenBanner from '../../assets/kaelen_banner.png';
 import weaponBanner from '../../assets/weapon_banner.png';
+import standardBanner from '../../assets/standard_banner.png';
 
 const getBannerImage = (featured5StarId: string, type: 'character' | 'weapon') => {
   if (type === 'weapon') return weaponBanner;
   if (featured5StarId === 'aurelia') return aureliaBanner;
   if (featured5StarId === 'kaelen') return kaelenBanner;
+  if (featured5StarId === 'standard_banner') return standardBanner;
   return aureliaBanner;
 };
 
@@ -31,6 +33,9 @@ const getBannerGradient = (featured5StarId: string, type: 'character' | 'weapon'
   }
   if (featured5StarId === 'kaelen') {
     return 'linear-gradient(to right, rgba(10, 16, 28, 0.95) 0%, rgba(10, 16, 28, 0.7) 55%, rgba(10, 16, 28, 0.2) 100%)';
+  }
+  if (featured5StarId === 'standard_banner') {
+    return 'linear-gradient(to right, rgba(15, 12, 28, 0.95) 0%, rgba(15, 12, 28, 0.7) 55%, rgba(15, 12, 28, 0.2) 100%)';
   }
   return 'linear-gradient(to right, rgba(11, 15, 25, 0.95) 0%, rgba(11, 15, 25, 0.75) 55%, rgba(11, 15, 25, 0.3) 100%)';
 };
@@ -331,30 +336,30 @@ const BANNERS: BannerDetails[] = [
   {
     id: 'char_banner_1',
     title: 'Solar Crucible Dawning',
-    subtitle: 'CHARACTER EVENT CONDUIT',
+    subtitle: 'LIMITED BANNER',
     desc: 'Unleash the ultimate power of solar flames! Greatly enhanced drop-rates for 5★ Aurelia Sunflare. Commands lightning fast Sword slashes.',
     type: 'character',
     featured5Star: 'Aurelia Sunflare',
     featured5StarId: 'aurelia',
     featured4Stars: ['Ignis Hearthward', 'Raijin Volt'],
-    tag: '5★ Aurelia Sunflare (Pyro)',
+    tag: 'LIMITED BANNER',
     themeColor: 'border-orange-500/50 shadow-[0_0_20px_rgba(244,63,94,0.15)]',
     gradientStyle: 'from-orange-950/70 via-[#100d1c] to-[#08070f]',
     details: '5★ Rate: 50% chance to summon Aurelia Sunflare [EVENT LIMITED]. If not, any other random 5★ champion.'
   },
   {
     id: 'char_banner_2',
-    title: 'Drifting Sea-Mist Tempest',
-    subtitle: 'CHARACTER EVENT CONDUIT',
-    desc: 'Brave the crushing waves and chilling blizzards! Uprated chance for 5★ Kaelen Tidebound. Controls powerful field elemental catalysts.',
+    title: 'Wanderlust Invocation',
+    subtitle: 'STANDARD BANNER',
+    desc: 'Summon standard characters with standard rates. A random 5★ champion is guaranteed on every 5★ drop. Includes Lyra, Zephyr, Goliath, and Raijin.',
     type: 'character',
-    featured5Star: 'Kaelen Tidebound',
-    featured5StarId: 'kaelen',
-    featured4Stars: ['Marina Dewdrop', 'Lyra Frostbloom'],
-    tag: '5★ Kaelen Tidebound (Hydro)',
-    themeColor: 'border-cyan-500/50 shadow-[0_0_20px_rgba(6,182,212,0.15)]',
-    gradientStyle: 'from-cyan-950/70 via-[#0d152a] to-[#050811]',
-    details: '5★ Rate: 50% chance to summon Kaelen Tidebound [EVENT LIMITED]. If not, any other random 5★ champion.'
+    featured5Star: 'Lyra Frostbloom',
+    featured5StarId: 'standard_banner',
+    featured4Stars: ['Ignis Hearthward', 'Marina Dewdrop', 'Lyra Frostbloom', 'Raijin Volt', 'Tessa Shardweaver', 'Varek Ironfist'],
+    tag: 'STANDARD BANNER',
+    themeColor: 'border-indigo-500/50 shadow-[0_0_20px_rgba(99,102,241,0.15)]',
+    gradientStyle: 'from-indigo-950/70 via-[#0d1020] to-[#05060f]',
+    details: '5★ Rate: 100% chance to summon a random standard 5★ character. Excludes limited event characters.'
   },
   {
     id: 'weapon_banner_1',
@@ -417,30 +422,29 @@ export default function GachaSimulator({
     if (banner.id === 'char_banner_1') {
       return isSwapped ? {
         ...banner,
-        title: 'Drifting Sea-Mist Tempest (Rotated)',
-        desc: 'The tides of ocean currents are rising! Greatly enhanced drop-rates for 5★ Kaelen Tidebound. Controls powerful field elemental catalysts.',
+        title: 'Drifting Sea-Mist Tempest',
+        subtitle: 'LIMITED BANNER',
+        desc: 'Brave the crushing waves and chilling blizzards! Uprated chance for 5★ Kaelen Tidebound. Controls powerful field elemental catalysts.',
         featured5Star: 'Kaelen Tidebound',
         featured5StarId: 'kaelen',
         featured4Stars: ['Marina Dewdrop', 'Lyra Frostbloom'],
-        tag: '5★ Kaelen Tidebound (Hydro)',
+        tag: 'LIMITED BANNER',
         themeColor: 'border-cyan-500/50 shadow-[0_0_20px_rgba(6,182,212,0.15)]',
         gradientStyle: 'from-cyan-950/70 via-[#0d152a] to-[#050811]',
-        details: '5★ Rate: 50% chance to summon Kaelen Tidebound [EVENT LIMITED]. If not, any other random 5★ champion.'
-      } : banner;
-    }
-    if (banner.id === 'char_banner_2') {
-      return isSwapped ? {
+        details: '5★ Rate: 50% chance to summon Kaelen Tidebound [EVENT LIMITED]. If not, any other standard 5★ character (excluding Aurelia Sunflare).'
+      } : {
         ...banner,
-        title: 'Solar Crucible Dawning (Rotated)',
-        desc: 'Solar flare eruptions are burning! Greatly enhanced drop-rates for 5★ Aurelia Sunflare. Commands lightning fast Sword slashes.',
+        title: 'Solar Crucible Dawning',
+        subtitle: 'LIMITED BANNER',
+        desc: 'Unleash the ultimate power of solar flames! Greatly enhanced drop-rates for 5★ Aurelia Sunflare. Commands lightning fast Sword slashes.',
         featured5Star: 'Aurelia Sunflare',
         featured5StarId: 'aurelia',
         featured4Stars: ['Ignis Hearthward', 'Raijin Volt'],
-        tag: '5★ Aurelia Sunflare (Pyro)',
+        tag: 'LIMITED BANNER',
         themeColor: 'border-orange-500/50 shadow-[0_0_20px_rgba(244,63,94,0.15)]',
         gradientStyle: 'from-orange-950/70 via-[#100d1c] to-[#08070f]',
-        details: '5★ Rate: 50% chance to summon Aurelia Sunflare [EVENT LIMITED]. If not, any other random 5★ champion.'
-      } : banner;
+        details: '5★ Rate: 50% chance to summon Aurelia Sunflare [EVENT LIMITED]. If not, any other standard 5★ character (excluding Kaelen Tidebound).'
+      };
     }
     return banner;
   });
@@ -541,32 +545,48 @@ export default function GachaSimulator({
 
         if (activeBanner.type === 'character') {
           isChar = true;
-          const isGuaranteed = localGuaranteed5;
           
-          if (isGuaranteed || Math.random() < 0.5) {
-            const chosen = PLAYABLE_CHARACTERS.find(c => c.id === activeBanner.featured5StarId);
-            if (chosen) {
-              rolledId = chosen.id;
-              rolledName = chosen.name;
-              element = chosen.element;
-            }
-            localGuaranteed5 = false;
-          } else {
-            // Roll any random standard 5-star character (other than featured, and excluding kaelen on aurelia's banner / aurelia on kaelen's banner)
+          if (activeBanner.id === 'char_banner_2') {
+            // STANDARD BANNER: contains all non-limited characters (Lyra, Zephyr, Goliath, Raijin)
             const standardFiveStars = PLAYABLE_CHARACTERS.filter(c => 
               c.rarity === 5 && 
-              c.id !== activeBanner.featured5StarId &&
-              (activeBanner.featured5StarId !== 'aurelia' || c.id !== 'kaelen') &&
-              (activeBanner.featured5StarId !== 'kaelen' || c.id !== 'aurelia')
+              c.id !== 'aurelia' && 
+              c.id !== 'kaelen'
             );
             const chosen = standardFiveStars.length > 0 
               ? standardFiveStars[Math.floor(Math.random() * standardFiveStars.length)]
-              : PLAYABLE_CHARACTERS.find(c => c.id === activeBanner.featured5StarId)!;
+              : PLAYABLE_CHARACTERS.find(c => c.id === 'lyra')!;
             rolledId = chosen.id;
             rolledName = chosen.name;
             element = chosen.element;
-            
-            localGuaranteed5 = true;
+            localGuaranteed5 = false;
+          } else {
+            // LIMITED BANNER: 50/50 chance to get featured current character
+            const isGuaranteed = localGuaranteed5;
+            if (isGuaranteed || Math.random() < 0.5) {
+              const chosen = PLAYABLE_CHARACTERS.find(c => c.id === activeBanner.featured5StarId);
+              if (chosen) {
+                rolledId = chosen.id;
+                rolledName = chosen.name;
+                element = chosen.element;
+              }
+              localGuaranteed5 = false;
+            } else {
+              // Roll any random standard 5-star character (excluding the featured one and the other limited character)
+              const standardFiveStars = PLAYABLE_CHARACTERS.filter(c => 
+                c.rarity === 5 && 
+                c.id !== 'aurelia' && 
+                c.id !== 'kaelen'
+              );
+              const chosen = standardFiveStars.length > 0 
+                ? standardFiveStars[Math.floor(Math.random() * standardFiveStars.length)]
+                : PLAYABLE_CHARACTERS.find(c => c.id === activeBanner.featured5StarId)!;
+              rolledId = chosen.id;
+              rolledName = chosen.name;
+              element = chosen.element;
+              
+              localGuaranteed5 = true;
+            }
           }
         } else {
           // WEAPON CUSTOM BANNER: 100% Guaranteed self-selected 5★ Weapon drop!
@@ -1121,8 +1141,18 @@ export default function GachaSimulator({
                     {activePity5 >= 75 ? '⚠️ SOFT PITY ACTIVE' : `${90 - activePity5} to guaranteed`}
                   </span>
                   {activeBanner.type === 'character' && (
-                    <span className={`text-[8.5px] font-bold tracking-tight font-mono uppercase mt-0.5 ${bannerGuaranteed5Star[activeBanner.id] ? 'text-emerald-400 font-extrabold' : 'text-slate-500'}`}>
-                      {bannerGuaranteed5Star[activeBanner.id] ? '✨ NEXT 5★ GUARANTEED FEATURED' : '⚖️ 50/50 FEATURED CHANCE'}
+                    <span className={`text-[8.5px] font-bold tracking-tight font-mono uppercase mt-0.5 ${
+                      activeBanner.id === 'char_banner_2'
+                        ? 'text-indigo-400 font-extrabold'
+                        : bannerGuaranteed5Star[activeBanner.id] 
+                          ? 'text-emerald-400 font-extrabold' 
+                          : 'text-slate-500'
+                    }`}>
+                      {activeBanner.id === 'char_banner_2'
+                        ? '✨ RANDOM STANDARD 5★ DROP'
+                        : bannerGuaranteed5Star[activeBanner.id] 
+                          ? '✨ NEXT 5★ GUARANTEED FEATURED' 
+                          : '⚖️ 50/50 FEATURED CHANCE'}
                     </span>
                   )}
                 </div>

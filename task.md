@@ -5,6 +5,7 @@
     - [x] Implement Fire Dragon phase attacks (fireballs, fire patches, falling meteors)
     - [x] Implement Ice Golem phase attacks (3-way ice shards, blizzard slow patches, frost tomb field)
     - [x] Implement Storm Thunderbird phase attacks (lightning strikes, lightning walls, thunderstorm)
+    - [x] Remake BANNERS array configurations (LIMITED and STANDARD BANNERS)
 - [x] Update combat party construction to calculate element resonances and store wielder weapon names
 - [x] Implement team synergy resonances calculations and apply modifiers (ATK, CD, Crit Rate, Speed, DMG)
 - [x] Implement visual synergy badges in the Top Combat Info HUD bar

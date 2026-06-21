@@ -3706,55 +3706,55 @@ export default function CombatArena({
         {/* START BATTLE OVERLAY */}
         <AnimatePresence>
           {!battleStarted && (
-            <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center z-50">
+            <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center z-50 p-4">
               <motion.div
                 initial={{ opacity: 0, scale: 0.95, y: 15 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: -15 }}
                 transition={{ duration: 0.22 }}
-                className="bg-[#0b0f19]/90 border border-indigo-500/30 rounded-2xl p-8 max-w-md w-full text-center space-y-6 shadow-[0_15px_40px_rgba(0,0,0,0.7)] relative"
+                className="bg-[#0b0f19]/90 border border-indigo-500/30 rounded-2xl p-4 md:p-8 max-w-md w-full text-center space-y-3 md:space-y-6 shadow-[0_15px_40px_rgba(0,0,0,0.7)] relative max-h-[95vh] overflow-y-auto"
                 id="arena_deploy_overlay"
               >
-                <div className="w-16 h-16 rounded-full bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center mx-auto shadow-[0_0_20px_rgba(99,102,241,0.2)] animate-pulse">
-                  <Swords className="w-8 h-8 text-indigo-400" />
+                <div className="w-10 h-10 md:w-16 md:h-16 rounded-full bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center mx-auto shadow-[0_0_20px_rgba(99,102,241,0.2)] animate-pulse">
+                  <Swords className="w-5 h-5 md:w-8 md:h-8 text-indigo-400" />
                 </div>
-                <div className="space-y-2">
-                  <h3 className="text-xl font-black text-slate-100 font-display tracking-widest uppercase">
+                <div className="space-y-1">
+                  <h3 className="text-base md:text-xl font-black text-slate-100 font-display tracking-widest uppercase">
                     READY TO DEPLOY
                   </h3>
-                  <p className="text-xs text-slate-400 font-mono uppercase tracking-wide">
+                  <p className="text-[10px] md:text-xs text-slate-400 font-mono uppercase tracking-wide">
                     {dungeonMode ? `Rogue Ruins Node • ${dungeonRoomType?.toUpperCase()}` : `Combat Arena • Wave ${currentWave}`}
                   </p>
                 </div>
                 
-                <div className="bg-black/45 border border-white/5 p-4 rounded-xl space-y-3">
-                  <span className="text-[9.5px] text-slate-500 uppercase block font-black text-left font-mono border-b border-white/5 pb-1">Deploying Strike Team:</span>
+                <div className="bg-black/45 border border-white/5 p-3 md:p-4 rounded-xl space-y-2 md:space-y-3">
+                  <span className="text-[9px] md:text-[9.5px] text-slate-500 uppercase block font-black text-left font-mono border-b border-white/5 pb-1">Deploying Strike Team:</span>
                   <div className="grid grid-cols-2 gap-2 text-left">
                     {combatParty.map((c) => (
-                      <div key={c.id} className="flex items-center gap-1.5 text-xs text-slate-200">
+                      <div key={c.id} className="flex items-center gap-1.5 text-[10px] md:text-xs text-slate-200">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                        <span className="truncate max-w-[120px] font-bold uppercase tracking-tight text-slate-200">{c.name}</span>
-                        <span className="font-mono text-[9px] text-slate-500">LV.{c.level}</span>
+                        <span className="truncate max-w-[100px] md:max-w-[120px] font-bold uppercase tracking-tight text-slate-200">{c.name}</span>
+                        <span className="font-mono text-[8px] md:text-[9px] text-slate-500">LV.{c.level}</span>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-2.5">
+                <div className="flex flex-col gap-2 md:gap-2.5">
                   <button
                     onClick={() => {
                       AetheriaAudioEngine.playClick();
                       setBattleStarted(true);
                       startCountdown(() => {});
                     }}
-                    className="w-full p-4 bg-indigo-650 hover:bg-indigo-550 active:scale-95 text-white text-xs rounded-xl font-black uppercase tracking-widest shadow-[0_0_20px_rgba(99,102,241,0.3)] transition-all cursor-pointer"
+                    className="w-full p-2.5 md:p-4 bg-indigo-650 hover:bg-indigo-550 active:scale-95 text-xs rounded-xl font-black uppercase tracking-widest shadow-[0_0_20px_rgba(99,102,241,0.3)] transition-all cursor-pointer text-white"
                   >
                     ⚔️ START BATTLE ⚔️
                   </button>
                   {onBackToMenu && (
                     <button
                       onClick={() => { AetheriaAudioEngine.playClick(); onBackToMenu(); }}
-                      className="w-full p-2.5 bg-slate-900/60 hover:bg-slate-800 border border-white/10 text-slate-450 hover:text-white text-[10px] rounded-lg font-black uppercase tracking-widest cursor-pointer transition-all"
+                      className="w-full p-2 md:p-2.5 bg-slate-900/60 hover:bg-slate-800 border border-white/10 text-slate-450 hover:text-white text-[9px] md:text-[10px] rounded-lg font-black uppercase tracking-widest cursor-pointer transition-all"
                     >
                       Abort and Exit
                     </button>
