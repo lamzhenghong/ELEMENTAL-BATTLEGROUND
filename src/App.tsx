@@ -2204,12 +2204,14 @@ export default function App() {
             >
               <div className="flex flex-col items-center gap-4 text-center select-none font-mono">
                 <span className="w-12 h-12 rounded-full border-4 border-indigo-500/20 border-t-indigo-400 animate-spin mb-2" />
-                <h1 className="text-3xl md:text-5xl font-black uppercase tracking-[0.25em] pl-[0.25em] text-white drop-shadow-[0_0_20px_rgba(129,140,248,0.6)] animate-pulse">
-                  LOADING...
-                </h1>
-                <p className="text-xs md:text-sm font-bold uppercase tracking-[0.3em] pl-[0.3em] text-slate-400">
-                  PLEASE WAIT
-                </p>
+                <div className="flex flex-row items-center justify-center gap-3 md:gap-4 flex-wrap text-white drop-shadow-[0_0_20px_rgba(129,140,248,0.6)] animate-pulse">
+                  <h1 className="text-2xl md:text-4xl font-black uppercase tracking-[0.2em] pl-[0.2em]">
+                    LOADING...
+                  </h1>
+                  <span className="text-xs md:text-sm font-bold uppercase tracking-[0.2em] pl-[0.2em] text-slate-400">
+                    PLEASE WAIT
+                  </span>
+                </div>
               </div>
             </motion.div>
           )}
