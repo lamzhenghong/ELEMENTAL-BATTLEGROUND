@@ -66,6 +66,168 @@ interface CombatArenaProps {
   activeDamageSkin?: string;
 }
 
+interface FloatingDamageTextDOMProps {
+  t: {
+    id: string;
+    x: number;
+    y: number;
+    text: string;
+    color: string;
+    size: number;
+    isCrit: boolean;
+    skin?: string;
+  };
+  key?: any;
+}
+
+function FloatingDamageTextDOM({ t }: FloatingDamageTextDOMProps) {
+  const particles = useMemo(() => {
+    if (!t.skin || t.skin === 'Default') return [];
+    const list: any[] = [];
+    const count = t.isCrit ? 6 : 4;
+    for (let i = 0; i < count; i++) {
+      const angle = (Math.PI * 2 / count) * i + (Math.random() * 0.4 - 0.2);
+      const dist = Math.random() * 16 + 12;
+      const x = Math.cos(angle) * dist;
+      const y = Math.sin(angle) * dist;
+      list.push({
+        id: i,
+        x,
+        y,
+        delay: Math.random() * 0.15,
+        scale: Math.random() * 0.3 + 0.85
+      });
+    }
+    return list;
+  }, [t.id, t.skin, t.isCrit]);
+
+  let skinStyle: React.CSSProperties = {
+    position: 'absolute',
+    color: t.color,
+    fontSize: `${t.size}px`,
+    fontWeight: '900',
+    whiteSpace: 'nowrap',
+    transform: 'translate(-50%, -50%)',
+  };
+  
+  let textClass = '';
+  
+  switch (t.skin) {
+    case 'Flame':
+      skinStyle.fontFamily = '"Impact", "Arial Black", sans-serif';
+      skinStyle.textShadow = '0 0 6px #ef4444, 0 0 12px #f97316, 0 2px 4px rgba(0,0,0,0.9)';
+      break;
+    case 'Electro':
+      skinStyle.fontFamily = '"JetBrains Mono", monospace';
+      skinStyle.textShadow = '0 0 6px #c084fc, 0 0 12px #a855f7, 0 2px 4px rgba(0,0,0,0.9)';
+      break;
+    case 'Ice':
+      skinStyle.fontFamily = '"Trebuchet MS", sans-serif';
+      skinStyle.textShadow = '0 0 6px #38bdf8, 0 0 12px #e0f2fe, 0 2px 4px rgba(0,0,0,0.9)';
+      textClass = 'shiver-text';
+      break;
+    case 'Void':
+      skinStyle.fontFamily = '"Lucida Console", monospace';
+      skinStyle.textShadow = '0 0 8px #d946ef, 0 0 16px #1e1b4b, 0 2px 4px rgba(0,0,0,0.9)';
+      textClass = 'pulse-void-text';
+      break;
+    case 'Dragon':
+      skinStyle.fontFamily = '"Georgia", serif';
+      skinStyle.textShadow = '0 0 8px #dc2626, 0 0 16px #facc15, 0 2px 4px rgba(0,0,0,0.9)';
+      if (t.isCrit) textClass = 'roar-text';
+      break;
+    case 'Celestial':
+      skinStyle.fontFamily = '"Georgia", serif';
+      skinStyle.textShadow = '0 0 8px #fde047, 0 0 16px #ffffff, 0 2px 4px rgba(0,0,0,0.9)';
+      break;
+    default:
+      skinStyle.fontFamily = '"Space Grotesk", sans-serif';
+      skinStyle.textShadow = '0 2px 4px rgba(0,0,0,0.95)';
+  }
+
+  const renderParticles = () => {
+    if (!t.skin || t.skin === 'Default') return null;
+    return particles.map(p => {
+      let content = '';
+      let className = '';
+      let style: React.CSSProperties = {
+        left: `calc(50% + ${p.x}px)`,
+        top: `calc(50% + ${p.y}px)`,
+        transform: `translate(-50%, -50%) scale(${p.scale})`,
+        animationDelay: `${p.delay}s`,
+        fontSize: '10px'
+      };
+
+      if (t.skin === 'Flame') {
+        content = Math.random() > 0.5 ? '🔥' : '🔸';
+        className = 'particle-flame';
+      } else if (t.skin === 'Electro') {
+        content = Math.random() > 0.5 ? '⚡' : '✨';
+        className = 'particle-electro';
+        style = {
+          ...style,
+          '--x': `${p.x * 1.5}px`,
+          '--y': `${p.y * 1.5}px`,
+          '--x2': `${p.x * 2.2}px`,
+          '--y2': `${p.y * 2.2}px`
+        } as any;
+      } else if (t.skin === 'Ice') {
+        content = Math.random() > 0.5 ? '❄️' : '🔹';
+        className = 'particle-ice';
+        style = {
+          ...style,
+          '--mx': `${p.x * 0.8}px`
+        } as any;
+      } else if (t.skin === 'Void') {
+        className = 'particle-void';
+        style = {
+          ...style,
+          width: '6px',
+          height: '6px'
+        };
+      } else if (t.skin === 'Dragon') {
+        content = Math.random() > 0.6 ? '🐉' : '💨';
+        className = 'particle-dragon';
+      } else if (t.skin === 'Celestial') {
+        content = Math.random() > 0.5 ? '✦' : '★';
+        className = 'particle-celestial';
+      }
+
+      return (
+        <span 
+          key={p.id} 
+          className={className} 
+          style={style}
+        >
+          {content}
+        </span>
+      );
+    });
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.5, y: t.y, x: t.x }}
+      animate={{ opacity: 1, scale: t.isCrit ? 1.6 : 1.1, y: t.y - 65 }}
+      exit={{ opacity: 0, scale: 0.8, y: t.y - 95 }}
+      transition={{ type: 'spring', stiffness: 220, damping: t.isCrit ? 10 : 16 }}
+      style={skinStyle}
+      className={`relative select-none pointer-events-none ${textClass}`}
+    >
+      {t.skin === 'Dragon' && (
+        <div className="absolute inset-[-10px] bg-red-950/20 rounded-full blur-md -z-10 animate-pulse pointer-events-none" />
+      )}
+      {t.skin === 'Void' && (
+        <div className="absolute inset-[-6px] bg-purple-950/30 rounded-full blur-sm -z-10 animate-ping pointer-events-none" style={{ animationDuration: '2s' }} />
+      )}
+      
+      <span>{t.text}</span>
+      
+      {renderParticles()}
+    </motion.div>
+  );
+}
+
 // Particle class for beautiful graphics
 class CombatParticle {
   x: number;
@@ -373,7 +535,8 @@ export default function CombatArena({
   const [stamina, setStamina] = useState<number>(100);
   const staminaRef = useRef<number>(100);
   const [isUiShaking, setIsUiShaking] = useState<boolean>(false);
-  const [domDamageTexts, setDomDamageTexts] = useState<{ id: string; x: number; y: number; text: string; color: string; size: number; isCrit: boolean }[]>([]);
+  const [celestialFlash, setCelestialFlash] = useState<boolean>(false);
+  const [domDamageTexts, setDomDamageTexts] = useState<{ id: string; x: number; y: number; text: string; color: string; size: number; isCrit: boolean; skin?: string }[]>([]);
   const lightningWarningRef = useRef<{ x: number; y: number; timer: number } | null>(null);
   const lightningStrikeVisualRef = useRef<{ x: number; y: number; duration: number } | null>(null);
   const lightningTimerRef = useRef<number>(0);
@@ -435,9 +598,26 @@ export default function CombatArena({
 
     const formattedText = formatWithDamageSkin(text, activeDamageSkin);
 
+    // 1. Dragon roar screenshake effect on crits
+    if (isCrit && activeDamageSkin === 'Dragon') {
+      if (screenShakeEnabled) {
+        shakeRef.current.intensity = 15;
+        shakeRef.current.x = (Math.random() - 0.5) * 15;
+        shakeRef.current.y = (Math.random() - 0.5) * 15;
+      }
+      setIsUiShaking(true);
+      setTimeout(() => setIsUiShaking(false), 450);
+    }
+
+    // 2. Celestial screen flash sparkle effect on crits
+    if (isCrit && activeDamageSkin === 'Celestial') {
+      setCelestialFlash(true);
+      setTimeout(() => setCelestialFlash(false), 160);
+    }
+
     setDomDamageTexts(prev => [
       ...prev,
-      { id, x: renderX, y: renderY, text: formattedText, color, size, isCrit }
+      { id, x: renderX, y: renderY, text: formattedText, color, size, isCrit, skin: activeDamageSkin }
     ]);
     setTimeout(() => {
       setDomDamageTexts(prev => prev.filter(t => t.id !== id));
@@ -3674,28 +3854,15 @@ export default function CombatArena({
         <div className="absolute inset-0 pointer-events-none overflow-hidden select-none z-30">
           <AnimatePresence>
             {domDamageTexts.map(t => (
-              <motion.div
-                key={t.id}
-                initial={{ opacity: 0, scale: 0.5, y: t.y, x: t.x }}
-                animate={{ opacity: 1, scale: t.isCrit ? 1.6 : 1.1, y: t.y - 65 }}
-                exit={{ opacity: 0, scale: 0.8, y: t.y - 95 }}
-                transition={{ type: 'spring', stiffness: 220, damping: t.isCrit ? 10 : 16 }}
-                style={{
-                  position: 'absolute',
-                  color: t.color,
-                  fontSize: `${t.size}px`,
-                  fontWeight: '900',
-                  textShadow: '0 2px 5px rgba(0,0,0,0.95), 0 0 10px rgba(0,0,0,0.7)',
-                  fontFamily: '"Space Grotesk", sans-serif',
-                  whiteSpace: 'nowrap',
-                  transform: 'translate(-50%, -50%)',
-                }}
-              >
-                {t.text}
-              </motion.div>
+              <FloatingDamageTextDOM key={t.id} t={t} />
             ))}
           </AnimatePresence>
         </div>
+
+        {/* Celestial Screen Flash Sparkle */}
+        {celestialFlash && (
+          <div className="absolute inset-0 bg-yellow-400/5 mix-blend-color-dodge pointer-events-none z-40 animate-pulse" />
+        )}
 
         {/* STORY MODE STAGE CLEAR OVERLAY */}
         {storyVictory && (

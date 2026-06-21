@@ -171,6 +171,9 @@ export interface SaveState {
   activeDamageSkin?: string;
   lastShopRefreshHour?: number;
   purchasedShopItemIds?: string[];
+  unlockedDaysCount?: number;
+  nextRewardUnlockTime?: number;
+  lastLoginDateStr?: string;
   stats: {
     totalPulls: number;
     totalEnemiesDefeated: number;
@@ -184,5 +187,7 @@ export interface SaveState {
     totalMoraEarned?: number;
     totalGemsEarned?: number;
     highScoreRogueRoom?: number;
+    longestLoginStreak?: number;
+    currentLoginStreak?: number;
   };
 }

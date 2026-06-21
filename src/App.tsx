@@ -75,6 +75,9 @@ const INITIAL_SAVE_STATE: SaveState = {
   activeDamageSkin: 'Default',
   lastShopRefreshHour: 0,
   purchasedShopItemIds: [],
+  unlockedDaysCount: 1,
+  nextRewardUnlockTime: 0,
+  lastLoginDateStr: '',
   gachaPity5Star: 0,
   gachaPity4Star: 0,
   bannerPity5Star: {
@@ -107,7 +110,9 @@ const INITIAL_SAVE_STATE: SaveState = {
     playTime: 0,
     totalMoraEarned: 30000,
     totalGemsEarned: 1600,
-    highScoreRogueRoom: 0
+    highScoreRogueRoom: 0,
+    longestLoginStreak: 1,
+    currentLoginStreak: 1
   },
   storyProgress: {
     currentChapter: 1,
@@ -205,6 +210,13 @@ export default function App() {
   }, []);
   // Default to Main Menu as requested: 'menu'
   const [activeScreen, setActiveScreen] = useState<'menu' | 'wiki' | 'arena' | 'wish' | 'inventory' | 'quest' | 'dungeon' | 'party' | 'story'>('menu');
+  const [isFirstLoad, setIsFirstLoad] = useState<boolean>(true);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsFirstLoad(false);
+    }, 1800);
+    return () => clearTimeout(timer);
+  }, []);
   const [storyBattleActive, setStoryBattleActive] = useState<boolean>(false);
   const [storyBattleConfig, setStoryBattleConfig] = useState<{
     stageId: string;
@@ -381,6 +393,7 @@ export default function App() {
 
   const isDungeonLocked = !devCheatsEnabled && (saveState.playerLevel || 1) < 10;
   const isWishLocked = !devCheatsEnabled && (saveState.playerLevel || 1) < 5;
+  const isShopLocked = !devCheatsEnabled && (saveState.playerLevel || 1) < 5;
 
   // Fullscreen handler
   const toggleFullscreen = () => {
@@ -631,6 +644,25 @@ export default function App() {
           merged.purchasedShopItemIds = [];
         }
 
+        // Initialize daily login rewards variables
+        if (merged.unlockedDaysCount === undefined) {
+          merged.unlockedDaysCount = 1;
+        }
+        if (merged.nextRewardUnlockTime === undefined) {
+          merged.nextRewardUnlockTime = 0;
+        }
+        if (merged.lastLoginDateStr === undefined) {
+          merged.lastLoginDateStr = '';
+        }
+        if (merged.stats) {
+          if (merged.stats.longestLoginStreak === undefined) {
+            merged.stats.longestLoginStreak = 1;
+          }
+          if (merged.stats.currentLoginStreak === undefined) {
+            merged.stats.currentLoginStreak = 1;
+          }
+        }
+
         // Initialize play time refs from the loaded save
         basePlayTimeRef.current = merged.stats?.playTime || 0;
         sessionStartRef.current = Date.now();
@@ -674,6 +706,33 @@ export default function App() {
     const interval = setInterval(checkRefresh, 1000);
     return () => clearInterval(interval);
   }, [saveState.lastShopRefreshHour]);
+
+  // Periodic check to unlock next reward day if timer expires during active gameplay
+  useEffect(() => {
+    if (activeScreen === 'menu') return;
+    const checkTimer = () => {
+      const now = Date.now();
+      if (
+        saveState.nextRewardUnlockTime && 
+        now >= saveState.nextRewardUnlockTime && 
+        (saveState.unlockedDaysCount || 1) < 7
+      ) {
+        triggerSaveUpdate(prev => {
+          if (prev.nextRewardUnlockTime && now >= prev.nextRewardUnlockTime && (prev.unlockedDaysCount || 1) < 7) {
+            return {
+              ...prev,
+              unlockedDaysCount: (prev.unlockedDaysCount || 1) + 1,
+              nextRewardUnlockTime: now + 24 * 60 * 60 * 1000
+            };
+          }
+          return prev;
+        });
+      }
+    };
+    checkTimer();
+    const interval = setInterval(checkTimer, 5000);
+    return () => clearInterval(interval);
+  }, [saveState.nextRewardUnlockTime, saveState.unlockedDaysCount, activeScreen]);
 
   const handleUpdateSaveState = (updater: React.SetStateAction<SaveState>) => {
     triggerSaveUpdate(prev => {
@@ -1510,6 +1569,12 @@ export default function App() {
       return;
     }
 
+    // Check if the day is unlocked by the 24h login cooldown
+    if (day > (saveState.unlockedDaysCount || 1)) {
+      showInGameAlert("Day is locked!", "Wait for the 24-hour timer to expire to unlock this day's reward.", "error");
+      return;
+    }
+
     triggerSaveUpdate(prev => {
       const currentClaimed = prev.loginRewardClaimedDays || [];
       if (currentClaimed.includes(day)) return prev;
@@ -1682,6 +1747,73 @@ export default function App() {
         return checkQuestProgress(updated, 'mora_hoard', updated.mora);
       }
       return updated;
+    });
+  };
+
+  const handleStartSimulation = () => {
+    AetheriaAudioEngine.resume();
+    AetheriaAudioEngine.playClick();
+    setActiveScreen('wiki');
+
+    const todayStr = new Date().toDateString();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    triggerSaveUpdate(prev => {
+      let currentUnlocked = prev.unlockedDaysCount || 1;
+      let currentNextTime = prev.nextRewardUnlockTime || 0;
+      let newStreak = prev.stats.currentLoginStreak || 1;
+      let longestStreak = prev.stats.longestLoginStreak || 1;
+      
+      // 1. Check/initialize the 24-hour unlock timer
+      if (currentNextTime === 0) {
+        currentNextTime = Date.now() + 24 * 60 * 60 * 1000;
+        currentUnlocked = 1;
+      } else if (Date.now() >= currentNextTime) {
+        if (currentUnlocked < 7) {
+          currentUnlocked += 1;
+          currentNextTime = Date.now() + 24 * 60 * 60 * 1000;
+        }
+      }
+
+      // 2. Check/update login streak
+      if (prev.lastLoginDateStr) {
+        const lastDate = new Date(prev.lastLoginDateStr);
+        lastDate.setHours(0, 0, 0, 0);
+        const diffTime = today.getTime() - lastDate.getTime();
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays === 1) {
+          newStreak += 1;
+          if (newStreak > longestStreak) {
+            longestStreak = newStreak;
+          }
+        } else if (diffDays > 1) {
+          newStreak = 1;
+        }
+      } else {
+        newStreak = 1;
+        longestStreak = Math.max(longestStreak, 1);
+      }
+
+      // 3. Determine if we should show the modal (only once per calendar day)
+      const isNewDay = prev.lastLoginDateStr !== todayStr;
+      const claimedCount = (prev.loginRewardClaimedDays || []).length;
+      if (isNewDay && claimedCount < 7) {
+        setTimeout(() => setShowLoginRewardsModal(true), 150);
+      }
+
+      return {
+        ...prev,
+        unlockedDaysCount: currentUnlocked,
+        nextRewardUnlockTime: currentNextTime,
+        lastLoginDateStr: todayStr,
+        stats: {
+          ...prev.stats,
+          currentLoginStreak: newStreak,
+          longestLoginStreak: longestStreak
+        }
+      };
     });
   };
 
@@ -1905,14 +2037,7 @@ export default function App() {
           {/* Action links list */}
           <div className="flex flex-col gap-3 max-w-xs mx-auto">
             <button
-              onClick={() => {
-                setActiveScreen('wiki');
-                AetheriaAudioEngine.resume();
-                AetheriaAudioEngine.playClick();
-                if ((saveState.loginRewardClaimedDays || []).length < 7) {
-                  setShowLoginRewardsModal(true);
-                }
-              }}
+              onClick={handleStartSimulation}
               className="py-3.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs uppercase tracking-widest rounded-xl transition-all cursor-pointer shadow-lg shadow-amber-400/10 flex items-center justify-center gap-2 hover:scale-105 active:scale-95"
             >
               <Play className="w-4 h-4 fill-slate-950 text-slate-95" />
@@ -2064,6 +2189,28 @@ export default function App() {
                   Constructed strictly using client-side React 18, Vite, and high contrast Tailwind CSS styles. All components are responsive.
                 </p>
               </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+        {/* First Load Loading Screen Overlay */}
+        <AnimatePresence>
+          {isFirstLoad && (
+            <motion.div
+              initial={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.8, ease: 'easeInOut' }}
+              className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/40 backdrop-blur-2xl animate-fade-in"
+            >
+              <div className="flex flex-col items-center gap-4 text-center select-none font-mono">
+                <span className="w-12 h-12 rounded-full border-4 border-indigo-500/20 border-t-indigo-400 animate-spin mb-2" />
+                <h1 className="text-3xl md:text-5xl font-black uppercase tracking-[0.25em] text-white drop-shadow-[0_0_20px_rgba(129,140,248,0.6)] animate-pulse">
+                  LOADING...
+                </h1>
+                <p className="text-xs md:text-sm font-bold uppercase tracking-[0.3em] text-slate-400">
+                  PLEASE WAIT
+                </p>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -2436,22 +2583,47 @@ export default function App() {
               <span className="md:hidden">Party</span>
             </button>
 
-            <button
-              onClick={() => {
-                setActiveScreen('shop');
-                AetheriaAudioEngine.playClick();
-              }}
-              className={`p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 md:flex-initial cursor-pointer ${
-                activeScreen === 'shop'
-                  ? 'bg-amber-400 text-slate-955 shadow-[0_0_15px_rgba(251,191,36,0.35)] font-black'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-black'
-              }`}
-              id="dash_screen_shop"
-            >
-              <Coins className="w-3.5 h-3.5 shrink-0 text-slate-955 text-slate-950" />
-              <span className="hidden md:inline">Gems Shop</span>
-              <span className="md:hidden">Shop</span>
-            </button>
+            {isShopLocked ? (
+              <button
+                type="button"
+                onClick={() => {
+                  AetheriaAudioEngine.playClick();
+                  showInGameAlert(
+                    "Reach Player Level 5 to unlock the Gems Shop.",
+                    `Progress: Level ${saveState.playerLevel || 1} / 5`,
+                    "error"
+                  );
+                }}
+                className="relative p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all cursor-pointer bg-slate-900/30 border border-slate-800/80 text-slate-500 hover:bg-slate-900/40 hover:text-slate-455 flex flex-col md:flex-row items-center justify-center gap-1.5 shrink-0 md:flex-initial"
+                title={`Unlocks at Player Level 5 (Current: Level ${saveState.playerLevel || 1}/5)`}
+              >
+                <div className="flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 shrink-0 text-red-500/70" />
+                  <span className="hidden md:inline">Gems Shop</span>
+                  <span className="md:hidden">Shop</span>
+                </div>
+                <span className="absolute -bottom-2 bg-slate-950/95 border border-red-500/20 text-red-400 text-[6px] font-mono px-1.5 py-0.5 rounded uppercase tracking-tighter whitespace-nowrap z-10 scale-90">
+                  Unlocks at Player Level 5
+                </span>
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  setActiveScreen('shop');
+                  AetheriaAudioEngine.playClick();
+                }}
+                className={`p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 md:flex-initial cursor-pointer ${
+                  activeScreen === 'shop'
+                    ? 'bg-amber-400 text-slate-955 shadow-[0_0_15px_rgba(251,191,36,0.35)] font-black'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-black'
+                }`}
+                id="dash_screen_shop"
+              >
+                <Coins className="w-3.5 h-3.5 shrink-0 text-slate-955 text-slate-955 text-slate-950" />
+                <span className="hidden md:inline">Gems Shop</span>
+                <span className="md:hidden">Shop</span>
+              </button>
+            )}
           </div>
 
           {/* Actual screens swap frame */}
@@ -3351,9 +3523,13 @@ export default function App() {
                 <span className="uppercase text-[9px] tracking-wider text-slate-500">Highest Wave Beaten</span>
                 <span className="font-black text-amber-500 font-mono text-xs">{saveState.stats.highScoreWave || 1}</span>
               </div>
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center border-b border-white/5 pb-1">
                 <span className="uppercase text-[9px] tracking-wider text-slate-500">Highest Room Cleared</span>
                 <span className="font-black text-purple-400 font-mono text-xs">Room {saveState.stats.highScoreRogueRoom || 0}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="uppercase text-[9px] tracking-wider text-slate-500">Longest Login Streak</span>
+                <span className="font-black text-emerald-400 font-mono text-xs">{(saveState.stats.longestLoginStreak || 1)} Days</span>
               </div>
             </div>
           </div>
@@ -3633,6 +3809,8 @@ export default function App() {
             isOpen={showLoginRewardsModal}
             onClose={() => setShowLoginRewardsModal(false)}
             claimedDays={saveState.loginRewardClaimedDays || []}
+            unlockedDaysCount={saveState.unlockedDaysCount || 1}
+            nextRewardUnlockTime={saveState.nextRewardUnlockTime || 0}
             onClaimDay={handleClaimLoginReward}
           />
         )}
