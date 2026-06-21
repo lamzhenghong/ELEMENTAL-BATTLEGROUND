@@ -428,14 +428,14 @@ export default function InventoryManager({
         {/* Left column selection list (Roster and Filters) */}
         <div className="bg-[#060811]/45 border border-white/10 rounded-xl p-5 space-y-5 flex flex-col justify-between">
           <div className="space-y-5">
-            <div className="flex gap-1 bg-black/45 p-1 rounded-lg border border-white/10">
+            <div className="w-full flex overflow-x-auto scrollbar-none whitespace-nowrap gap-1 bg-black/45 p-1 rounded-lg border border-white/10">
               <button
                 onClick={() => {
                   setActiveTab('characters');
                   AetheriaAudioEngine.playClick();
                 }}
-                className={`flex-1 text-center py-2.5 rounded-md text-xs font-black uppercase tracking-widest transition-all cursor-pointer ${
-                  activeTab === 'characters' ? 'bg-amber-400 text-slate-950 font-black' : 'text-slate-400 hover:text-slate-200'
+                className={`flex-1 shrink-0 sm:shrink text-center py-2.5 px-2 sm:px-3 rounded-md text-[9px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest transition-all cursor-pointer ${
+                  activeTab === 'characters' ? 'bg-amber-400 text-slate-955 font-black' : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
                 Roster
@@ -445,8 +445,8 @@ export default function InventoryManager({
                   setActiveTab('weapons');
                   AetheriaAudioEngine.playClick();
                 }}
-                className={`flex-1 text-center py-2.5 rounded-md text-xs font-black uppercase tracking-widest transition-all cursor-pointer ${
-                  activeTab === 'weapons' ? 'bg-amber-400 text-slate-950 font-black' : 'text-slate-400 hover:text-slate-200'
+                className={`flex-1 shrink-0 sm:shrink text-center py-2.5 px-2 sm:px-3 rounded-md text-[9px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest transition-all cursor-pointer ${
+                  activeTab === 'weapons' ? 'bg-amber-400 text-slate-955 font-black' : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
                 Armaments
@@ -456,8 +456,8 @@ export default function InventoryManager({
                   setActiveTab('items');
                   AetheriaAudioEngine.playClick();
                 }}
-                className={`flex-1 text-center py-2.5 rounded-md text-xs font-black uppercase tracking-widest transition-all cursor-pointer ${
-                  activeTab === 'items' ? 'bg-amber-400 text-slate-950 font-black' : 'text-slate-400 hover:text-slate-200'
+                className={`flex-1 shrink-0 sm:shrink text-center py-2.5 px-2 sm:px-3 rounded-md text-[9px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest transition-all cursor-pointer ${
+                  activeTab === 'items' ? 'bg-amber-400 text-slate-955 font-black' : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
                 Augments
@@ -467,8 +467,8 @@ export default function InventoryManager({
                   setActiveTab('artifacts');
                   AetheriaAudioEngine.playClick();
                 }}
-                className={`flex-1 text-center py-2.5 rounded-md text-xs font-black uppercase tracking-widest transition-all cursor-pointer ${
-                  activeTab === 'artifacts' ? 'bg-amber-400 text-slate-950 font-black' : 'text-slate-400 hover:text-slate-200'
+                className={`flex-1 shrink-0 sm:shrink text-center py-2.5 px-2 sm:px-3 rounded-md text-[9px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest transition-all cursor-pointer ${
+                  activeTab === 'artifacts' ? 'bg-amber-400 text-slate-955 font-black' : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
                 Artifacts
@@ -544,10 +544,10 @@ export default function InventoryManager({
                           AetheriaAudioEngine.playClick();
                         }}
                         className={`flex-1 text-center py-1 text-[9px] font-black rounded uppercase tracking-wider transition-all ${
-                          artRarityFilter === r ? 'bg-amber-400 text-slate-955 font-black' : 'bg-black/40 text-slate-450 hover:text-slate-250 border border-white/5'
+                          artRarityFilter === r ? 'bg-amber-400 text-slate-955 font-black' : 'bg-black/40 text-slate-455 hover:text-slate-250 border border-white/5'
                         }`}
                       >
-                        {r === 'all' ? 'All' : r === 5 ? '5★' : r === 4 ? '4★' : '3★'}
+                        {r === 'all' ? 'All' : r === 5 ? 'Legendary' : r === 4 ? 'Rare' : 'Common'}
                       </button>
                     ))}
                   </div>
