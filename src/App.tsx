@@ -2115,6 +2115,19 @@ export default function App() {
                           </div>
                         )}
                       </div>
+
+                      <div className="border-t border-white/5 pt-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            AetheriaAudioEngine.playClick();
+                            setShowReactionsModal(true);
+                          }}
+                          className="text-[10.5px] font-black uppercase text-indigo-400 hover:text-indigo-300 transition-all flex items-center gap-1.5 cursor-pointer font-mono select-none"
+                        >
+                          🧪 View Elemental Reaction Cheat Sheet
+                        </button>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -2670,6 +2683,12 @@ export default function App() {
           />
         )}
       </AnimatePresence>
+
+      {/* ELEMENTAL REACTIONS CHEAT SHEET MODAL */}
+      <ElementalReactionsModal
+        isOpen={showReactionsModal}
+        onClose={() => setShowReactionsModal(false)}
+      />
     </div>
   );
 }
