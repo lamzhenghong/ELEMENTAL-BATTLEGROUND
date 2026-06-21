@@ -1924,8 +1924,15 @@ export default function InventoryManager({
         const art = inventoryArtifacts.find(a => a.id === salvageConfirmArtifactId);
         if (!art) return null;
         return (
-          <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-            <div className="bg-[#0b0f19] border border-red-500/30 rounded-xl p-6 max-w-sm w-full text-center space-y-5 shadow-[0_10px_40px_rgba(239,68,68,0.25)]">
+          <div
+            className="fixed inset-0 z-[250] flex min-h-[100dvh] items-center justify-center overflow-y-auto bg-slate-950/80 px-4 backdrop-blur-sm"
+            style={{
+              paddingTop: 'max(1rem, env(safe-area-inset-top))',
+              paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
+              overscrollBehavior: 'contain'
+            }}
+          >
+            <div className="my-auto max-h-[calc(100dvh-2rem)] overflow-y-auto bg-[#0b0f19] border border-red-500/30 rounded-xl p-5 sm:p-6 max-w-sm w-full text-center space-y-4 sm:space-y-5 shadow-[0_10px_40px_rgba(239,68,68,0.25)]">
               <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center mx-auto">
                 <Trash2 className="w-6 h-6 text-red-450 animate-pulse" />
               </div>

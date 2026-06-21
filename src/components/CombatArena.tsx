@@ -17,6 +17,7 @@ import { LanguageType, t } from '../utils/i18n';
 import { getAccumulatedPortraitBuffs } from '../utils/portraits';
 import { WEAPONS_DATABASE } from '../data/weapons';
 import { getArtifactMainStat, generateRandomArtifact } from '../data/artifacts';
+import { AetherEchoState, rollAetherEcho } from '../utils/aetherEcho';
 import MobileJoystick from './MobileJoystick';
 import MobileControls from './MobileControls';
 import { getStageSpec } from '../data/storyStages';
@@ -391,7 +392,7 @@ export default function CombatArena({
   const [activeUltCutscene, setActiveUltCutscene] = useState<any | null>(null);
   const [isUltCutsceneActive, setIsUltCutsceneActive] = useState<boolean>(false);
   const [countdownValue, setCountdownValue] = useState<number | null>(null);
-  const [pendingAction, setPendingAction] = useState<'restart' | 'home' | 'wiki' | null>(null);
+  const [pendingAction, setPendingAction] = useState<'restart' | 'home' | 'wiki' | 'end_run' | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Clear countdown interval on unmount
@@ -446,6 +447,9 @@ export default function CombatArena({
   const [isArtifactGrindMode, setIsArtifactGrindMode] = useState<boolean>(false);
   const [droppedArtifacts, setDroppedArtifacts] = useState<Artifact[]>([]);
   const [activeArtifactNotification, setActiveArtifactNotification] = useState<string | null>(null);
+  const [activeAetherEcho, setActiveAetherEcho] = useState<AetherEchoState | null>(null);
+  const activeAetherEchoRef = useRef<AetherEchoState | null>(null);
+  const [activeEchoNotification, setActiveEchoNotification] = useState<string | null>(null);
   const bossProjectilesRef = useRef<any[]>([]);
   const hasRevivedRef = useRef<boolean>(false);
 
@@ -732,6 +736,72 @@ export default function CombatArena({
       case 'Geo': return '#f59e0b';
       case 'Dendro': return '#22c55e';
     }
+  };
+
+  const setWaveAetherEcho = (echo: AetherEchoState | null) => {
+    activeAetherEchoRef.current = echo;
+    setActiveAetherEcho(echo);
+  };
+
+  const getAetherEchoPosition = () => {
+    const dirX = playerRef.current.lastDirX || 1;
+    const dirY = playerRef.current.lastDirY || 0;
+    const sideOffset = isMobile ? 34 : 46;
+    const backOffset = isMobile ? 12 : 18;
+
+    return {
+      x: Math.max(32, Math.min(WORLD_WIDTH - 32, playerRef.current.x - dirY * sideOffset - dirX * backOffset)),
+      y: Math.max(32, Math.min(WORLD_HEIGHT - 32, playerRef.current.y + dirX * sideOffset - dirY * backOffset))
+    };
+  };
+
+  const spawnAetherEchoPulse = (label: string, echo: AetherEchoState, size: number = 11) => {
+    const pos = getAetherEchoPosition();
+    const particleCount = isMobile ? 5 : 10;
+    for (let i = 0; i < particleCount; i++) {
+      const part = new CombatParticle(pos.x, pos.y, echo.auraColor, isMobile ? 2.2 : 3.2);
+      part.vx *= 1.4;
+      part.vy *= 1.4;
+      particlesRef.current.push(part);
+    }
+    spawnFloatingDamageText(pos.x, pos.y - 34, label, echo.auraColor, size, echo.rarity === 'Legendary');
+  };
+
+  const rollAetherEchoForWave = () => {
+    if (dungeonMode || storyMode) {
+      setWaveAetherEcho(null);
+      setActiveEchoNotification(null);
+      return;
+    }
+
+    const availableParty = (loopStateRef.current.combatParty.length > 0 ? loopStateRef.current.combatParty : combatParty)
+      .filter(c => c.currentHp > 0)
+      .map(c => ({ id: c.id, name: c.name, element: c.element }));
+
+    const echo = rollAetherEcho(availableParty);
+    setWaveAetherEcho(echo);
+
+    if (!echo) {
+      setActiveEchoNotification(null);
+      return;
+    }
+
+    const message = echo.notification || `${echo.rarity.toUpperCase()} AETHER ECHO AWAKENED`;
+    setActiveEchoNotification(message);
+    spawnFloatingDamageText(playerRef.current.x, playerRef.current.y - 96, message, echo.auraColor, echo.rarity === 'Legendary' ? 18 : 14, echo.rarity === 'Legendary');
+    spawnAetherEchoPulse(`Echo: ${echo.characterName}`, echo, 11);
+    if (echo.rarity === 'Legendary') {
+      AetheriaAudioEngine.playUltimate();
+    } else {
+      AetheriaAudioEngine.playWaveClear();
+    }
+
+    const echoId = echo.id;
+    setTimeout(() => {
+      if (activeAetherEchoRef.current?.id === echoId) {
+        setActiveEchoNotification(null);
+      }
+    }, echo.rarity === 'Legendary' ? 3600 : 2600);
   };
 
   // Convert templates dynamically
@@ -1267,6 +1337,7 @@ export default function CombatArena({
     particlesRef.current = [];
     bossProjectilesRef.current = [];
     hasRevivedRef.current = false;
+    rollAetherEchoForWave();
   };
 
   // Run on startup to spawn correct wave/dungeon enemies once battle starts
@@ -1282,6 +1353,17 @@ export default function CombatArena({
     if (idx >= currentParty.length || idx < 0 || idx === currentPartyIndex) return;
     setActivePartyIndex(idx);
     const swapped = currentParty[idx];
+    const echo = activeAetherEchoRef.current;
+    if (echo) {
+      const nextEcho = {
+        ...echo,
+        characterId: swapped.id,
+        characterName: swapped.name,
+        element: swapped.element
+      };
+      setWaveAetherEcho(nextEcho);
+      spawnAetherEchoPulse(`Echo Swap: ${swapped.name}`, nextEcho, 10);
+    }
 
     // Spawn burst effects at player position
     const px = playerRef.current.x;
@@ -1384,6 +1466,11 @@ export default function CombatArena({
       part.vx = -dirX * 2 + (Math.random() - 0.5) * 2;
       part.vy = -dirY * 2 + (Math.random() - 0.5) * 2;
       particlesRef.current.push(part);
+    }
+
+    const echo = activeAetherEchoRef.current;
+    if (echo) {
+      spawnAetherEchoPulse('Echo Dodge', echo, 10);
     }
 
     // Quick invincibility glide reset
@@ -1496,6 +1583,23 @@ export default function CombatArena({
       }
     });
 
+    const echo = activeAetherEchoRef.current;
+    if (echo) {
+      const echoPos = getAetherEchoPosition();
+      spawnAetherEchoPulse(`Echo Skill x${echo.damageMultiplier}`, echo, 11);
+      enemiesRef.current.forEach(enemy => {
+        if (enemy.hp <= 0) return;
+        const dx = enemy.x - echoPos.x;
+        const dy = enemy.y - echoPos.y;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist < skillRadius + enemy.radius) {
+          applySkillDamage(enemy, currentActiveChar.atk * currentActiveChar.skills.skill.damageMultiplier * echo.damageMultiplier, currentActiveChar.element, false, false, 'skill');
+          spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 35, `ECHO x${echo.damageMultiplier}`, echo.auraColor, 10, echo.rarity === 'Legendary');
+        }
+      });
+    }
+
     // Reset skill cooldowns
     setCombatParty(pList => pList.map((c, i) => {
       if (i === currentPartyIndex) {
@@ -1602,6 +1706,16 @@ export default function CombatArena({
          if (enemy.hp <= 0) return;
          applySkillDamage(enemy, currentActiveChar.atk * currentActiveChar.skills.ultimate.damageMultiplier, currentActiveChar.element, true, false, 'ultimate');
       });
+
+      const echo = activeAetherEchoRef.current;
+      if (echo) {
+        spawnAetherEchoPulse(`Echo Ultimate x${echo.damageMultiplier}`, echo, echo.rarity === 'Legendary' ? 13 : 11);
+        enemiesRef.current.forEach(enemy => {
+          if (enemy.hp <= 0) return;
+          applySkillDamage(enemy, currentActiveChar.atk * currentActiveChar.skills.ultimate.damageMultiplier * echo.damageMultiplier, currentActiveChar.element, true, false, 'ultimate');
+          spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 45, `ECHO ULT x${echo.damageMultiplier}`, echo.auraColor, 11, echo.rarity === 'Legendary');
+        });
+      }
     }, 750);
   };
 
@@ -1628,6 +1742,11 @@ export default function CombatArena({
       part.vx = dirX * 5 + (Math.random() - 0.5) * 3;
       part.vy = dirY * 5 + (Math.random() - 0.5) * 3;
       particlesRef.current.push(part);
+    }
+
+    const echo = activeAetherEchoRef.current;
+    if (echo) {
+      spawnAetherEchoPulse(`Echo Strike x${echo.damageMultiplier}`, echo, 10);
     }
 
     // Check hit collision
@@ -1687,6 +1806,11 @@ export default function CombatArena({
         }
 
         applySkillDamage(enemy, baseDmg, currentActiveChar.element, false, crit, 'basic');
+
+        if (echo && enemy.hp > 0) {
+          applySkillDamage(enemy, baseDmg * echo.damageMultiplier, currentActiveChar.element, false, crit, 'basic');
+          spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 35, `ECHO x${echo.damageMultiplier}`, echo.auraColor, 10, echo.rarity === 'Legendary');
+        }
 
         // Primordial Jade Spear double strike combo
         if (currentActiveChar.equippedWeaponName?.includes('Primordial Jade') && (!currentActiveChar.spearDoubleCd || currentActiveChar.spearDoubleCd <= 0)) {
@@ -3205,6 +3329,43 @@ export default function CombatArena({
       }
       ctx.restore();
 
+      const echo = activeAetherEchoRef.current;
+      if (echo) {
+        const echoPos = getAetherEchoPosition();
+        ctx.save();
+        ctx.globalAlpha = 0.66;
+        ctx.beginPath();
+        ctx.arc(echoPos.x, echoPos.y, playerRef.current.radius + 10, 0, Math.PI * 2);
+        ctx.strokeStyle = echo.auraColor;
+        ctx.lineWidth = echo.rarity === 'Legendary' ? 3 : 2;
+        if (!isMobile) {
+          ctx.shadowBlur = echo.rarity === 'Legendary' ? 24 : 14;
+          ctx.shadowColor = echo.auraColor;
+        }
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(echoPos.x, echoPos.y, playerRef.current.radius * 0.74, 0, Math.PI * 2);
+        ctx.fillStyle = getElementColorHex(echo.element);
+        ctx.fill();
+        ctx.strokeStyle = echo.auraColor;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(echoPos.x, echoPos.y);
+        ctx.lineTo(echoPos.x + playerRef.current.lastDirX * 20, echoPos.y + playerRef.current.lastDirY * 20);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.fillStyle = echo.auraColor;
+        ctx.font = 'bold 10px "Space Grotesk", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('ECHO', echoPos.x, echoPos.y - playerRef.current.radius - 16);
+        ctx.restore();
+      }
+
       // Draw Lightning Warning Circle (World Coordinates)
       if (lightningWarningRef.current !== null) {
         const warning = lightningWarningRef.current;
@@ -3534,6 +3695,8 @@ export default function CombatArena({
       const anyAlive = updatedParty.some(c => c.currentHp > 0);
       if (!anyAlive) {
         setIsGameOver(true);
+        setWaveAetherEcho(null);
+        setActiveEchoNotification(null);
         AetheriaAudioEngine.playGameOver();
       } else {
         // Swap to another alive character if current active character just died
@@ -3639,6 +3802,8 @@ export default function CombatArena({
     characterDeathsRef.current = 0;
     setDroppedArtifacts([]);
     setActiveArtifactNotification(null);
+    setActiveEchoNotification(null);
+    setWaveAetherEcho(null);
     
     setCombatParty(pList => pList.map(c => ({
       ...c,
@@ -3687,6 +3852,18 @@ export default function CombatArena({
                 {currentWeather === 'Snow' && <Snowflake className="w-3 h-3 text-sky-300 animate-pulse" />}
                 <span>{currentWeather}</span>
               </span>
+              {activeAetherEcho && (
+                <span
+                  className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded border bg-slate-950/70 flex items-center gap-1"
+                  style={{
+                    borderColor: `${activeAetherEcho.auraColor}88`,
+                    color: activeAetherEcho.auraColor
+                  }}
+                >
+                  <Sparkles className="w-3 h-3" />
+                  <span>Echo {activeAetherEcho.rarity} x{activeAetherEcho.damageMultiplier}</span>
+                </span>
+              )}
             </h3>
           </div>
           {!isMobile && (
@@ -3882,6 +4059,37 @@ export default function CombatArena({
               <h2 className="text-xl font-black text-emerald-400 font-display tracking-widest uppercase">AREA CLEANSED</h2>
               <p className="text-xs text-slate-300 font-mono uppercase tracking-wider">{waveClearMessage}</p>
               <div className="text-[10px] text-slate-500 font-mono">STABILIZING MATRIX FOR NEXT INCURSION...</div>
+            </div>
+          </div>
+        )}
+
+        {/* AETHER ECHO AWAKENED NOTIFICATION */}
+        {activeEchoNotification && (
+          <div className="absolute top-16 md:top-20 left-1/2 -translate-x-1/2 z-50 animate-fade-in pointer-events-none max-w-sm w-full px-4">
+            <div
+              className="bg-[#07101f]/95 border p-3 rounded-xl flex items-center gap-3 shadow-[0_0_24px_rgba(56,189,248,0.22)] backdrop-blur-md"
+              style={{
+                borderColor: `${activeAetherEcho?.auraColor || '#38bdf8'}99`,
+                boxShadow: `0 0 24px ${activeAetherEcho?.auraColor || '#38bdf8'}33`
+              }}
+            >
+              <div
+                className="w-8 h-8 rounded-lg border flex items-center justify-center"
+                style={{
+                  borderColor: `${activeAetherEcho?.auraColor || '#38bdf8'}66`,
+                  backgroundColor: `${activeAetherEcho?.auraColor || '#38bdf8'}18`
+                }}
+              >
+                <Sparkles className="w-4 h-4" style={{ color: activeAetherEcho?.auraColor || '#38bdf8' }} />
+              </div>
+              <div>
+                <span className="text-[8px] font-black uppercase tracking-widest font-mono block" style={{ color: activeAetherEcho?.auraColor || '#38bdf8' }}>
+                  Aether Echo
+                </span>
+                <p className="text-[10px] text-white font-extrabold uppercase">
+                  {activeEchoNotification}
+                </p>
+              </div>
             </div>
           </div>
         )}
@@ -4150,6 +4358,8 @@ export default function CombatArena({
                               ...c,
                               currentHp: 0
                             })));
+                            setWaveAetherEcho(null);
+                            setActiveEchoNotification(null);
                             setIsGameOver(true);
                             AetheriaAudioEngine.playGameOver();
                           } else if (act === 'home') {

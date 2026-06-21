@@ -50,8 +50,8 @@ const INITIAL_SAVE_STATE: SaveState = {
     { id: 'start_w_5', name: 'Beginner Pole (Polearm)', rarity: 3, weaponType: 'Polearm', baseAtk: 20, statBonus: 'Physical DMG +2%', level: 1 }
   ],
   inventoryItems: [
-    { id: 'wit_exp', name: "Hero's Wit (Character XP Boost)", count: 35, type: 'char_xp', rarity: 4, desc: 'Earned by clearing waves in Combat Arena, defeating enemies, and completing quests. Used to level up characters from Lv.1 to Lv.50.' },
-    { id: 'ore_exp', name: "Myconid Spore Catalyst", count: 20, type: 'ascension', rarity: 3, desc: 'Drops from clearing rooms in Rogue Ruins — higher rooms grant more. Required to advance characters from Lv.50 to Lv.80.' }
+    { id: 'wit_exp', name: "Hero's Wit (Character XP Boost)", count: 35, type: 'char_xp', rarity: 3, desc: 'Earned by clearing waves in Combat Arena, defeating enemies, and completing quests. Used to level up characters from Lv.1 to Lv.50.' },
+    { id: 'ore_exp', name: "Myconid Spore Catalyst", count: 20, type: 'ascension', rarity: 4, desc: 'Drops from clearing rooms in Rogue Ruins — higher rooms grant more. Required to advance characters from Lv.50 to Lv.80.' }
   ],
   characterLevels: {
     'marina': 1
@@ -612,6 +612,16 @@ export default function App() {
             ...(parsed.storyProgress || {})
           }
         };
+
+        merged.inventoryItems = (merged.inventoryItems || []).map(item => {
+          if (item.type === 'char_xp' || item.id === 'wit_exp') {
+            return { ...item, rarity: 3 };
+          }
+          if (item.type === 'ascension' || item.id === 'ore_exp') {
+            return { ...item, rarity: 4 };
+          }
+          return item;
+        });
 
         // Fallback for banner pity counters if they were not correctly populated
         if (!merged.bannerPity5Star.char_banner_1) {
