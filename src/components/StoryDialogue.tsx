@@ -12,36 +12,41 @@ export interface StoryDialogueLine {
 }
 
 interface StoryDialogueProps {
+  key?: React.Key;
   line: StoryDialogueLine;
   onNext: () => void;
   onSkip: () => void;
 }
 
 export default function StoryDialogue({ line, onNext, onSkip }: StoryDialogueProps) {
-  const [displayedText, setDisplayedText] = useState('');
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(true);
 
   // Typewriter effect
   useEffect(() => {
-    setDisplayedText('');
+    setCurrentIndex(0);
     setIsTyping(true);
-    let index = 0;
-    const interval = setInterval(() => {
-      setDisplayedText((prev) => prev + line.text.charAt(index));
-      index++;
-      if (index >= line.text.length) {
-        clearInterval(interval);
-        setIsTyping(false);
-      }
+  }, [line.text]);
+
+  useEffect(() => {
+    if (currentIndex >= line.text.length) {
+      setIsTyping(false);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setCurrentIndex((prev) => prev + 1);
     }, 15);
 
-    return () => clearInterval(interval);
-  }, [line.text]);
+    return () => clearTimeout(timer);
+  }, [currentIndex, line.text]);
+
+  const displayedText = line.text.slice(0, currentIndex);
 
   const handleBoxClick = () => {
     if (isTyping) {
       // Complete typing instantly
-      setDisplayedText(line.text);
+      setCurrentIndex(line.text.length);
       setIsTyping(false);
     } else {
       onNext();

@@ -100,6 +100,7 @@ export default function StoryCutscene({ slides, onComplete, backgroundGradient }
 
       {/* Dialogue Bottom Box overlay */}
       <StoryDialogue 
+        key={currentIndex}
         line={currentLine}
         onNext={handleNext}
         onSkip={handleSkip}
