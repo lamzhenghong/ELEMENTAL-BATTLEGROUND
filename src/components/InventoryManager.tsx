@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { PLAYABLE_CHARACTERS } from '../data/characters';
 import { PlayableCharacter, Weapon, InventoryItem, ElementType, Quest, Artifact, ArtifactSlot, ArtifactSet } from '../types';
 import { Shield, Sparkles, Coins, Hammer, Star, StarOff, ArrowUpCircle, BookOpen, Smile, User, Flame, Droplet, Snowflake, Zap, Wind, Leaf, Search, HelpCircle, CheckCircle2, Circle, Layers, Lock, Unlock, Trash2 } from 'lucide-react';
@@ -428,6 +429,63 @@ export default function InventoryManager({
     );
     AetheriaAudioEngine.playWaveClear();
   };
+
+  const salvageConfirmArtifact = salvageConfirmArtifactId
+    ? inventoryArtifacts.find(a => a.id === salvageConfirmArtifactId)
+    : null;
+
+  const salvageConfirmModal = salvageConfirmArtifact ? (
+    <div
+      className="fixed left-0 top-0 z-[9999] flex h-[100dvh] w-[100dvw] items-center justify-center overflow-y-auto bg-slate-950/85 px-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="artifact-salvage-confirm-title"
+      style={{
+        minHeight: '100dvh',
+        paddingTop: 'max(0.75rem, env(safe-area-inset-top))',
+        paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))',
+        overscrollBehavior: 'contain',
+        touchAction: 'none'
+      }}
+    >
+      <div className="relative my-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-[min(24rem,calc(100vw-1.5rem))] overflow-y-auto rounded-xl border border-red-500/40 bg-[#0b0f19] p-4 text-center shadow-[0_10px_45px_rgba(239,68,68,0.35)] sm:p-6">
+        <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full border border-red-500/30 bg-red-500/10 sm:h-12 sm:w-12">
+          <Trash2 className="h-5 w-5 animate-pulse text-red-450 sm:h-6 sm:w-6" />
+        </div>
+        <div className="mt-3 space-y-2 sm:mt-4">
+          <h3 id="artifact-salvage-confirm-title" className="font-display text-sm font-black uppercase tracking-wider text-slate-100 sm:text-md">
+            Salvage Artifact?
+          </h3>
+          <p className="font-mono text-[10px] uppercase leading-relaxed text-slate-350 sm:text-[10.5px]">
+            Are you sure you want to delete and salvage <span className="font-extrabold text-red-400">{salvageConfirmArtifact.name}</span>? This action is permanent and cannot be undone!
+          </p>
+        </div>
+
+        <div className="mt-4 flex gap-3 sm:mt-5">
+          <button
+            onClick={() => {
+              AetheriaAudioEngine.playClick();
+              onDeleteArtifact && onDeleteArtifact(salvageConfirmArtifact.id);
+              setSalvageConfirmArtifactId(null);
+              onShowAlert("Artifact Salvaged!", "Successfully salvaged and removed artifact from database registry.", "success");
+            }}
+            className="flex-1 cursor-pointer rounded-lg bg-red-650 py-2.5 text-[10px] font-black uppercase tracking-wider text-white transition-transform hover:bg-red-600 active:scale-95"
+          >
+            Confirm
+          </button>
+          <button
+            onClick={() => {
+              AetheriaAudioEngine.playClick();
+              setSalvageConfirmArtifactId(null);
+            }}
+            className="flex-1 cursor-pointer rounded-lg border border-white/5 bg-slate-800 py-2.5 text-[10px] font-black uppercase tracking-wider text-slate-200 transition-transform hover:bg-slate-750 active:scale-95"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null;
 
   return (
     <div className="bg-[#0b0f19]/85 border border-white/10 rounded-xl overflow-hidden h-full flex flex-col min-h-[600px] shadow-[0_10px_40px_rgba(0,0,0,0.6)] backdrop-blur-md" id="inv_main_frame">
@@ -1920,57 +1978,7 @@ export default function InventoryManager({
         </div>
       </div>
 
-      {salvageConfirmArtifactId && (() => {
-        const art = inventoryArtifacts.find(a => a.id === salvageConfirmArtifactId);
-        if (!art) return null;
-        return (
-          <div
-            className="fixed inset-0 z-[250] flex min-h-[100dvh] items-center justify-center overflow-y-auto bg-slate-950/80 px-4 backdrop-blur-sm"
-            style={{
-              paddingTop: 'max(1rem, env(safe-area-inset-top))',
-              paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
-              overscrollBehavior: 'contain'
-            }}
-          >
-            <div className="my-auto max-h-[calc(100dvh-2rem)] overflow-y-auto bg-[#0b0f19] border border-red-500/30 rounded-xl p-5 sm:p-6 max-w-sm w-full text-center space-y-4 sm:space-y-5 shadow-[0_10px_40px_rgba(239,68,68,0.25)]">
-              <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center mx-auto">
-                <Trash2 className="w-6 h-6 text-red-450 animate-pulse" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-md font-black text-slate-100 uppercase tracking-wider font-display">
-                  Salvage Artifact?
-                </h3>
-                <p className="text-[10.5px] text-slate-350 leading-relaxed font-mono uppercase">
-                  Are you sure you want to delete and salvage <span className="text-red-400 font-extrabold">{art.name}</span>? This action is permanent and cannot be undone!
-                </p>
-              </div>
-              
-              <div className="flex gap-3 pt-2">
-                <button
-                  onClick={() => {
-                    AetheriaAudioEngine.playClick();
-                    onDeleteArtifact && onDeleteArtifact(art.id);
-                    setSalvageConfirmArtifactId(null);
-                    onShowAlert("Artifact Salvaged!", "Successfully salvaged and removed artifact from database registry.", "success");
-                  }}
-                  className="flex-1 py-2.5 bg-red-650 hover:bg-red-600 text-white text-[10px] rounded-lg font-black uppercase tracking-wider cursor-pointer active:scale-95 transition-transform"
-                >
-                  Confirm
-                </button>
-                <button
-                  onClick={() => {
-                    AetheriaAudioEngine.playClick();
-                    setSalvageConfirmArtifactId(null);
-                  }}
-                  className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-750 text-slate-200 text-[10px] rounded-lg font-black uppercase tracking-wider cursor-pointer active:scale-95 transition-transform border border-white/5"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      {salvageConfirmModal && typeof document !== 'undefined' ? createPortal(salvageConfirmModal, document.body) : null}
 
       {isReactionsModalOpen && (
         <ElementalReactionsModal
