@@ -12,6 +12,7 @@ import RogueDungeon from './components/RogueDungeon';
 import { SaveState, Weapon, Artifact, InventoryItem, Quest, ElementType, ArtifactSlot } from './types';
 import { t, LanguageType } from './utils/i18n';
 import { PLAYABLE_CHARACTERS } from './data/characters';
+import { ARTIFACT_SETS } from './data/artifacts';
 import { GDD_DATA } from './data/world';
 import { INITIAL_50_QUESTS } from './data/quests';
 import { WEAPONS_DATABASE } from './data/weapons';
@@ -223,6 +224,7 @@ export default function App() {
   const [wikiInitialCharId, setWikiInitialCharId] = useState<string>('aurelia');
   const [wikiInitialWeaponName, setWikiInitialWeaponName] = useState<string>('');
   const [showResonanceSheet, setShowResonanceSheet] = useState(false);
+  const [showArtifactSheet, setShowArtifactSheet] = useState(false);
   const [partyElementFilter, setPartyElementFilter] = useState<'All' | ElementType>('All');
   const [partyWeaponFilter, setPartyWeaponFilter] = useState<'All' | 'Sword' | 'Claymore' | 'Polearm' | 'Bow' | 'Catalyst'>('All');
   const [partyRarityFilter, setPartyRarityFilter] = useState<'All' | 3 | 4 | 5>('All');
@@ -264,6 +266,62 @@ export default function App() {
 
     return list;
   }, [saveState.partyIds]);
+
+  const activePartyArtifactSets = React.useMemo(() => {
+    const activeChars = PLAYABLE_CHARACTERS.filter(c => saveState.partyIds.includes(c.id));
+    const results: { charName: string; charId: string; activeSets: { setName: string; pieces: number; desc: string }[] }[] = [];
+
+    activeChars.forEach(c => {
+      const equipped = saveState.characterEquippedArtifacts?.[c.id] || {};
+      const equippedArts = Object.values(equipped)
+        .map(artId => (saveState.inventoryArtifacts || []).find(a => a.id === artId))
+        .filter((a): a is Artifact => !!a);
+
+      const setCounts: Record<string, number> = {
+        Vanguard: 0,
+        Guardian: 0,
+        Celestial: 0,
+        Chrono: 0
+      };
+
+      equippedArts.forEach(art => {
+        if (art.set in setCounts) {
+          setCounts[art.set]++;
+        }
+      });
+
+      const activeSets: { setName: string; pieces: number; desc: string }[] = [];
+      if (setCounts.Guardian >= 4) {
+        activeSets.push({ setName: 'Guardian', pieces: 4, desc: "+55% Max HP" });
+      } else if (setCounts.Guardian >= 2) {
+        activeSets.push({ setName: 'Guardian', pieces: 2, desc: "+20% Max HP" });
+      }
+
+      if (setCounts.Vanguard >= 4) {
+        activeSets.push({ setName: 'Vanguard', pieces: 4, desc: "+45% DMG" });
+      } else if (setCounts.Vanguard >= 2) {
+        activeSets.push({ setName: 'Vanguard', pieces: 2, desc: "+15% DMG" });
+      }
+
+      if (setCounts.Celestial >= 4) {
+        activeSets.push({ setName: 'Celestial', pieces: 4, desc: "+25% Crit Rate / +55% Crit DMG" });
+      } else if (setCounts.Celestial >= 2) {
+        activeSets.push({ setName: 'Celestial', pieces: 2, desc: "+10% Crit Rate / +20% Crit DMG" });
+      }
+
+      if (setCounts.Chrono >= 4) {
+        activeSets.push({ setName: 'Chrono', pieces: 4, desc: "+30% Skill CD Reduction" });
+      } else if (setCounts.Chrono >= 2) {
+        activeSets.push({ setName: 'Chrono', pieces: 2, desc: "+10% Skill CD Reduction" });
+      }
+
+      if (activeSets.length > 0) {
+        results.push({ charName: c.name, charId: c.id, activeSets });
+      }
+    });
+
+    return results;
+  }, [saveState.partyIds, saveState.characterEquippedArtifacts, saveState.inventoryArtifacts]);
 
   const [language, setLanguage] = useState<LanguageType>(() => {
     return (localStorage.getItem('rpg_language') as LanguageType) || 'en';
@@ -2683,6 +2741,91 @@ export default function App() {
                         ) : (
                           <div className="text-[10px] text-slate-450 italic font-mono uppercase bg-black/20 p-3 rounded-lg border border-white/5 select-none">
                             No active resonances. Deploy 2 heroes of the same element or 4 unique elements to unlock team bonus matrix.
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Active Artifact Set Effects */}
+                      <div className="border-t border-white/5 pt-4">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block font-mono mb-2 flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                          Active Artifact Set Effects
+                        </span>
+                        {activePartyArtifactSets.length > 0 ? (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            {activePartyArtifactSets.map(item => (
+                              <div key={item.charId} className="bg-black/25 border border-white/5 p-3 rounded-lg flex flex-col gap-1">
+                                <div className="text-[10px] font-black text-amber-400 font-mono uppercase tracking-wide flex items-center gap-1">
+                                  👤 {item.charName}
+                                </div>
+                                <div className="flex flex-col gap-1 pl-3.5 border-l border-white/10">
+                                  {item.activeSets.map((set, idx) => (
+                                    <div key={idx} className="text-[9.5px] font-mono text-slate-200">
+                                      <span className="text-amber-500 font-bold">{set.setName} ({set.pieces}-Pc):</span> {set.desc}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-[10px] text-slate-455 italic font-mono uppercase bg-black/20 p-3 rounded-lg border border-white/5 select-none">
+                            No active artifact set effects on deployed heroes. Equip 2 or 4 artifacts of the same set in Roster &rarr; Artifacts to activate.
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Artifact Set Sheet (Reference) */}
+                      <div className="border-t border-white/5 pt-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            AetheriaAudioEngine.playClick();
+                            setShowArtifactSheet(!showArtifactSheet);
+                          }}
+                          className="text-[10.5px] font-black uppercase text-amber-400 hover:text-amber-300 transition-all flex items-center gap-1.5 cursor-pointer font-mono select-none"
+                        >
+                          {showArtifactSheet ? '📖 Hide Artifact Set Sheet' : '📖 View Artifact Set Sheet'}
+                        </button>
+                        
+                        {showArtifactSheet && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3.5 animate-fadeIn">
+                            {[
+                              { 
+                                name: "Vanguard's Valor", 
+                                desc2: ARTIFACT_SETS.Vanguard.desc2pc, 
+                                desc4: ARTIFACT_SETS.Vanguard.desc4pc, 
+                                color: 'border-rose-500/20 text-rose-400 bg-rose-500/5' 
+                              },
+                              { 
+                                name: "Guardian's Grace", 
+                                desc2: ARTIFACT_SETS.Guardian.desc2pc, 
+                                desc4: ARTIFACT_SETS.Guardian.desc4pc, 
+                                color: 'border-emerald-500/20 text-emerald-400 bg-emerald-500/5' 
+                              },
+                              { 
+                                name: "Celestial Catalyst", 
+                                desc2: ARTIFACT_SETS.Celestial.desc2pc, 
+                                desc4: ARTIFACT_SETS.Celestial.desc4pc, 
+                                color: 'border-indigo-500/20 text-indigo-400 bg-indigo-500/5' 
+                              },
+                              { 
+                                name: "Chrono Attunement", 
+                                desc2: ARTIFACT_SETS.Chrono.desc2pc, 
+                                desc4: ARTIFACT_SETS.Chrono.desc4pc, 
+                                color: 'border-sky-500/20 text-sky-400 bg-sky-500/5' 
+                              }
+                            ].map(set => (
+                              <div key={set.name} className={`p-3 rounded-xl border ${set.color} text-left font-mono flex flex-col justify-between shadow-sm`}>
+                                <div className="text-[10px] font-black uppercase tracking-tight">
+                                  🛡️ {set.name}
+                                </div>
+                                <div className="text-[9px] text-slate-300 mt-2 space-y-1 leading-relaxed font-sans font-medium">
+                                  <div><span className="font-extrabold text-amber-400 font-mono">2-Pc:</span> {set.desc2}</div>
+                                  <div><span className="font-extrabold text-amber-500 font-mono">4-Pc:</span> {set.desc4}</div>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         )}
                       </div>

@@ -4041,7 +4041,7 @@ export default function CombatArena({
         {/* HARD GAME OVER FATAL SCREEN OVERLAY */}
         {isGameOver && (
           <div className="absolute inset-0 bg-[#3f0000]/80 backdrop-blur-md flex items-center justify-center z-50">
-            <div className="bg-black/90 border-2 border-red-500 rounded-xl p-8 max-w-md w-full text-center space-y-6 shadow-[0_0_50px_rgba(239,68,68,0.4)]">
+            <div className="bg-black/90 border-2 border-red-500 rounded-xl p-6 md:p-8 max-w-md w-full text-center space-y-6 shadow-[0_0_50px_rgba(239,68,68,0.4)] max-h-[90vh] overflow-y-auto scrollbar-none">
               <h3 className="text-2xl font-black text-rose-500 font-display tracking-wider uppercase">
                 💀 PARTY DEFEATED 💀
               </h3>
@@ -4125,9 +4125,16 @@ export default function CombatArena({
                     >
                       📥 Renew Matrix & Try Again
                     </button>
-                    {onBackToMenu && (
+                    {(onExitToWiki || onBackToMenu) && (
                       <button
-                        onClick={() => { AetheriaAudioEngine.playClick(); onBackToMenu(); }}
+                        onClick={() => {
+                          AetheriaAudioEngine.playClick();
+                          if (onExitToWiki) {
+                            onExitToWiki();
+                          } else {
+                            onBackToMenu?.();
+                          }
+                        }}
                         className="w-full p-2.5 bg-[#0b0f19] hover:bg-slate-900 border border-white/10 text-slate-400 text-xs rounded-lg font-black uppercase tracking-wider cursor-pointer"
                       >
                         Return to Main Deck

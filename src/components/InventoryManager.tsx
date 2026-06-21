@@ -428,7 +428,12 @@ export default function InventoryManager({
         {/* Left column selection list (Roster and Filters) */}
         <div className="bg-[#060811]/45 border border-white/10 rounded-xl p-5 space-y-5 flex flex-col justify-between">
           <div className="space-y-5">
-            <div className="w-full flex overflow-x-auto scrollbar-none whitespace-nowrap gap-1 bg-black/45 p-1 rounded-lg border border-white/10">
+            <div 
+              onWheel={(e) => {
+                e.currentTarget.scrollLeft += e.deltaY;
+              }}
+              className="w-full flex overflow-x-auto scrollbar-none whitespace-nowrap gap-1 bg-black/45 p-1 rounded-lg border border-white/10"
+            >
               <button
                 onClick={() => {
                   setActiveTab('characters');
