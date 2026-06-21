@@ -283,6 +283,8 @@ export default function CombatArena({
 
   // Level selector for test items
   const [battleStarted, setBattleStarted] = useState<boolean>(false);
+  const [activeUltCutscene, setActiveUltCutscene] = useState<any | null>(null);
+  const [isUltCutsceneActive, setIsUltCutsceneActive] = useState<boolean>(false);
   const [countdownValue, setCountdownValue] = useState<number | null>(null);
   const [pendingAction, setPendingAction] = useState<'restart' | 'home' | 'wiki' | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -489,7 +491,8 @@ export default function CombatArena({
     countdownValue: null as number | null,
     fpsLimit,
     dungeonBuffs,
-    dungeonMode
+    dungeonMode,
+    isUltCutsceneActive: false
   });
 
   // Screenshake ref
@@ -513,9 +516,10 @@ export default function CombatArena({
       countdownValue,
       fpsLimit,
       dungeonBuffs,
-      dungeonMode
+      dungeonMode,
+      isUltCutsceneActive
     };
-  }, [combatParty, activePartyIndex, isParrying, isDashing, shieldActive, shieldWeight, dimensions, timeDisordered, activeChar, isPaused, isGameOver, battleStarted, countdownValue, fpsLimit, dungeonBuffs, dungeonMode]);
+  }, [combatParty, activePartyIndex, isParrying, isDashing, shieldActive, shieldWeight, dimensions, timeDisordered, activeChar, isPaused, isGameOver, battleStarted, countdownValue, fpsLimit, dungeonBuffs, dungeonMode, isUltCutsceneActive]);
 
   // Start music loop once battle starts
   useEffect(() => {
@@ -819,6 +823,7 @@ export default function CombatArena({
         setBossHp(boss.hp);
         setBossName(boss.name);
         list.push(boss);
+        AetheriaAudioEngine.setBossFightActive(true);
       } else if (dungeonRoomType === 'elite') {
         setSpawnerPreset('elites');
         const numElites = 2 + Math.floor(dungeonRoomIdx / 4);
@@ -850,6 +855,7 @@ export default function CombatArena({
         setBossHp(boss.hp);
         setBossName(boss.name);
         list.push(boss);
+        AetheriaAudioEngine.setBossFightActive(true);
       } else {
         const themes = ['slimes', 'elites', 'mix'] as const;
         let theme: 'slimes' | 'elites' | 'mix' = 'mix';
@@ -1176,45 +1182,55 @@ export default function CombatArena({
       return;
     }
 
+    // Enter Ultimate Cutscene mode
+    setIsUltCutsceneActive(true);
+    setActiveUltCutscene(currentActiveChar);
+
     // Play SFX
     AetheriaAudioEngine.playUltimate();
 
-    const px = playerRef.current.x;
-    const py = playerRef.current.y;
-    const pColor = getElementColorHex(currentActiveChar.element);
-
-    // Massive cinematic circle lines
-    for (let i = 0; i < 70; i++) {
-       const part = new CombatParticle(px, py, pColor, 5);
-       part.vx *= 2.5;
-       part.vy *= 2.5;
-       particlesRef.current.push(part);
-    }
-
-    spawnFloatingDamageText(px, py - 70, `💥 CELESTIAL ULTIMATE: ${currentActiveChar.skills.ultimate.name}! 💥`, '#fca5a5', 18, true);
-
-    // Trigger powerful screen shake on ultimate cast!
-    if (screenShakeEnabled) {
-      shakeRef.current.intensity = 18;
-      shakeRef.current.x = (Math.random() - 0.5) * 18;
-      shakeRef.current.y = (Math.random() - 0.5) * 18;
-      setIsUiShaking(true);
-      setTimeout(() => setIsUiShaking(false), 400);
-    }
-
-    // Mega damage across all targets
-    enemiesRef.current.forEach(enemy => {
-       if (enemy.hp <= 0) return;
-       applySkillDamage(enemy, currentActiveChar.atk * currentActiveChar.skills.ultimate.damageMultiplier, currentActiveChar.element, true, false, 'ultimate');
-    });
-
-    // Absorb ultimate stats
+    // Reset energy immediately to prevent double cast
     setCombatParty(pList => pList.map((c, i) => {
       if (i === currentPartyIndex) {
         return { ...c, ultimateEnergy: 0 };
       }
       return c;
     }));
+
+    // Delay damage and visual explosion resolution by 750ms to match the cutscene duration
+    setTimeout(() => {
+      setIsUltCutsceneActive(false);
+      setActiveUltCutscene(null);
+
+      const px = playerRef.current.x;
+      const py = playerRef.current.y;
+      const pColor = getElementColorHex(currentActiveChar.element);
+
+      // Massive cinematic circle lines
+      for (let i = 0; i < 70; i++) {
+         const part = new CombatParticle(px, py, pColor, 5);
+         part.vx *= 2.5;
+         part.vy *= 2.5;
+         particlesRef.current.push(part);
+      }
+
+      spawnFloatingDamageText(px, py - 70, `💥 CELESTIAL ULTIMATE: ${currentActiveChar.skills.ultimate.name}! 💥`, '#fca5a5', 18, true);
+
+      // Trigger powerful screen shake on ultimate cast!
+      if (screenShakeEnabled) {
+        shakeRef.current.intensity = 18;
+        shakeRef.current.x = (Math.random() - 0.5) * 18;
+        shakeRef.current.y = (Math.random() - 0.5) * 18;
+        setIsUiShaking(true);
+        setTimeout(() => setIsUiShaking(false), 400);
+      }
+
+      // Mega damage across all targets
+      enemiesRef.current.forEach(enemy => {
+         if (enemy.hp <= 0) return;
+         applySkillDamage(enemy, currentActiveChar.atk * currentActiveChar.skills.ultimate.damageMultiplier, currentActiveChar.element, true, false, 'ultimate');
+      });
+    }, 750);
   };
 
   const triggerBasicAttack = () => {
@@ -1736,6 +1752,7 @@ export default function CombatArena({
         // Hero's Wit bonus on boss kill
         if (!dungeonMode) onAddItems?.('char_xp', 8);
         setBossHp(0);
+        AetheriaAudioEngine.setBossFightActive(false);
         spawnTextRef.current(enemy.x, enemy.y, `🏆 ${enemy.name.toUpperCase()} DEFEATED! 🏆`, '#f59e0b', 24, true);
       } else {
         onEarnRewards(50, 400, 15); // Standard mob payout
@@ -1796,7 +1813,8 @@ export default function CombatArena({
         isGameOver: currentIsGameOver,
         battleStarted: currentBattleStarted,
         countdownValue: currentCountdownValue,
-        fpsLimit: currentFpsLimit
+        fpsLimit: currentFpsLimit,
+        isUltCutsceneActive: currentIsUltCutsceneActive
       } = loopStateRef.current;
 
       const currentActiveChar = currentParty[currentPartyIndex] || null;
@@ -1820,7 +1838,7 @@ export default function CombatArena({
         lastFrameTime = now;
       }
 
-      if (!currentBattleStarted || currentIsPaused || currentIsGameOver || currentCountdownValue !== null) {
+      if (!currentBattleStarted || currentIsPaused || currentIsGameOver || currentCountdownValue !== null || currentIsUltCutsceneActive) {
         // Redraw current frozen state but add a beautiful overlay
         ctx.save();
         ctx.fillStyle = 'rgba(2, 6, 23, 0.05)'; // Very faint fade transition look
@@ -2967,7 +2985,10 @@ export default function CombatArena({
     };
 
     updateGameLoop();
-    return () => cancelAnimationFrame(animationId);
+    return () => {
+      cancelAnimationFrame(animationId);
+      AetheriaAudioEngine.setBossFightActive(false);
+    };
   }, []);
 
   // Keyboard binding trackers
@@ -3182,6 +3203,7 @@ export default function CombatArena({
     setWaveClearMessage(null);
     setBossHp(null);
     setBattleStarted(false);
+    AetheriaAudioEngine.setBossFightActive(false);
     
     setCombatParty(pList => pList.map(c => ({
       ...c,
@@ -3192,6 +3214,9 @@ export default function CombatArena({
     // Quick indicator float
     spawnFloatingDamageText(400, 200, 'WARFARE RESET • WAVE 1 PREPARED', '#10b981', 16, true);
   };
+
+  const bossHpPct = bossHp !== null ? bossHp / bossMaxHp : null;
+  const bossPhase = bossHpPct === null ? 1 : bossHpPct <= 0.20 ? 3 : bossHpPct <= 0.50 ? 2 : 1;
 
   const activeTheme = getElementUiTheme(activeChar?.element);
 
@@ -3710,6 +3735,132 @@ export default function CombatArena({
             </div>
           )}
         </AnimatePresence>
+
+        {/* Ultimate Cutscene Overlay */}
+        <AnimatePresence>
+          {isUltCutsceneActive && activeUltCutscene && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-slate-950/80 z-50 flex items-center justify-center pointer-events-none select-none"
+            >
+              {/* Sliding Colored Element Background Panel */}
+              <motion.div
+                initial={{ width: 0, opacity: 0 }}
+                animate={{ width: '100%', opacity: 1 }}
+                exit={{ width: 0, opacity: 0 }}
+                transition={{ type: 'spring', damping: 20, stiffness: 100 }}
+                className={`absolute h-[180px] md:h-[220px] bg-gradient-to-r ${
+                  activeUltCutscene.element === 'Pyro'
+                    ? 'from-red-600/90 via-amber-500/80 to-transparent'
+                    : activeUltCutscene.element === 'Hydro'
+                      ? 'from-blue-600/90 via-cyan-500/80 to-transparent'
+                      : activeUltCutscene.element === 'Electro'
+                        ? 'from-purple-600/90 via-fuchsia-500/80 to-transparent'
+                        : activeUltCutscene.element === 'Anemo'
+                          ? 'from-teal-600/90 via-emerald-400/80 to-transparent'
+                          : activeUltCutscene.element === 'Cryo'
+                            ? 'from-sky-500/90 via-blue-400/80 to-transparent'
+                            : activeUltCutscene.element === 'Geo'
+                              ? 'from-amber-600/90 via-yellow-500/80 to-transparent'
+                              : 'from-green-600/90 via-lime-500/80 to-transparent'
+                } border-y-2 border-white/20 flex items-center px-8 md:px-24 justify-between overflow-hidden w-full`}
+              >
+                <div className="absolute right-10 opacity-10 text-white text-8xl md:text-9xl font-black uppercase tracking-tighter select-none">
+                  {activeUltCutscene.element}
+                </div>
+
+                <div className="flex flex-col gap-1.5 md:gap-3 z-10 text-left">
+                  <motion.div
+                    initial={{ x: -100, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: 0.1, duration: 0.3 }}
+                    className="flex items-center gap-2"
+                  >
+                    <span className={`px-2 py-0.5 rounded text-[10px] md:text-xs font-black uppercase tracking-wider text-slate-950 ${
+                      activeUltCutscene.element === 'Pyro' ? 'bg-red-400' :
+                      activeUltCutscene.element === 'Hydro' ? 'bg-blue-400' :
+                      activeUltCutscene.element === 'Electro' ? 'bg-purple-400' :
+                      activeUltCutscene.element === 'Anemo' ? 'bg-teal-400' :
+                      activeUltCutscene.element === 'Cryo' ? 'bg-sky-400' :
+                      activeUltCutscene.element === 'Geo' ? 'bg-amber-400' : 'bg-green-400'
+                    }`}>
+                      {activeUltCutscene.element}
+                    </span>
+                    <span className="text-white/60 font-mono text-[10px] md:text-xs tracking-widest uppercase">Ultimate Activation</span>
+                  </motion.div>
+
+                  <motion.h1
+                    initial={{ x: -100, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: 0.15, duration: 0.35 }}
+                    className="text-3xl md:text-5xl font-black text-white uppercase tracking-tight font-display drop-shadow-md"
+                  >
+                    {activeUltCutscene.name}
+                  </motion.h1>
+
+                  <motion.p
+                    initial={{ x: -100, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: 0.2, duration: 0.4 }}
+                    className="text-amber-300 font-black font-mono text-sm md:text-lg uppercase tracking-wider"
+                  >
+                    ✦ {activeUltCutscene.skills?.ultimate?.name} ✦
+                  </motion.p>
+                </div>
+
+                <motion.div
+                  initial={{ scale: 0, rotate: -45, opacity: 0 }}
+                  animate={{ scale: 1, rotate: 0, opacity: 0.85 }}
+                  transition={{ delay: 0.1, type: 'spring', damping: 15 }}
+                  className={`w-24 h-24 md:w-36 md:h-36 rounded-full border border-white/20 flex items-center justify-center shadow-2xl relative bg-black/40 shrink-0 ${
+                    activeUltCutscene.element === 'Pyro' ? 'shadow-red-500/20' :
+                    activeUltCutscene.element === 'Hydro' ? 'shadow-blue-500/20' :
+                    activeUltCutscene.element === 'Electro' ? 'shadow-purple-500/20' :
+                    activeUltCutscene.element === 'Anemo' ? 'shadow-teal-500/20' :
+                    activeUltCutscene.element === 'Cryo' ? 'shadow-sky-500/20' :
+                    activeUltCutscene.element === 'Geo' ? 'shadow-amber-500/20' : 'shadow-green-500/20'
+                  }`}
+                >
+                  <Sparkles className={`w-12 h-12 md:w-16 md:h-16 ${
+                    activeUltCutscene.element === 'Pyro' ? 'text-red-400 animate-pulse' :
+                    activeUltCutscene.element === 'Hydro' ? 'text-blue-400 animate-pulse' :
+                    activeUltCutscene.element === 'Electro' ? 'text-purple-400 animate-pulse' :
+                    activeUltCutscene.element === 'Anemo' ? 'text-teal-400 animate-pulse' :
+                    activeUltCutscene.element === 'Cryo' ? 'text-sky-400 animate-pulse' :
+                    activeUltCutscene.element === 'Geo' ? 'text-amber-400 animate-pulse' : 'text-green-400 animate-pulse'
+                  }`} />
+                </motion.div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Boss HP Phase Arena Hazard warning overlay */}
+        {bossHp !== null && bossHp > 0 && bossPhase >= 2 && (
+          <div className="absolute inset-0 pointer-events-none z-30 flex flex-col justify-between p-4">
+            {/* Flashing Alert Banner */}
+            <div className="flex justify-center w-full mt-24">
+              {bossPhase === 2 ? (
+                <div className="bg-amber-500/90 text-slate-950 font-black px-4 py-2 rounded-full border border-amber-300 shadow-lg text-[10px] md:text-xs uppercase tracking-widest animate-pulse flex items-center gap-1.5 pointer-events-auto">
+                  <span>⚠️ WARNING: boss stage-wide hazards active ⚠️</span>
+                </div>
+              ) : (
+                <div className="bg-red-600/95 text-white font-black px-5 py-2.5 rounded-full border border-red-400 shadow-xl text-xs md:text-sm uppercase tracking-widest animate-bounce flex items-center gap-2 pointer-events-auto">
+                  <span>🚨 CRITICAL DANGER: APOCALYPSE STAGE HAREZARDS ACTIVE 🚨</span>
+                </div>
+              )}
+            </div>
+
+            {/* Screen edge vignette border */}
+            {bossPhase === 2 ? (
+              <div className="absolute inset-0 border-[8px] md:border-[16px] border-amber-500/20 shadow-[inset_0_0_50px_rgba(245,158,11,0.25)] pointer-events-none" style={{ boxSizing: 'border-box' }} />
+            ) : (
+              <div className="absolute inset-0 border-[10px] md:border-[20px] border-red-600/35 shadow-[inset_0_0_80px_rgba(220,38,38,0.45)] animate-pulse pointer-events-none" style={{ boxSizing: 'border-box' }} />
+            )}
+          </div>
+        )}
 
         {/* Game Canvas */}
         <canvas 

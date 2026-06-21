@@ -106,8 +106,20 @@ function GachaCanvasAnimation({ maxRarity }: GachaCanvasAnimationProps) {
 
     let isExploded = false;
     let frameId: number;
+    let flashFrameCount = 0;
+    let shakeFrameCount = 0;
 
     const loop = () => {
+      ctx.save();
+
+      // Screen shake translation
+      if (shakeFrameCount > 0) {
+        const shakeIntensity = (maxRarity === 5 ? 12 : maxRarity === 4 ? 7 : 3) * (shakeFrameCount / 15);
+        const dx = (Math.random() - 0.5) * 2 * shakeIntensity;
+        const dy = (Math.random() - 0.5) * 2 * shakeIntensity;
+        ctx.translate(dx, dy);
+      }
+
       ctx.clearRect(0, 0, width, height);
 
       // Background fade
@@ -166,6 +178,9 @@ function GachaCanvasAnimation({ maxRarity }: GachaCanvasAnimationProps) {
         // Check if destination reached
         if (meteor.progress >= 1.0) {
           isExploded = true;
+          flashFrameCount = 15;
+          shakeFrameCount = 15;
+          AetheriaAudioEngine.playSummonExplosion(maxRarity);
           // Spawn big explosion burst particles!
           const burstCount = maxRarity === 5 ? 120 : maxRarity === 4 ? 75 : 40;
           for (let k = 0; k < burstCount; k++) {
@@ -244,6 +259,20 @@ function GachaCanvasAnimation({ maxRarity }: GachaCanvasAnimationProps) {
         const label = maxRarity === 5 ? '★ D I V I N E   S I G N A L   A L I G N E D ★' : maxRarity === 4 ? '★ S T E L L A R   H A R M O N Y   D E T E C T E D ★' : '★ A L I G N I N G   C O S M O S ★';
         ctx.fillText(label, width / 2, height * 0.85);
         ctx.restore();
+      }
+
+      ctx.restore(); // Restore shake translation
+
+      // Draw white screen flash on top of translation
+      if (flashFrameCount > 0) {
+        const opacity = flashFrameCount / 15;
+        ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+        ctx.fillRect(0, 0, width, height);
+        flashFrameCount--;
+      }
+
+      if (shakeFrameCount > 0) {
+        shakeFrameCount--;
       }
 
       frameId = requestAnimationFrame(loop);
@@ -639,6 +668,9 @@ export default function GachaSimulator({
     setMaxRarityInPull(maxRarity);
     onUpdatePity(activeBanner.id, localPity5, localPity4, localGuaranteed5);
     setCurrentPullResults(results);
+
+    // Play the rising swoop audio sweep
+    AetheriaAudioEngine.playSummonSwoop(maxRarity);
 
     // Meteor delay triggers elegant gacha results showcase
     setTimeout(() => {
