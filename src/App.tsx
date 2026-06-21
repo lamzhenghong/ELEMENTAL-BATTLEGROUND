@@ -289,7 +289,8 @@ export default function App() {
   const [muteSfx, setMuteSfx] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  const isDungeonLocked = !devCheatsEnabled && (saveState.playerLevel || 1) < 5;
+  const isDungeonLocked = !devCheatsEnabled && (saveState.playerLevel || 1) < 10;
+  const isWishLocked = !devCheatsEnabled && (saveState.playerLevel || 1) < 5;
 
   // Fullscreen handler
   const toggleFullscreen = () => {
@@ -1761,13 +1762,13 @@ export default function App() {
                 onClick={() => {
                   AetheriaAudioEngine.playClick();
                   showInGameAlert(
-                    "Reach Player Level 5 to unlock Rogue Dungeon.",
-                    `Progress: Level ${saveState.playerLevel || 1} / 5`,
+                    "Reach Player Level 10 to unlock Rogue Dungeon.",
+                    `Progress: Level ${saveState.playerLevel || 1} / 10`,
                     "error"
                   );
                 }}
                 className="relative p-2 px-1 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all cursor-pointer bg-slate-900/30 border border-slate-800/80 text-slate-500 hover:bg-slate-900/40 hover:text-slate-450 flex flex-col md:flex-row items-center justify-center gap-1.5 flex-1 md:flex-initial"
-                title={`Unlocks at Player Level 5 (Current: Level ${saveState.playerLevel || 1}/5)`}
+                title={`Unlocks at Player Level 10 (Current: Level ${saveState.playerLevel || 1}/10)`}
               >
                 <div className="flex items-center gap-1.5">
                   <Lock className="w-3.5 h-3.5 shrink-0 text-red-500/70" />
@@ -1776,7 +1777,7 @@ export default function App() {
                 </div>
                 {/* Lock icon/overlay text */}
                 <span className="absolute -bottom-2 bg-slate-950/95 border border-red-500/20 text-red-400 text-[6px] font-mono px-1.5 py-0.5 rounded uppercase tracking-tighter whitespace-nowrap z-10 scale-90">
-                  Unlocks at Player Level 5
+                  Unlocks at Player Level 10
                 </span>
               </button>
             ) : (
@@ -1798,22 +1799,48 @@ export default function App() {
               </button>
             )}
 
-            <button
-              onClick={() => {
-                setActiveScreen('wish');
-                AetheriaAudioEngine.playClick();
-              }}
-              className={`p-2 px-1 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 flex-1 md:flex-initial cursor-pointer ${
-                activeScreen === 'wish'
-                  ? 'bg-sky-400 text-slate-950 shadow-[0_0_15px_rgba(52,211,153,0.35)] font-black'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-black'
-              }`}
-              id="dash_screen_wish"
-            >
-              <Sparkles className="w-3.5 h-3.5 shrink-0 text-slate-955 text-slate-950" />
-              <span className="hidden md:inline">{t('celestial_summons', language)}</span>
-              <span className="md:hidden">Wish</span>
-            </button>
+            {isWishLocked ? (
+              <button
+                type="button"
+                onClick={() => {
+                  AetheriaAudioEngine.playClick();
+                  showInGameAlert(
+                    "Reach Player Level 5 to unlock Celestial Summons.",
+                    `Progress: Level ${saveState.playerLevel || 1} / 5`,
+                    "error"
+                  );
+                }}
+                className="relative p-2 px-1 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all cursor-pointer bg-slate-900/30 border border-slate-800/80 text-slate-500 hover:bg-slate-900/40 hover:text-slate-450 flex flex-col md:flex-row items-center justify-center gap-1.5 flex-1 md:flex-initial"
+                title={`Unlocks at Player Level 5 (Current: Level ${saveState.playerLevel || 1}/5)`}
+              >
+                <div className="flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 shrink-0 text-red-500/70" />
+                  <span className="hidden md:inline">{t('celestial_summons', language)}</span>
+                  <span className="md:hidden">Wish</span>
+                </div>
+                {/* Lock icon/overlay text */}
+                <span className="absolute -bottom-2 bg-slate-950/95 border border-red-500/20 text-red-400 text-[6px] font-mono px-1.5 py-0.5 rounded uppercase tracking-tighter whitespace-nowrap z-10 scale-90">
+                  Unlocks at Player Level 5
+                </span>
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  setActiveScreen('wish');
+                  AetheriaAudioEngine.playClick();
+                }}
+                className={`p-2 px-1 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 flex-1 md:flex-initial cursor-pointer ${
+                  activeScreen === 'wish'
+                    ? 'bg-sky-400 text-slate-950 shadow-[0_0_15px_rgba(52,211,153,0.35)] font-black'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-black'
+                }`}
+                id="dash_screen_wish"
+              >
+                <Sparkles className="w-3.5 h-3.5 shrink-0 text-slate-955 text-slate-950" />
+                <span className="hidden md:inline">{t('celestial_summons', language)}</span>
+                <span className="md:hidden">Wish</span>
+              </button>
+            )}
 
             <button
               onClick={() => {
