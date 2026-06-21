@@ -211,11 +211,20 @@ export default function App() {
   // Default to Main Menu as requested: 'menu'
   const [activeScreen, setActiveScreen] = useState<'menu' | 'wiki' | 'arena' | 'wish' | 'inventory' | 'quest' | 'dungeon' | 'party' | 'story'>('menu');
   const [isFirstLoad, setIsFirstLoad] = useState<boolean>(true);
+  const [loadProgress, setLoadProgress] = useState<number>(0);
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsFirstLoad(false);
-    }, 1800);
-    return () => clearTimeout(timer);
+    const start = Date.now();
+    const duration = 1800;
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - start;
+      const progress = Math.min(100, Math.floor((elapsed / duration) * 100));
+      setLoadProgress(progress);
+      if (progress >= 100) {
+        clearInterval(interval);
+        setIsFirstLoad(false);
+      }
+    }, 25);
+    return () => clearInterval(interval);
   }, []);
   const [storyBattleActive, setStoryBattleActive] = useState<boolean>(false);
   const [storyBattleConfig, setStoryBattleConfig] = useState<{
@@ -2200,17 +2209,60 @@ export default function App() {
               initial={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.8, ease: 'easeInOut' }}
-              className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-black/40 backdrop-blur-2xl animate-fade-in"
+              className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-slate-950/85 backdrop-blur-2xl animate-fade-in"
             >
-              <div className="flex flex-col items-center gap-4 text-center select-none font-mono">
-                <span className="w-12 h-12 rounded-full border-4 border-indigo-500/20 border-t-indigo-400 animate-spin mb-2" />
-                <div className="flex flex-row items-center justify-center gap-3 md:gap-4 flex-wrap text-white drop-shadow-[0_0_20px_rgba(129,140,248,0.6)] animate-pulse">
-                  <h1 className="text-2xl md:text-4xl font-black uppercase tracking-[0.2em] pl-[0.2em]">
-                    LOADING...
-                  </h1>
-                  <span className="text-xs md:text-sm font-bold uppercase tracking-[0.2em] pl-[0.2em] text-slate-400">
-                    PLEASE WAIT
-                  </span>
+              <div className="flex flex-col items-center gap-6 text-center select-none max-w-sm px-6">
+                {/* Rotating detailed magic circle */}
+                <div className="relative w-28 h-28 flex items-center justify-center">
+                  <svg className="absolute w-full h-full text-indigo-500/30 animate-spin-slow" viewBox="0 0 100 100" style={{ animationDuration: '10s' }}>
+                    <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="3 3" />
+                  </svg>
+                  <svg className="absolute w-full h-full text-indigo-400/60 animate-spin-slow" viewBox="0 0 100 100" style={{ animationDuration: '6s', animationDirection: 'reverse' }}>
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray="15 8" />
+                  </svg>
+                  <svg className="absolute w-full h-full text-pink-400 drop-shadow-[0_0_12px_rgba(244,114,182,0.6)] animate-spin-slow" viewBox="0 0 100 100" style={{ animationDuration: '4s' }}>
+                    {/* Inner elemental geometric star (heptagram / double triangle) */}
+                    <path d="M 50,18 L 78,74 L 22,74 Z" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.75" />
+                    <path d="M 50,82 L 78,26 L 22,26 Z" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.75" />
+                    <circle cx="50" cy="50" r="32" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="50 5" opacity="0.5" />
+                  </svg>
+                  {/* Central glowing core node */}
+                  <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-indigo-500 to-pink-500 animate-pulse shadow-[0_0_20px_rgba(129,140,248,0.8)] z-10" />
+                </div>
+
+                <div className="space-y-4 w-full">
+                  {/* Dynamic Status Text */}
+                  <div className="h-6 flex items-center justify-center">
+                    <p className="text-[10px] sm:text-xs font-black uppercase tracking-[0.25em] pl-[0.25em] text-indigo-300 drop-shadow-[0_0_10px_rgba(129,140,248,0.4)] animate-pulse font-mono">
+                      {loadProgress < 15 && "🌌 INITIALIZING AETHER CORE..."}
+                      {loadProgress >= 15 && loadProgress < 30 && "🔥 SYNCING PYRO REGISTERS..."}
+                      {loadProgress >= 30 && loadProgress < 45 && "💧 STABILIZING HYDRO CATALYST..."}
+                      {loadProgress >= 45 && loadProgress < 60 && "⚡ CHARGING ELECTRO CHANNELS..."}
+                      {loadProgress >= 60 && loadProgress < 75 && "🍃 ALIGNING ANEMO VORTEX..."}
+                      {loadProgress >= 75 && loadProgress < 90 && "❄️ CONDENSING CRYO MATRIX..."}
+                      {loadProgress >= 90 && "✨ ALIGNING LEYLINES..."}
+                    </p>
+                  </div>
+
+                  {/* High quality glowing progress bar */}
+                  <div className="relative w-64 mx-auto">
+                    <div className="w-full h-1.5 bg-slate-900 border border-white/5 rounded-full overflow-hidden p-[1px]">
+                      <div 
+                        className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full transition-all duration-150 ease-out shadow-[0_0_12px_rgba(168,85,247,0.7)]"
+                        style={{ width: `${loadProgress}%` }}
+                      />
+                    </div>
+                    {/* Glowing end node tip */}
+                    <div 
+                      className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow-[0_0_10px_#fff,0_0_20px_#a855f7] transition-all duration-150 ease-out pointer-events-none"
+                      style={{ left: `calc(${loadProgress}% - 6px)` }}
+                    />
+                  </div>
+
+                  {/* Percentage counter */}
+                  <div className="text-[9px] font-bold tracking-[0.3em] pl-[0.3em] text-slate-400 font-mono">
+                    CONNECTING MATRIX {loadProgress}%
+                  </div>
                 </div>
               </div>
             </motion.div>

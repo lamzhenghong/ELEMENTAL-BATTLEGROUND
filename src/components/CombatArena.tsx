@@ -81,27 +81,6 @@ interface FloatingDamageTextDOMProps {
 }
 
 function FloatingDamageTextDOM({ t }: FloatingDamageTextDOMProps) {
-  const particles = useMemo(() => {
-    if (!t.skin || t.skin === 'Default') return [];
-    const list: any[] = [];
-    // Lower count to reduce DOM nodes and layout costs, especially on mobile
-    const count = t.isCrit ? 3 : 1;
-    for (let i = 0; i < count; i++) {
-      const angle = (Math.PI * 2 / count) * i + (Math.random() * 0.4 - 0.2);
-      const dist = Math.random() * 12 + 8;
-      const x = Math.cos(angle) * dist;
-      const y = Math.sin(angle) * dist;
-      list.push({
-        id: i,
-        x,
-        y,
-        delay: Math.random() * 0.15,
-        scale: Math.random() * 0.3 + 0.85
-      });
-    }
-    return list;
-  }, [t.id, t.skin, t.isCrit]);
-
   let skinStyle: React.CSSProperties = {
     position: 'absolute',
     color: t.color,
@@ -146,66 +125,6 @@ function FloatingDamageTextDOM({ t }: FloatingDamageTextDOMProps) {
       skinStyle.textShadow = '0 2px 4px rgba(0,0,0,0.95)';
   }
 
-  const renderParticles = () => {
-    if (!t.skin || t.skin === 'Default') return null;
-    return particles.map(p => {
-      let content = '';
-      let className = '';
-      let style: React.CSSProperties = {
-        left: `calc(50% + ${p.x}px)`,
-        top: `calc(50% + ${p.y}px)`,
-        transform: `translate(-50%, -50%) scale(${p.scale})`,
-        animationDelay: `${p.delay}s`,
-        fontSize: '10px'
-      };
-
-      if (t.skin === 'Flame') {
-        content = Math.random() > 0.5 ? '🔥' : '🔸';
-        className = 'particle-flame';
-      } else if (t.skin === 'Electro') {
-        content = Math.random() > 0.5 ? '⚡' : '✨';
-        className = 'particle-electro';
-        style = {
-          ...style,
-          '--x': `${p.x * 1.5}px`,
-          '--y': `${p.y * 1.5}px`,
-          '--x2': `${p.x * 2.2}px`,
-          '--y2': `${p.y * 2.2}px`
-        } as any;
-      } else if (t.skin === 'Ice') {
-        content = Math.random() > 0.5 ? '❄️' : '🔹';
-        className = 'particle-ice';
-        style = {
-          ...style,
-          '--mx': `${p.x * 0.8}px`
-        } as any;
-      } else if (t.skin === 'Void') {
-        className = 'particle-void';
-        style = {
-          ...style,
-          width: '6px',
-          height: '6px'
-        };
-      } else if (t.skin === 'Dragon') {
-        content = Math.random() > 0.6 ? '🐉' : '💨';
-        className = 'particle-dragon';
-      } else if (t.skin === 'Celestial') {
-        content = Math.random() > 0.5 ? '✦' : '★';
-        className = 'particle-celestial';
-      }
-
-      return (
-        <span 
-          key={p.id} 
-          className={className} 
-          style={style}
-        >
-          {content}
-        </span>
-      );
-    });
-  };
-
   return (
     <div
       style={{
@@ -240,8 +159,6 @@ function FloatingDamageTextDOM({ t }: FloatingDamageTextDOMProps) {
           )}
           
           <span>{t.text}</span>
-          
-          {renderParticles()}
         </div>
       </motion.div>
     </div>
@@ -633,6 +550,34 @@ export default function CombatArena({
     if (isCrit && activeDamageSkin === 'Celestial') {
       setCelestialFlash(true);
       setTimeout(() => setCelestialFlash(false), 160);
+    }
+
+    // Spawn gorgeous visual skin-specific particles directly on the canvas!
+    if (activeDamageSkin && activeDamageSkin !== 'Default') {
+      const count = isCrit ? 4 : 2;
+      for (let i = 0; i < count; i++) {
+        let pColor = color;
+        let pRadius = isCrit ? 4.5 : 2.5;
+        if (activeDamageSkin === 'Flame') {
+          pColor = Math.random() > 0.5 ? '#f97316' : '#ef4444'; // Orange/Red
+        } else if (activeDamageSkin === 'Electro') {
+          pColor = Math.random() > 0.5 ? '#c084fc' : '#a855f7'; // Purple/Indigo
+        } else if (activeDamageSkin === 'Ice') {
+          pColor = Math.random() > 0.5 ? '#38bdf8' : '#e0f2fe'; // Blue/Cyan
+        } else if (activeDamageSkin === 'Void') {
+          pColor = Math.random() > 0.5 ? '#d946ef' : '#1e1b4b'; // Abyssal
+        } else if (activeDamageSkin === 'Dragon') {
+          pColor = Math.random() > 0.5 ? '#dc2626' : '#facc15'; // Fiery red/gold
+        } else if (activeDamageSkin === 'Celestial') {
+          pColor = Math.random() > 0.5 ? '#fde047' : '#ffffff'; // Gold/white
+        }
+        
+        // Target particles to spawn at impact world coordinate (x, y)
+        const particle = new CombatParticle(x, y, pColor, pRadius);
+        particle.vx = (Math.random() - 0.5) * 5;
+        particle.vy = (Math.random() - 0.5) * 5 - 2; // Drift upwards
+        particlesRef.current.push(particle);
+      }
     }
 
     setDomDamageTexts(prev => [
