@@ -27,6 +27,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AetheriaAudioEngine } from './utils/audio';
 import mainMenuBg from '../assets/main_menu_bg.png';
 import gameLogoImg from '../assets/game_logo.png';
+import StoryMode from './components/StoryMode';
+import StoryCutscene from './components/StoryCutscene';
+import { getStageSpec, getStageDialogue } from './data/storyStages';
 
 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
@@ -97,6 +100,16 @@ const INITIAL_SAVE_STATE: SaveState = {
     totalMoraEarned: 30000,
     totalGemsEarned: 1600,
     highScoreRogueRoom: 0
+  },
+  storyProgress: {
+    currentChapter: 1,
+    currentStage: '1-1',
+    completedStages: [],
+    starRatings: {},
+    unlockedLoreEntries: [],
+    completedCharacterStoryActs: {},
+    hardModeUnlockedChapters: [],
+    hardModeCompletedStages: []
   }
 };
 
@@ -183,7 +196,16 @@ export default function App() {
     return basePlayTimeRef.current + Math.floor((Date.now() - sessionStartRef.current) / 1000);
   }, []);
   // Default to Main Menu as requested: 'menu'
-  const [activeScreen, setActiveScreen] = useState<'menu' | 'wiki' | 'arena' | 'wish' | 'inventory' | 'quest' | 'dungeon' | 'party'>('menu');
+  const [activeScreen, setActiveScreen] = useState<'menu' | 'wiki' | 'arena' | 'wish' | 'inventory' | 'quest' | 'dungeon' | 'party' | 'story'>('menu');
+  const [storyBattleActive, setStoryBattleActive] = useState<boolean>(false);
+  const [storyBattleConfig, setStoryBattleConfig] = useState<{
+    stageId: string;
+    isHardMode: boolean;
+    isCharStory: boolean;
+    charId?: string;
+    act?: number;
+  }>({ stageId: '1-1', isHardMode: false, isCharStory: false });
+  const [activeCutsceneSlides, setActiveCutsceneSlides] = useState<any[] | null>(null);
   const [pullHistory, setPullHistory] = useState<{ name: string; rarity: number; time: string }[]>([]);
   
   const [bgmVolume, setBgmVolume] = useState<number>(100);
@@ -477,6 +499,10 @@ export default function App() {
           characterEquippedWeapon: {
             ...defaultState.characterEquippedWeapon,
             ...(parsed.characterEquippedWeapon || {})
+          },
+          storyProgress: {
+            ...defaultState.storyProgress,
+            ...(parsed.storyProgress || {})
           }
         };
 
@@ -914,24 +940,236 @@ export default function App() {
     };
   };
 
+  const handleStartStoryBattle = (config: { stageId: string; isHardMode: boolean; isCharStory: boolean; charId?: string; act?: number }) => {
+    setStoryBattleConfig(config);
+    setStoryBattleActive(true);
+  };
+
+  const handleStoryBattleEnd = (victory: boolean, stats: { stars: number; hp: Record<string, number>; ult: Record<string, number>; duration: number; deaths: number }) => {
+    setStoryBattleActive(false);
+    if (!victory) {
+      showInGameAlert("Story Battle Defeated!", "Adjust your party elements, upgrade character levels, or forge better weapons to try again!", "error");
+      return;
+    }
+
+    const stageId = storyBattleConfig.stageId;
+    const isHardMode = storyBattleConfig.isHardMode;
+    const isCharStory = storyBattleConfig.isCharStory;
+
+    triggerSaveUpdate(prev => {
+      const progress = prev.storyProgress || {
+        currentChapter: 1,
+        currentStage: '1-1',
+        completedStages: [],
+        starRatings: {},
+        unlockedLoreEntries: [],
+        completedCharacterStoryActs: {},
+        hardModeUnlockedChapters: [],
+        hardModeCompletedStages: []
+      };
+
+      let nextCompletedStages = [...progress.completedStages];
+      let nextHardCompletedStages = [...(progress.hardModeCompletedStages || [])];
+      let nextUnlockedLoreEntries = [...progress.unlockedLoreEntries];
+      let nextCompletedCharacterStoryActs = { ...progress.completedCharacterStoryActs };
+      let nextCharacterPortraits = { ...(prev.characterPortraits || {}) };
+      
+      let nextGems = prev.aetherGems;
+      let nextMora = prev.mora;
+      let nextInventoryItems = [...prev.inventoryItems];
+
+      const prevStars = progress.starRatings[stageId] || 0;
+      const nextStarRatings = {
+        ...progress.starRatings,
+        [stageId]: Math.max(prevStars, stats.stars)
+      };
+
+      if (isCharStory) {
+        const charId = storyBattleConfig.charId!;
+        const act = storyBattleConfig.act!;
+        const actPrev = nextCompletedCharacterStoryActs[charId] || 0;
+        if (actPrev < act) {
+          const gemReward = act === 1 ? 200 : act === 2 ? 400 : 600;
+          nextGems += gemReward;
+          nextCompletedCharacterStoryActs[charId] = act;
+          nextCharacterPortraits[charId] = Math.min(6, (nextCharacterPortraits[charId] || 0) + 1);
+          const loreKey = `${charId}_act_${act}_clear`;
+          if (!nextUnlockedLoreEntries.includes(loreKey)) {
+            nextUnlockedLoreEntries.push(loreKey);
+          }
+        }
+      } else {
+        const [chapStr, stageStr] = stageId.split('-');
+        const chapterNum = parseInt(chapStr);
+        const stageNum = parseInt(stageStr);
+
+        const spec = getStageSpec(stageId);
+        const isFirstClear = !progress.completedStages.includes(stageId);
+        const isFirstHardClear = isHardMode && !progress.hardModeCompletedStages?.includes(stageId);
+
+        if (isHardMode) {
+          if (!nextHardCompletedStages.includes(stageId)) {
+            nextHardCompletedStages.push(stageId);
+            if (isFirstHardClear) {
+              nextMora += spec.firstClearRewards.mora * 2;
+              nextInventoryItems = nextInventoryItems.map(item =>
+                item.type === 'char_xp' ? { ...item, count: item.count + spec.firstClearRewards.charXp * 2 } : item
+              );
+            }
+          }
+        } else {
+          if (!nextCompletedStages.includes(stageId)) {
+            nextCompletedStages.push(stageId);
+            if (isFirstClear) {
+              nextGems += spec.firstClearRewards.gems;
+              nextMora += spec.firstClearRewards.mora;
+              nextInventoryItems = nextInventoryItems.map(item =>
+                item.type === 'char_xp' ? { ...item, count: item.count + spec.firstClearRewards.charXp } : item
+              );
+              if (spec.firstClearRewards.ascensionMaterialCount) {
+                nextInventoryItems = nextInventoryItems.map(item =>
+                  item.type === 'ascension' ? { ...item, count: item.count + spec.firstClearRewards.ascensionMaterialCount! } : item
+                );
+              }
+            }
+          }
+
+          if (stageNum === 5) {
+            const nextChapterNum = Math.min(10, chapterNum + 1);
+            progress.currentStage = `${nextChapterNum}-1`;
+            progress.currentChapter = nextChapterNum;
+            const chapClearKey = `chapter-${chapterNum}-clear`;
+            if (!nextUnlockedLoreEntries.includes(chapClearKey)) {
+              nextUnlockedLoreEntries.push(chapClearKey);
+            }
+          } else {
+            progress.currentStage = `${chapterNum}-${stageNum + 1}`;
+          }
+        }
+      }
+
+      let updatedState: SaveState = {
+        ...prev,
+        aetherGems: nextGems,
+        mora: nextMora,
+        inventoryItems: nextInventoryItems,
+        characterPortraits: nextCharacterPortraits,
+        storyProgress: {
+          ...progress,
+          completedStages: nextCompletedStages,
+          hardModeCompletedStages: nextHardCompletedStages,
+          starRatings: nextStarRatings,
+          unlockedLoreEntries: nextUnlockedLoreEntries,
+          completedCharacterStoryActs: nextCompletedCharacterStoryActs
+        }
+      };
+
+      const totalClearedChapters = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].filter(c => {
+        return [1, 2, 3, 4, 5].every(s => nextCompletedStages.includes(`${c}-${s}`));
+      }).length;
+
+      const totalStarsCount = (Object.values(nextStarRatings) as number[]).reduce((sum, v) => sum + v, 0);
+
+      updatedState = checkQuestProgress(updatedState, 'story_clear_chapter', totalClearedChapters);
+      updatedState = checkQuestProgress(updatedState, 'story_earn_stars', totalStarsCount);
+      if (stageId === '3-5') {
+        updatedState = checkQuestProgress(updatedState, 'story_defeat_boss', 1);
+      }
+
+      return updatedState;
+    });
+
+    const dialogue = getStageDialogue(stageId);
+    if (dialogue && dialogue.after && dialogue.after.length > 0) {
+      setActiveCutsceneSlides(dialogue.after);
+    } else {
+      showInGameAlert("Victory!", "Story battle resolved successfully. Spent drops added to inventory!", "success");
+    }
+  };
+
   // Claim specific finished Quest rewards
   const claimQuestReward = (questId: string) => {
     const quest = saveState.activeQuests.find(q => q.id === questId);
     if (!quest || !quest.completed) return;
 
     triggerSaveUpdate(prev => {
-      // Kill/boss/parry/reaction quests also reward Hero's Wit books
+      let nextGems = prev.aetherGems + quest.rewardTokens;
+      let nextMora = prev.mora + quest.rewardMora;
+      
       const witBonus = (['kill_enemy','kill_boss','parry','reaction'].includes(quest.type)) ? 3 : 0;
-      return {
+      let nextInventoryItems = prev.inventoryItems.map(item =>
+        item.type === 'char_xp' ? { ...item, count: item.count + witBonus } : item
+      );
+
+      let nextUnlockedCharacterIds = [...prev.unlockedCharacterIds];
+      let nextCharacterLevels = { ...prev.characterLevels };
+      let nextCharacterPortraits = { ...(prev.characterPortraits || {}) };
+      let nextCharacterHp = { ...prev.characterHp };
+      let nextCharacterEquippedWeapon = { ...prev.characterEquippedWeapon };
+      let nextPartyIds = [...prev.partyIds];
+      let nextInventoryWeapons = [...prev.inventoryWeapons];
+
+      if (quest.rewardWeaponName) {
+        const weaponId = 'quest_w_' + Date.now();
+        const weaponObj: Weapon = {
+          id: weaponId,
+          name: quest.rewardWeaponName,
+          rarity: 4,
+          weaponType: 'Sword',
+          baseAtk: 42,
+          statBonus: 'ATK +6%',
+          level: 1
+        };
+        if (quest.rewardWeaponName.includes('Claymore')) weaponObj.weaponType = 'Claymore';
+        else if (quest.rewardWeaponName.includes('Bow')) weaponObj.weaponType = 'Bow';
+        else if (quest.rewardWeaponName.includes('Catalyst')) weaponObj.weaponType = 'Catalyst';
+        else if (quest.rewardWeaponName.includes('Polearm')) weaponObj.weaponType = 'Polearm';
+        nextInventoryWeapons.push(weaponObj);
+      }
+
+      if (quest.rewardCharacterId) {
+        const id = quest.rewardCharacterId;
+        if (nextUnlockedCharacterIds.includes(id)) {
+          nextCharacterPortraits[id] = Math.min(6, (nextCharacterPortraits[id] || 0) + 1);
+          nextInventoryItems = nextInventoryItems.map(i => i.type === 'char_xp' ? { ...i, count: i.count + 5 } : i);
+          nextMora += 2000;
+        } else {
+          const charTemplate = PLAYABLE_CHARACTERS.find(c => c.id === id);
+          const defaultWeaponId = (() => {
+            if (!charTemplate) return 'start_w_1';
+            if (charTemplate.weaponType === 'Claymore') return 'start_w_2';
+            if (charTemplate.weaponType === 'Bow') return 'start_w_3';
+            if (charTemplate.weaponType === 'Catalyst') return 'start_w_4';
+            if (charTemplate.weaponType === 'Polearm') return 'start_w_5';
+            return 'start_w_1';
+          })();
+          nextUnlockedCharacterIds.push(id);
+          nextCharacterLevels[id] = 1;
+          nextCharacterPortraits[id] = 0;
+          nextCharacterHp[id] = charTemplate?.baseStats.hp || 1000;
+          nextCharacterEquippedWeapon[id] = defaultWeaponId;
+          if (nextPartyIds.length < 4) nextPartyIds.push(id);
+        }
+      }
+
+      let nextState: SaveState = {
         ...prev,
-        aetherGems: prev.aetherGems + quest.rewardTokens,
-        mora: prev.mora + quest.rewardMora,
-        inventoryItems: prev.inventoryItems.map(item =>
-          item.type === 'char_xp' ? { ...item, count: item.count + witBonus } : item
-        ),
+        aetherGems: nextGems,
+        mora: nextMora,
+        inventoryItems: nextInventoryItems,
+        unlockedCharacterIds: nextUnlockedCharacterIds,
+        characterLevels: nextCharacterLevels,
+        characterPortraits: nextCharacterPortraits,
+        characterHp: nextCharacterHp,
+        characterEquippedWeapon: nextCharacterEquippedWeapon,
+        partyIds: nextPartyIds,
+        inventoryWeapons: nextInventoryWeapons,
         activeQuests: prev.activeQuests.filter(q => q.id !== questId),
         completedQuestIds: [...prev.completedQuestIds, questId]
       };
+
+      nextState = checkQuestProgress(nextState, 'own_chars', nextState.unlockedCharacterIds.length);
+      return nextState;
     });
 
     const quest2 = saveState.activeQuests.find(q => q.id === questId);
@@ -1396,6 +1634,18 @@ export default function App() {
 
             <button
               onClick={() => {
+                setActiveScreen('story');
+                AetheriaAudioEngine.resume();
+                AetheriaAudioEngine.playClick();
+              }}
+              className="py-3.5 bg-indigo-650 hover:bg-indigo-550 text-white font-black text-xs uppercase tracking-widest rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2 hover:scale-105 active:scale-95"
+            >
+              <BookOpen className="w-4 h-4 text-white" />
+              <span>📖 STORY MODE</span>
+            </button>
+
+            <button
+              onClick={() => {
                 setShowCreditsModal(true);
                 AetheriaAudioEngine.playClick();
               }}
@@ -1741,6 +1991,23 @@ export default function App() {
 
             <button
               onClick={() => {
+                setActiveScreen('story');
+                AetheriaAudioEngine.playClick();
+              }}
+              className={`p-2 px-1 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 flex-1 md:flex-initial cursor-pointer ${
+                activeScreen === 'story'
+                  ? 'bg-indigo-600 text-white shadow-[0_0_15px_rgba(99,102,241,0.35)] font-black'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-black'
+              }`}
+              id="dash_screen_story"
+            >
+              <BookOpen className="w-3.5 h-3.5 shrink-0 text-slate-950" />
+              <span className="hidden md:inline">Story Campaign</span>
+              <span className="md:hidden">Story</span>
+            </button>
+
+            <button
+              onClick={() => {
                 setActiveScreen('arena');
                 AetheriaAudioEngine.playClick();
               }}
@@ -1909,6 +2176,8 @@ export default function App() {
                     characterPortraits={saveState.characterPortraits || {}}
                     inventoryWeapons={saveState.inventoryWeapons || []}
                     language={language}
+                    unlockedLoreEntries={saveState.storyProgress?.unlockedLoreEntries || []}
+                    completedCharacterStoryActs={saveState.storyProgress?.completedCharacterStoryActs || {}}
                   />
                 </motion.div>
               )}
@@ -2386,6 +2655,26 @@ export default function App() {
                   </div>
                 </motion.div>
               )}
+
+              {activeScreen === 'story' && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.98 }}
+                  transition={{ duration: 0.15 }}
+                  key="story_scr"
+                >
+                  <StoryMode
+                    saveState={saveState}
+                    onModifyCurrencies={handleModifyCurrencies}
+                    onAddItems={handleAddItems}
+                    onUpdateSaveState={triggerSaveUpdate}
+                    onStartStoryBattle={handleStartStoryBattle}
+                    devCheatsEnabled={devCheatsEnabled}
+                    onShowAlert={showInGameAlert}
+                  />
+                </motion.div>
+              )}
             </AnimatePresence>
           </div>
         </div>
@@ -2847,6 +3136,52 @@ export default function App() {
         isOpen={showReactionsModal}
         onClose={() => setShowReactionsModal(false)}
       />
+
+      {/* STORY MODE BATTLE ARENA OVERLAY */}
+      {storyBattleActive && (
+        <motion.div
+          className="fixed inset-0 z-50 w-screen h-screen bg-slate-950 overflow-hidden flex flex-col min-h-0"
+          key="story_battle_arena"
+        >
+          <CombatArena
+            partyIds={saveState.partyIds}
+            onChangeParty={(partyIds) => triggerSaveUpdate(p => ({ ...p, partyIds }))}
+            onEarnRewards={(gems, mora, exp) => handleModifyCurrencies(gems, mora, exp)}
+            onIncrementStat={(pk) => handleIncrementStat(pk)}
+            ownedCharacterIds={saveState.unlockedCharacterIds || []}
+            characterLevels={saveState.characterLevels}
+            characterEquippedWeapon={saveState.characterEquippedWeapon}
+            inventoryWeapons={saveState.inventoryWeapons}
+            characterPortraits={saveState.characterPortraits || {}}
+            onBackToMenu={() => setStoryBattleActive(false)}
+            onExitToWiki={() => setStoryBattleActive(false)}
+            onAddItems={handleAddItems}
+            devCheatsEnabled={devCheatsEnabled}
+            screenShakeEnabled={screenShakeEnabled}
+            combatSpeed={combatSpeed}
+            fpsLimit={fpsLimit}
+            language={language}
+            storyMode={true}
+            storyStageId={storyBattleConfig.stageId}
+            isHardMode={storyBattleConfig.isHardMode}
+            saveState={saveState}
+            onStoryBattleEnd={handleStoryBattleEnd}
+          />
+        </motion.div>
+      )}
+
+      {/* STORY POST-BATTLE DIALOGUE & CUTSCENE OVERLAY */}
+      <AnimatePresence>
+        {activeCutsceneSlides && (
+          <StoryCutscene
+            slides={activeCutsceneSlides}
+            onComplete={() => {
+              setActiveCutsceneSlides(null);
+              showInGameAlert("Victory!", "Story battle resolved successfully. Spent drops added to inventory!", "success");
+            }}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Developer Mode Active floating badge */}
       {devCheatsEnabled && (

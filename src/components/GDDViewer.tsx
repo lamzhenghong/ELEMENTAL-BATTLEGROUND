@@ -67,6 +67,8 @@ interface GDDViewerProps {
   characterPortraits?: Record<string, number>;
   inventoryWeapons?: Weapon[];
   language?: LanguageType;
+  unlockedLoreEntries?: string[];
+  completedCharacterStoryActs?: Record<string, number>;
 }
 
 export default function GDDViewer({ 
@@ -74,7 +76,9 @@ export default function GDDViewer({
   ownedCharacterIds, 
   characterPortraits = {}, 
   inventoryWeapons = [], 
-  language = 'en' 
+  language = 'en',
+  unlockedLoreEntries = [],
+  completedCharacterStoryActs = {}
 }: GDDViewerProps) {
   const [activeTab, setActiveTab] = useState<'lore' | 'nations' | 'characters' | 'weapons' | 'systems' | 'tutorial'>('lore');
   const [selectedCharacterId, setSelectedCharacterId] = useState<string>(PLAYABLE_CHARACTERS[0].id);
@@ -217,6 +221,42 @@ export default function GDDViewer({
                       ))}
                     </div>
                   </div>
+
+                  {/* Unlocked Campaign Lore Chronicles */}
+                  {unlockedLoreEntries && unlockedLoreEntries.length > 0 && (
+                    <div className="p-5 bg-slate-950/60 border border-amber-500/25 rounded-xl space-y-4">
+                      <h4 className="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                        <span className="w-1.5 h-3 bg-amber-500 rounded-full"></span>
+                        📖 Unlocked Campaign Chronicles ({unlockedLoreEntries.length})
+                      </h4>
+                      <div className="grid grid-cols-1 gap-3">
+                        {unlockedLoreEntries.includes('chapter-1-clear') && (
+                          <div className="p-3.5 bg-slate-900/60 border border-slate-850 rounded-lg">
+                            <span className="font-extrabold text-amber-400 text-xs uppercase tracking-wider block">Chapter 1 Clear: Ruins Core stabilized</span>
+                            <p className="text-slate-400 text-xs mt-1.5 leading-relaxed">
+                              Defeating the Calamity Pyro Dragon stabilized the ancient ruins core. However, analysis of the core fragments reveals the anomalies were triggered intentionally by extra-dimensional core frequencies.
+                            </p>
+                          </div>
+                        )}
+                        {unlockedLoreEntries.includes('chapter-2-clear') && (
+                          <div className="p-3.5 bg-slate-900/60 border border-slate-850 rounded-lg">
+                            <span className="font-extrabold text-amber-400 text-xs uppercase tracking-wider block">Chapter 2 Clear: Overlord stabilized</span>
+                            <p className="text-slate-400 text-xs mt-1.5 leading-relaxed">
+                              With the defeat of the Glacial Frost Golem, the Frozen River shipping routes are clear. The Oracle confirms these tears act as calibrators, testing whether our party can channel elemental reactions.
+                            </p>
+                          </div>
+                        )}
+                        {unlockedLoreEntries.includes('chapter-3-clear') && (
+                          <div className="p-3.5 bg-slate-900/60 border border-slate-850 rounded-lg">
+                            <span className="font-extrabold text-emerald-400 text-xs uppercase tracking-wider block">Chapter 3 Clear: Gate Opened</span>
+                            <p className="text-slate-400 text-xs mt-1.5 leading-relaxed">
+                              Awakening and defeat of the Tempest Thunderbird dragon has restored flow to the Gates of Ancient Aetheria, unlocking access to advanced stardust summons and deep-dimensional vaults.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Technical Overview column */}
@@ -514,6 +554,45 @@ export default function GDDViewer({
                         <p className="text-xs text-slate-300 leading-relaxed bg-slate-900/60 p-3 rounded-xl border border-slate-800/50">
                           {selectedChar.backstory}
                         </p>
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Story Mission Logs</h4>
+                        <div className="space-y-2 bg-slate-900/60 p-3 rounded-xl border border-slate-800/50 text-xs text-slate-300">
+                          {(() => {
+                            const completedActs = completedCharacterStoryActs[selectedChar.id] || 0;
+                            if (completedActs === 0) {
+                              return <p className="italic text-slate-500 text-[10px]">No character story acts completed yet. Play them inside the Story Mode menu!</p>;
+                            }
+                            return (
+                              <div className="space-y-2">
+                                {completedActs >= 1 && (
+                                  <div className="border-b border-slate-800 pb-1.5">
+                                    <span className="text-[9px] font-black text-amber-400 uppercase tracking-wide">Act I Cleared: Origin Mythos</span>
+                                    <p className="text-[10px] text-slate-400 mt-0.5 leading-normal">
+                                      Unlocked secrets of {selectedChar.name}'s element alignment. Proven to excel under basic training criteria.
+                                    </p>
+                                  </div>
+                                )}
+                                {completedActs >= 2 && (
+                                  <div className="border-b border-slate-800 pb-1.5">
+                                    <span className="text-[9px] font-black text-amber-400 uppercase tracking-wide">Act II Cleared: Awakening</span>
+                                    <p className="text-[10px] text-slate-400 mt-0.5 leading-normal">
+                                      Tested against elemental hazards and ascended, gaining massive portrait stat multipliers.
+                                    </p>
+                                  </div>
+                                )}
+                                {completedActs >= 3 && (
+                                  <div>
+                                    <span className="text-[9px] font-black text-emerald-400 uppercase tracking-wide">Act III Cleared: Sovereign</span>
+                                    <p className="text-[10px] text-slate-400 mt-0.5 leading-normal">
+                                      Fully completed the dragon altars trial. Attained peak stardust connection.
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </div>
                       </div>
                     </div>
 

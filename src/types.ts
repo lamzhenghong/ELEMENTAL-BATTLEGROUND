@@ -97,13 +97,15 @@ export interface Quest {
   id: string;
   name: string;
   desc: string;
-  type: 'kill_enemy' | 'kill_boss' | 'gacha_pull' | 'level_up' | 'parry' | 'reaction' | 'mora_hoard' | 'level_weapon_high' | 'own_chars';
+  type: 'kill_enemy' | 'kill_boss' | 'gacha_pull' | 'level_up' | 'parry' | 'reaction' | 'mora_hoard' | 'level_weapon_high' | 'own_chars' | 'story_clear_chapter' | 'story_earn_stars' | 'story_defeat_boss';
   targetValue: number;
   currentValue: number;
   rewardTokens: number; // AetherGems
   rewardMora: number;
   completed: boolean;
   group?: 'daily' | 'weekly' | 'normal';
+  rewardWeaponName?: string;
+  rewardCharacterId?: string;
 }
 
 export interface InventoryItem {
@@ -113,6 +115,17 @@ export interface InventoryItem {
   type: 'weapon_xp' | 'char_xp' | 'ascension';
   rarity: 3 | 4 | 5;
   desc: string;
+}
+
+export interface StoryProgress {
+  currentChapter: number;
+  currentStage: string;
+  completedStages: string[];
+  starRatings: Record<string, number>; // stageId -> stars count (1-3)
+  unlockedLoreEntries: string[]; // unlocked lore entry IDs
+  completedCharacterStoryActs: Record<string, number>; // characterId -> completed acts (1, 2, or 3)
+  hardModeUnlockedChapters: number[]; // chapters with hard mode unlocked
+  hardModeCompletedStages: string[]; // completed hard stages
 }
 
 export interface SaveState {
@@ -137,6 +150,7 @@ export interface SaveState {
   bannerPity5Star?: Record<string, number>; // bannerId -> pity
   bannerPity4Star?: Record<string, number>; // bannerId -> pity
   bannerGuaranteed5Star?: Record<string, boolean>; // bannerId -> guaranteed next is featured
+  storyProgress?: StoryProgress;
   stats: {
     totalPulls: number;
     totalEnemiesDefeated: number;

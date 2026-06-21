@@ -609,5 +609,57 @@ export const INITIAL_50_QUESTS: GachaQuest[] = [
     rewardMora: 200000,
     completed: false,
     group: 'normal'
+  },
+  {
+    id: 'story_q_1',
+    name: '📖 Complete Chapter 1',
+    desc: 'Stabilize the ruins core and vanquish the Calamity Pyro Dragon.',
+    type: 'story_clear_chapter',
+    targetValue: 1,
+    currentValue: 0,
+    rewardTokens: 1000,
+    rewardMora: 25000,
+    completed: false,
+    group: 'normal',
+    rewardWeaponName: 'Dragonblood Greatsword (Claymore)'
+  },
+  {
+    id: 'story_q_2',
+    name: '📖 Earn 15 Stars',
+    desc: 'Earn stars across the Story Campaign by completing objectives.',
+    type: 'story_earn_stars',
+    targetValue: 15,
+    currentValue: 0,
+    rewardTokens: 1600,
+    rewardMora: 50000,
+    completed: false,
+    group: 'normal',
+    rewardCharacterId: 'ignis' // unlocks or upgrades Ignis!
+  },
+  {
+    id: 'story_q_3',
+    name: '📖 Defeat Ancient Dragon',
+    desc: 'Vanquish the Tempest Thunderbird in Chapter 3 stage 5.',
+    type: 'story_defeat_boss',
+    targetValue: 1,
+    currentValue: 0,
+    rewardTokens: 2000,
+    rewardMora: 75000,
+    completed: false,
+    group: 'normal',
+    rewardWeaponName: 'Skyward Spine (Polearm)'
+  },
+  {
+    id: 'story_q_4',
+    name: '📖 Finish Story Chapter 3',
+    desc: 'Complete all stages in Chapter 3: Ancient Aetheria.',
+    type: 'story_clear_chapter',
+    targetValue: 3,
+    currentValue: 0,
+    rewardTokens: 3200,
+    rewardMora: 100000,
+    completed: false,
+    group: 'normal',
+    rewardCharacterId: 'aurelia' // unlocks or upgrades Aurelia!
   }
 ];

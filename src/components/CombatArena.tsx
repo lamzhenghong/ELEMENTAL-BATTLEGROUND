@@ -18,6 +18,8 @@ import { getAccumulatedPortraitBuffs } from '../utils/portraits';
 import { WEAPONS_DATABASE } from '../data/weapons';
 import MobileJoystick from './MobileJoystick';
 import MobileControls from './MobileControls';
+import { getStageSpec } from '../data/storyStages';
+import StoryRewards from './StoryRewards';
 
 const WORLD_WIDTH = 2000;
 const WORLD_HEIGHT = 2000;
@@ -51,6 +53,12 @@ interface CombatArenaProps {
   dungeonRoomType?: 'battle' | 'elite' | 'boss';
   dungeonRoomIdx?: number;
   onDungeonBattleEnd?: (victory: boolean, remainingHp: Record<string, number>, remainingUlt: Record<string, number>) => void;
+  // Story Mode props
+  storyMode?: boolean;
+  storyStageId?: string;
+  isHardMode?: boolean;
+  onStoryBattleEnd?: (victory: boolean, stats: { stars: number; hp: Record<string, number>; ult: Record<string, number>; duration: number; deaths: number }) => void;
+  saveState?: any;
 }
 
 // Particle class for beautiful graphics
@@ -233,7 +241,12 @@ export default function CombatArena({
   dungeonRoomIdx = 0,
   onDungeonBattleEnd,
   onExitToWiki,
-  onAddItems
+  onAddItems,
+  storyMode = false,
+  storyStageId = '',
+  isHardMode = false,
+  onStoryBattleEnd,
+  saveState
 }: CombatArenaProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const minimapCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -356,6 +369,13 @@ export default function CombatArena({
 
   // Dungeon Mode status
   const [dungeonVictory, setDungeonVictory] = useState<boolean>(false);
+
+  // Story Mode status
+  const [storyVictory, setStoryVictory] = useState<boolean>(false);
+  const [storyStarsEarned, setStoryStarsEarned] = useState<number>(0);
+  const [storyElapsedSecs, setStoryElapsedSecs] = useState<number>(0);
+  const characterDeathsRef = useRef<number>(0);
+  const battleStartTimeRef = useRef<number | null>(null);
 
   const spawnFloatingDamageText = (x: number, y: number, text: string, color: string, size: number = 14, isCrit: boolean = false, isWorldSpace: boolean = true) => {
     const id = Math.random().toString(36).substring(2, 9);
@@ -504,6 +524,7 @@ export default function CombatArena({
     fpsLimit,
     dungeonBuffs,
     dungeonMode,
+    storyMode,
     isUltCutsceneActive: false,
     activeResonances: [] as { name: string; desc: string; key: string }[]
   });
@@ -530,10 +551,11 @@ export default function CombatArena({
       fpsLimit,
       dungeonBuffs,
       dungeonMode,
+      storyMode,
       isUltCutsceneActive,
       activeResonances
     };
-  }, [combatParty, activePartyIndex, isParrying, isDashing, shieldActive, shieldWeight, dimensions, timeDisordered, activeChar, isPaused, isGameOver, battleStarted, countdownValue, fpsLimit, dungeonBuffs, dungeonMode, isUltCutsceneActive, activeResonances]);
+  }, [combatParty, activePartyIndex, isParrying, isDashing, shieldActive, shieldWeight, dimensions, timeDisordered, activeChar, isPaused, isGameOver, battleStarted, countdownValue, fpsLimit, dungeonBuffs, dungeonMode, storyMode, isUltCutsceneActive, activeResonances]);
 
   // Start music loop once battle starts
   useEffect(() => {
@@ -828,7 +850,105 @@ export default function CombatArena({
       };
     };
 
-    if (dungeonMode && dungeonRoomType) {
+    if (storyMode && storyStageId) {
+      const spec = getStageSpec(storyStageId);
+      const recommendedLvl = isHardMode ? spec.recommendedLevel + 20 : spec.recommendedLevel;
+      const scaleMultiplier = 1 + (recommendedLvl - 1) * 0.12;
+
+      spec.enemies.forEach((enemySpec, idx) => {
+        const enemyId = `story_${storyStageId}_${idx}_${Date.now()}`;
+        if (enemySpec.type === 'Boss') {
+          setSpawnerPreset('boss');
+          const bossTpl = BOSS_TEMPLATES.find(b => b.bossType === enemySpec.bossType) || BOSS_TEMPLATES[0];
+          const hp = Math.round(bossTpl.maxHp * scaleMultiplier);
+          const boss = {
+            id: enemyId,
+            name: enemySpec.name,
+            type: 'Boss' as const,
+            bossType: bossTpl.bossType,
+            element: enemySpec.element,
+            color: bossTpl.color,
+            x: centerX,
+            y: centerY - 80,
+            radius: bossTpl.radius,
+            hp,
+            maxHp: hp,
+            speed: bossTpl.speed,
+            activeElements: [] as ElementType[],
+            telegraphTimer: 0,
+            telegraphType: 'circle' as const,
+            isFrozen: 0,
+            burningTicks: 0,
+            phase: 1,
+            attackCooldown: 0
+          };
+          setBossMaxHp(boss.maxHp);
+          setBossHp(boss.hp);
+          setBossName(boss.name);
+          list.push(boss);
+          AetheriaAudioEngine.setBossFightActive(true);
+        } else if (enemySpec.type === 'Elite') {
+          setSpawnerPreset('elites');
+          const eliteTypes = [
+            { name: 'Abyss Obsidian Berserker', element: 'Geo' as ElementType, color: '#78350f', baseHp: 3500, radius: 36, speed: 1.0, telegraphType: 'circle' as const },
+            { name: 'Abyss Cryo Channeler', element: 'Cryo' as ElementType, color: '#0284c7', baseHp: 2800, radius: 35, speed: 0.9, telegraphType: 'line' as const },
+            { name: 'Epoch Ruin Guard', element: 'Geo' as ElementType, color: '#4b5563', baseHp: 4500, radius: 40, speed: 1.1, telegraphType: 'circle' as const }
+          ];
+          const tpl = eliteTypes.find(e => e.name === enemySpec.name || e.element === enemySpec.element) || eliteTypes[0];
+          const hp = Math.round(tpl.baseHp * scaleMultiplier);
+          list.push({
+            id: enemyId,
+            name: enemySpec.name,
+            type: 'Elite' as const,
+            element: enemySpec.element,
+            color: tpl.color,
+            x: centerX + (Math.random() - 0.5) * 800,
+            y: centerY + (Math.random() - 0.5) * 800,
+            radius: tpl.radius,
+            hp,
+            maxHp: hp,
+            speed: tpl.speed,
+            activeElements: [] as ElementType[],
+            telegraphTimer: 0,
+            telegraphType: tpl.telegraphType,
+            isFrozen: 0,
+            burningTicks: 0
+          });
+        } else {
+          const elements = [
+            { element: 'Pyro' as ElementType, color: '#f97316' },
+            { element: 'Hydro' as ElementType, color: '#3b82f6' },
+            { element: 'Cryo' as ElementType, color: '#60a5fa' },
+            { element: 'Electro' as ElementType, color: '#a855f7' },
+            { element: 'Anemo' as ElementType, color: '#10b981' },
+            { element: 'Geo' as ElementType, color: '#fbbf24' },
+            { element: 'Dendro' as ElementType, color: '#22c55e' }
+          ];
+          const tpl = elements.find(e => e.element === enemySpec.element) || elements[0];
+          const baseHp = 500 + Math.random() * 200;
+          const hp = Math.round(baseHp * scaleMultiplier);
+          const speed = 1.2 + Math.random() * 0.4;
+          list.push({
+            id: enemyId,
+            name: enemySpec.name,
+            type: 'Normal' as const,
+            element: enemySpec.element,
+            color: tpl.color,
+            x: centerX + (Math.random() - 0.5) * 800,
+            y: centerY + (Math.random() - 0.5) * 800,
+            radius: 23,
+            hp,
+            maxHp: hp,
+            speed,
+            activeElements: [] as ElementType[],
+            telegraphTimer: 0,
+            isFrozen: 0,
+            burningTicks: 0
+          });
+        }
+      });
+      setBossHp(list.some(e => e.type === 'Boss') ? list.find(e => e.type === 'Boss').hp : null);
+    } else if (dungeonMode && dungeonRoomType) {
       const scaleMultiplier = 1 + dungeonRoomIdx * 0.15;
       if (dungeonRoomType === 'boss') {
         setSpawnerPreset('boss');
@@ -920,7 +1040,7 @@ export default function CombatArena({
   useEffect(() => {
     if (!battleStarted) return;
     triggerSpawnWave(1);
-  }, [battleStarted, dungeonMode, dungeonRoomType]);
+  }, [battleStarted, dungeonMode, dungeonRoomType, storyMode, storyStageId]);
 
   const swapPartyIndex = (idx: number) => {
     const { combatParty: currentParty, activePartyIndex: currentPartyIndex } = loopStateRef.current;
@@ -1799,7 +1919,19 @@ export default function CombatArena({
       // Dynamic automatic wave advancement check
       const anyAlive = enemiesRef.current.some(e => e.id !== enemy.id && e.hp > 0);
       if (!anyAlive && !waveClearMessage) {
-        if (dungeonMode) {
+        if (storyMode) {
+          const elapsed = Math.round((Date.now() - (battleStartTimeRef.current || Date.now())) / 1000);
+          let stars = 1;
+          if (characterDeathsRef.current === 0) stars++;
+          if (elapsed < 60) stars++;
+
+          setStoryStarsEarned(stars);
+          setStoryElapsedSecs(elapsed);
+          setStoryVictory(true);
+          AetheriaAudioEngine.playWaveClear();
+          AetheriaAudioEngine.setBossFightActive(false);
+          spawnTextRef.current(450, 250, '🏆 STAGE SECURED! 🏆', '#f59e0b', 22, true, false);
+        } else if (dungeonMode) {
           setDungeonVictory(true);
           AetheriaAudioEngine.playWaveClear();
           spawnTextRef.current(400, 200, '🏆 ROOM CLEANSED! 🏆', '#10b981', 20, true, false);
@@ -3126,6 +3258,9 @@ export default function CombatArena({
             revived = true;
             return { ...c, currentHp: Math.round(c.maxHp * 0.5) };
           }
+          if (nextHp <= 0) {
+            characterDeathsRef.current++;
+          }
           return { ...c, currentHp: Math.max(0, nextHp) };
         }
         return c;
@@ -3242,6 +3377,10 @@ export default function CombatArena({
     setBossHp(null);
     setBattleStarted(false);
     AetheriaAudioEngine.setBossFightActive(false);
+    setStoryVictory(false);
+    setStoryStarsEarned(0);
+    setStoryElapsedSecs(0);
+    characterDeathsRef.current = 0;
     
     setCombatParty(pList => pList.map(c => ({
       ...c,
@@ -3416,6 +3555,44 @@ export default function CombatArena({
             ))}
           </AnimatePresence>
         </div>
+
+        {/* STORY MODE STAGE CLEAR OVERLAY */}
+        {storyVictory && (
+          (() => {
+            const spec = getStageSpec(storyStageId);
+            const isFirstClear = !saveState?.storyProgress?.completedStages.includes(storyStageId);
+            const gemsReward = isHardMode ? 0 : spec.firstClearRewards.gems;
+            const moraReward = isHardMode ? spec.firstClearRewards.mora * 2 : spec.firstClearRewards.mora;
+            const charXpReward = isHardMode ? spec.firstClearRewards.charXp * 2 : spec.firstClearRewards.charXp;
+
+            return (
+              <StoryRewards
+                stageId={storyStageId}
+                isHardMode={isHardMode}
+                isFirstClear={isFirstClear}
+                starsEarned={storyStarsEarned}
+                deathsCount={characterDeathsRef.current}
+                durationSecs={storyElapsedSecs}
+                gemsReward={gemsReward}
+                moraReward={moraReward}
+                charXpReward={charXpReward}
+                specialItem={spec.firstClearRewards.specialItem}
+                ascensionMaterialCount={spec.firstClearRewards.ascensionMaterialCount}
+                onProceed={() => {
+                  if (onStoryBattleEnd) {
+                    onStoryBattleEnd(true, {
+                      stars: storyStarsEarned,
+                      hp: {},
+                      ult: {},
+                      duration: storyElapsedSecs,
+                      deaths: characterDeathsRef.current
+                    });
+                  }
+                }}
+              />
+            );
+          })()
+        )}
 
         {/* ROGUE DUNGEON ROOM CLEAR OVERLAY */}
         {dungeonVictory && (
@@ -3721,7 +3898,27 @@ export default function CombatArena({
               </div>
 
               <div className="flex flex-col gap-2">
-                {dungeonMode ? (
+                {storyMode ? (
+                  <>
+                    <button
+                      onClick={handleRestartCombat}
+                      className="w-full p-3 bg-red-600 hover:bg-red-500 text-white font-black text-xs uppercase tracking-widest rounded-lg cursor-pointer shadow-lg shadow-red-950/50"
+                    >
+                      📥 Retry Stage
+                    </button>
+                    <button
+                      onClick={() => {
+                        AetheriaAudioEngine.playClick();
+                        if (onStoryBattleEnd) {
+                          onStoryBattleEnd(false, { stars: 0, hp: {}, ult: {}, duration: 0, deaths: 0 });
+                        }
+                      }}
+                      className="w-full p-2.5 bg-[#0b0f19] hover:bg-slate-900 border border-white/10 text-slate-400 text-xs rounded-lg font-black uppercase tracking-wider cursor-pointer"
+                    >
+                      Return to Campaign Map
+                    </button>
+                  </>
+                ) : dungeonMode ? (
                   <button
                     onClick={() => {
                       AetheriaAudioEngine.playClick();
