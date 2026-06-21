@@ -2209,7 +2209,11 @@ export default function App() {
               initial={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.8, ease: 'easeInOut' }}
-              className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-slate-950/85 backdrop-blur-2xl animate-fade-in"
+              className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-slate-950/85 backdrop-blur-2xl animate-fade-in cursor-pointer"
+              onClick={() => {
+                AetheriaAudioEngine.resume();
+                AetheriaAudioEngine.startMusic();
+              }}
             >
               <div className="flex flex-col items-center gap-6 text-center select-none max-w-sm px-6">
                 {/* Rotating detailed magic circle */}

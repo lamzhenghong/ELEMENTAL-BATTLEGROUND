@@ -95,34 +95,34 @@ function FloatingDamageTextDOM({ t }: FloatingDamageTextDOMProps) {
   switch (t.skin) {
     case 'Flame':
       skinStyle.fontFamily = '"Impact", "Arial Black", sans-serif';
-      skinStyle.textShadow = '0 0 6px #ef4444, 0 0 12px #f97316, 0 2px 4px rgba(0,0,0,0.9)';
+      skinStyle.textShadow = '1px 1px 0 #ef4444, -1px -1px 0 #f97316';
       break;
     case 'Electro':
       skinStyle.fontFamily = '"JetBrains Mono", monospace';
-      skinStyle.textShadow = '0 0 6px #c084fc, 0 0 12px #a855f7, 0 2px 4px rgba(0,0,0,0.9)';
+      skinStyle.textShadow = '1px 1px 0 #a855f7, -1px -1px 0 #c084fc';
       break;
     case 'Ice':
       skinStyle.fontFamily = '"Trebuchet MS", sans-serif';
-      skinStyle.textShadow = '0 0 6px #38bdf8, 0 0 12px #e0f2fe, 0 2px 4px rgba(0,0,0,0.9)';
+      skinStyle.textShadow = '1px 1px 0 #38bdf8, -1px -1px 0 #e0f2fe';
       textClass = 'shiver-text';
       break;
     case 'Void':
       skinStyle.fontFamily = '"Lucida Console", monospace';
-      skinStyle.textShadow = '0 0 8px #d946ef, 0 0 16px #1e1b4b, 0 2px 4px rgba(0,0,0,0.9)';
+      skinStyle.textShadow = '1px 1px 0 #1e1b4b, -1px -1px 0 #d946ef';
       textClass = 'pulse-void-text';
       break;
     case 'Dragon':
       skinStyle.fontFamily = '"Georgia", serif';
-      skinStyle.textShadow = '0 0 8px #dc2626, 0 0 16px #facc15, 0 2px 4px rgba(0,0,0,0.9)';
+      skinStyle.textShadow = '1px 1px 0 #dc2626, -1px -1px 0 #facc15';
       if (t.isCrit) textClass = 'roar-text';
       break;
     case 'Celestial':
       skinStyle.fontFamily = '"Georgia", serif';
-      skinStyle.textShadow = '0 0 8px #fde047, 0 0 16px #ffffff, 0 2px 4px rgba(0,0,0,0.9)';
+      skinStyle.textShadow = '1px 1px 0 #fde047, -1px -1px 0 #ffffff';
       break;
     default:
       skinStyle.fontFamily = '"Space Grotesk", sans-serif';
-      skinStyle.textShadow = '0 2px 4px rgba(0,0,0,0.95)';
+      skinStyle.textShadow = '1px 1px 0 rgba(0,0,0,0.85)';
   }
 
   return (
@@ -471,8 +471,6 @@ export default function CombatArena({
   const weatherRef = useRef<'Sunny' | 'Rain' | 'Thunderstorm' | 'Snow'>('Sunny');
   const [stamina, setStamina] = useState<number>(100);
   const staminaRef = useRef<number>(100);
-  const [isUiShaking, setIsUiShaking] = useState<boolean>(false);
-  const [celestialFlash, setCelestialFlash] = useState<boolean>(false);
   const [domDamageTexts, setDomDamageTexts] = useState<{ id: string; x: number; y: number; text: string; color: string; size: number; isCrit: boolean; skin?: string }[]>([]);
   const lightningWarningRef = useRef<{ x: number; y: number; timer: number } | null>(null);
   const lightningStrikeVisualRef = useRef<{ x: number; y: number; duration: number } | null>(null);
@@ -535,29 +533,38 @@ export default function CombatArena({
 
     const formattedText = formatWithDamageSkin(text, activeDamageSkin);
 
-    // 1. Dragon roar screenshake effect on crits
+    // 1. Dragon roar screenshake effect on crits (via native DOM class toggle to bypass React render cycle)
     if (isCrit && activeDamageSkin === 'Dragon') {
       if (screenShakeEnabled) {
         shakeRef.current.intensity = 15;
         shakeRef.current.x = (Math.random() - 0.5) * 15;
         shakeRef.current.y = (Math.random() - 0.5) * 15;
       }
-      setIsUiShaking(true);
-      setTimeout(() => setIsUiShaking(false), 450);
+      const arenaEl = document.getElementById('combat-arena-container');
+      if (arenaEl) {
+        arenaEl.classList.add('animate-shake');
+        setTimeout(() => arenaEl.classList.remove('animate-shake'), 450);
+      }
     }
 
-    // 2. Celestial screen flash sparkle effect on crits
+    // 2. Celestial screen flash sparkle effect on crits (via direct overlay DOM style update)
     if (isCrit && activeDamageSkin === 'Celestial') {
-      setCelestialFlash(true);
-      setTimeout(() => setCelestialFlash(false), 160);
+      const flashEl = document.getElementById('celestial-flash-overlay');
+      if (flashEl) {
+        flashEl.style.backgroundColor = 'rgba(253, 224, 71, 0.12)';
+        setTimeout(() => {
+          if (flashEl) flashEl.style.backgroundColor = 'rgba(253, 224, 71, 0)';
+        }, 160);
+      }
     }
 
     // Spawn gorgeous visual skin-specific particles directly on the canvas!
+    // Spawns 1 particle on critical hit, 0 on normal hits to maximize performance.
     if (activeDamageSkin && activeDamageSkin !== 'Default') {
-      const count = isCrit ? 4 : 2;
+      const count = isCrit ? 1 : 0;
       for (let i = 0; i < count; i++) {
         let pColor = color;
-        let pRadius = isCrit ? 4.5 : 2.5;
+        let pRadius = 2.5;
         if (activeDamageSkin === 'Flame') {
           pColor = Math.random() > 0.5 ? '#f97316' : '#ef4444'; // Orange/Red
         } else if (activeDamageSkin === 'Electro') {
@@ -574,8 +581,8 @@ export default function CombatArena({
         
         // Target particles to spawn at impact world coordinate (x, y)
         const particle = new CombatParticle(x, y, pColor, pRadius);
-        particle.vx = (Math.random() - 0.5) * 5;
-        particle.vy = (Math.random() - 0.5) * 5 - 2; // Drift upwards
+        particle.vx = (Math.random() - 0.5) * 4;
+        particle.vy = (Math.random() - 0.5) * 4 - 2; // Drift upwards
         particlesRef.current.push(particle);
       }
     }
@@ -1622,8 +1629,11 @@ export default function CombatArena({
         shakeRef.current.intensity = 18;
         shakeRef.current.x = (Math.random() - 0.5) * 18;
         shakeRef.current.y = (Math.random() - 0.5) * 18;
-        setIsUiShaking(true);
-        setTimeout(() => setIsUiShaking(false), 400);
+        const arenaEl = document.getElementById('combat-arena-container');
+        if (arenaEl) {
+          arenaEl.classList.add('animate-shake');
+          setTimeout(() => arenaEl.classList.remove('animate-shake'), 400);
+        }
       }
 
       // Mega damage across all targets
@@ -3687,10 +3697,10 @@ export default function CombatArena({
   return (
     <div 
       className={isMobile 
-        ? `fixed inset-0 z-50 w-screen h-screen bg-slate-950 overflow-hidden flex flex-col min-h-0 ${isUiShaking ? 'animate-shake' : ''}`
-        : `bg-[#0b0f19]/85 border rounded-xl overflow-hidden flex flex-col h-full min-h-[600px] backdrop-blur-md transition-all duration-500 ${activeTheme.borderClass} ${activeTheme.shadowGlow} ${activeTheme.pulseGlowClass} ${isUiShaking ? 'animate-shake' : ''}`
+        ? `fixed inset-0 z-50 w-screen h-screen bg-slate-950 overflow-hidden flex flex-col min-h-0`
+        : `bg-[#0b0f19]/85 border rounded-xl overflow-hidden flex flex-col h-full min-h-[600px] backdrop-blur-md transition-all duration-500 ${activeTheme.borderClass} ${activeTheme.shadowGlow} ${activeTheme.pulseGlowClass}`
       }
-      id="arena_main_root"
+      id="combat-arena-container"
       style={{
         backgroundImage: `linear-gradient(to bottom right, ${activeTheme.bgGradient.replace('from-', '').split(' ')[0]}, #0b0f19)`
       }}
@@ -3825,10 +3835,8 @@ export default function CombatArena({
           </AnimatePresence>
         </div>
 
-        {/* Celestial Screen Flash Sparkle */}
-        {celestialFlash && (
-          <div className="absolute inset-0 bg-yellow-400/5 mix-blend-color-dodge pointer-events-none z-40 animate-pulse" />
-        )}
+        {/* Celestial Screen Flash Sparkle (DOM reference with inline style changes to bypass React state) */}
+        <div id="celestial-flash-overlay" className="absolute inset-0 bg-yellow-400/0 mix-blend-color-dodge pointer-events-none z-40 transition-all duration-150 ease-out" />
 
         {/* STORY MODE STAGE CLEAR OVERLAY */}
         {storyVictory && (

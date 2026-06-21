@@ -574,25 +574,22 @@ class AudioEngine {
           break;
         case 'menu':
         default:
-          // Soothing progressive theme (original Am - F - C - G loop)
+          // Epic fantasy RPG menu theme (Am - F - C - G - Em - F - Dm - E loop)
           melody = [
-            440.00, 493.88, 523.25, 587.33,
-            523.25, 440.00, 440.00, 0,
-            349.23, 392.00, 440.00, 523.25,
-            440.00, 349.23, 349.23, 0,
-            523.25, 587.33, 659.25, 783.99,
-            659.25, 523.25, 523.25, 0,
-            392.00, 440.00, 493.88, 587.33,
-            493.88, 392.00, 392.00, 587.33
+            440.00, 523.25, 659.25, 880.00, 783.99, 659.25, 523.25, 659.25, // Am
+            349.23, 440.00, 523.25, 698.46, 659.25, 523.25, 440.00, 523.25, // F
+            523.25, 659.25, 783.99, 1046.50, 987.77, 783.99, 659.25, 783.99, // C
+            392.00, 493.88, 587.33, 783.99, 698.46, 587.33, 493.88, 587.33, // G
+            329.63, 392.00, 493.88, 659.25, 587.33, 493.88, 392.00, 493.88, // Em
+            349.23, 440.00, 523.25, 698.46, 659.25, 523.25, 440.00, 523.25, // F
+            293.66, 349.23, 440.00, 587.33, 523.25, 440.00, 349.23, 440.00, // Dm
+            329.63, 415.30, 493.88, 659.25, 587.33, 493.88, 415.30, 493.88  // E
           ];
           harmony = [
-            220.00, 220.00, 220.00, 220.00,
-            174.61, 174.61, 174.61, 174.61,
-            261.63, 261.63, 261.63, 261.63,
-            196.00, 196.00, 196.00, 196.00
+            220.00, 174.61, 261.63, 196.00, 164.81, 174.61, 146.83, 164.81
           ];
-          noteDuration = 0.3;
-          intervalMs = 350;
+          noteDuration = 0.28;
+          intervalMs = 320;
           break;
       }
     }
@@ -602,7 +599,9 @@ class AudioEngine {
 
       const step = this.notesPlayed % melody.length;
       const melodyFreq = melody[step];
-      const harmonyFreq = harmony[Math.floor(this.notesPlayed / 2) % harmony.length];
+      const harmonyFreq = (this.currentScreen === 'menu' && !this.isBossFightActive)
+        ? harmony[Math.floor(step / 8) % harmony.length]
+        : harmony[Math.floor(this.notesPlayed / 2) % harmony.length];
 
       if (this.isBossFightActive) {
         // Epic Synthesized Orchestral Boss BGM (Double-kick drums, choir fifths, detuned sawtooth brass/strings)
@@ -727,6 +726,138 @@ class AudioEngine {
         if (step % 4 === 0) {
           playStrings(harmonyFreq, this.ctx.currentTime, noteDuration * 3.5);
           playStrings(harmonyFreq * 1.25, this.ctx.currentTime, noteDuration * 3.5);
+        }
+      } else if (this.currentScreen === 'menu') {
+        const playPiano = (freq: number, time: number, duration: number) => {
+          if (freq === 0 || !this.ctx) return;
+          const osc1 = this.ctx.createOscillator();
+          const osc2 = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc1.type = 'sine';
+          osc1.frequency.setValueAtTime(freq, time);
+          osc2.type = 'triangle';
+          osc2.frequency.setValueAtTime(freq * 2, time);
+          gain.gain.setValueAtTime(0, time);
+          gain.gain.linearRampToValueAtTime(0.24, time + 0.005);
+          gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+          const osc2Gain = this.ctx.createGain();
+          osc2Gain.gain.setValueAtTime(0.06, time);
+          osc2Gain.gain.exponentialRampToValueAtTime(0.0001, time + duration * 0.4);
+          osc1.connect(gain);
+          osc2.connect(osc2Gain);
+          osc2Gain.connect(gain);
+          gain.connect(this.musicGain!);
+          osc1.start(time);
+          osc2.start(time);
+          osc1.stop(time + duration + 0.1);
+          osc2.stop(time + duration + 0.1);
+        };
+
+        const playStrings = (freq: number, time: number, duration: number) => {
+          if (freq === 0 || !this.ctx) return;
+          const osc1 = this.ctx.createOscillator();
+          const osc2 = this.ctx.createOscillator();
+          const filter = this.ctx.createBiquadFilter();
+          const gain = this.ctx.createGain();
+          osc1.type = 'sawtooth';
+          osc1.frequency.setValueAtTime(freq, time);
+          osc2.type = 'sawtooth';
+          osc2.frequency.setValueAtTime(freq * 1.006, time);
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(freq * 2.5, time);
+          gain.gain.setValueAtTime(0, time);
+          gain.gain.linearRampToValueAtTime(0.12, time + 0.3);
+          gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+          osc1.connect(filter);
+          osc2.connect(filter);
+          filter.connect(gain);
+          gain.connect(this.musicGain!);
+          osc1.start(time);
+          osc2.start(time);
+          osc1.stop(time + duration + 0.1);
+          osc2.stop(time + duration + 0.1);
+        };
+
+        const playChoir = (freq: number, time: number, duration: number) => {
+          if (freq === 0 || !this.ctx) return;
+          const osc = this.ctx.createOscillator();
+          const filter = this.ctx.createBiquadFilter();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, time);
+          filter.type = 'bandpass';
+          filter.frequency.setValueAtTime(750, time);
+          filter.Q.setValueAtTime(2.0, time);
+          gain.gain.setValueAtTime(0, time);
+          gain.gain.linearRampToValueAtTime(0.08, time + 0.4);
+          gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+          osc.connect(filter);
+          filter.connect(gain);
+          gain.connect(this.musicGain!);
+          osc.start(time);
+          osc.stop(time + duration + 0.1);
+        };
+
+        const playDeepDrum = (time: number) => {
+          if (!this.ctx) return;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(65, time);
+          osc.frequency.exponentialRampToValueAtTime(25, time + 0.2);
+          gain.gain.setValueAtTime(0.35, time);
+          gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.2);
+          osc.connect(gain);
+          gain.connect(this.musicGain!);
+          osc.start(time);
+          osc.stop(time + 0.22);
+        };
+
+        const playShaker = (time: number) => {
+          if (!this.ctx) return;
+          const bufferSize = this.ctx.sampleRate * 0.04;
+          const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+          const data = buffer.getChannelData(0);
+          for (let i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1;
+          }
+          const noise = this.ctx.createBufferSource();
+          noise.buffer = buffer;
+          const filter = this.ctx.createBiquadFilter();
+          filter.type = 'highpass';
+          filter.frequency.setValueAtTime(4000, time);
+          const gain = this.ctx.createGain();
+          gain.gain.setValueAtTime(0.02, time);
+          gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.04);
+          noise.connect(filter);
+          filter.connect(gain);
+          gain.connect(this.musicGain!);
+          noise.start(time);
+          noise.stop(time + 0.05);
+        };
+
+        // 1. Play Piano melody
+        playPiano(melodyFreq, this.ctx.currentTime, noteDuration * 1.5);
+
+        // 2. Play backing strings on root note (lasts 8 steps)
+        if (step % 8 === 0) {
+          playStrings(harmonyFreq, this.ctx.currentTime, noteDuration * 7.5);
+          playStrings(harmonyFreq * 1.5, this.ctx.currentTime, noteDuration * 7.5); // fifth harmony
+        }
+
+        // 3. Play soft choir pad sweep on steps 0 and 4 of each chord
+        if (step % 4 === 0) {
+          playChoir(harmonyFreq * 2, this.ctx.currentTime, noteDuration * 3.5);
+        }
+
+        // 4. Play deep orchestral bass drum on steps 0 and 4
+        if (step % 4 === 0) {
+          playDeepDrum(this.ctx.currentTime);
+        }
+
+        // 5. Play light shaker/tambourine on steps 2 and 6
+        if (step % 4 === 2) {
+          playShaker(this.ctx.currentTime);
         }
       } else {
         const playBgmNode = (freq: number, type: 'triangle' | 'sine', gainVal: number) => {
