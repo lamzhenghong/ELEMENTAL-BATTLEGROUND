@@ -143,4 +143,22 @@ canvas {
   scrollbar-width: none;  /* Firefox */
 }
 
+/* Custom continuous popping and glowing animation for fullscreen prompt */
+@keyframes pop-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 10px rgba(251, 191, 36, 0.2), inset 0 0 5px rgba(251, 191, 36, 0.1);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(251, 191, 36, 0.6), inset 0 0 10px rgba(251, 191, 36, 0.3);
+    border-color: rgba(251, 191, 36, 0.8);
+    color: #ffffff;
+  }
+}
+.animate-pop-pulse {
+  animation: pop-pulse 1.8s infinite ease-in-out;
+}
+
+
 

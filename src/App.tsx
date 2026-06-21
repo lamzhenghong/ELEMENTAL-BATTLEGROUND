@@ -1337,17 +1337,31 @@ export default function App() {
         </AnimatePresence>
 
         {/* Center menu stack */}
-        <main className="max-w-md w-full mx-auto px-6 py-12 text-center space-y-12 z-10">
-          <div className="space-y-4">
+        <main className="max-w-md w-full mx-auto px-6 py-12 text-center space-y-8 z-10">
+          <div className="flex flex-col items-center gap-4">
+            {/* Pulsing prompt for fullscreen */}
+            {!isFullscreen && (
+              <div 
+                onClick={() => {
+                  toggleFullscreen();
+                  AetheriaAudioEngine.playClick();
+                }}
+                className="animate-pop-pulse text-[8px] sm:text-[9.5px] font-black tracking-widest text-amber-400 bg-amber-400/10 border border-amber-400/30 px-3.5 py-1.5 rounded-full uppercase cursor-pointer select-none transition-all flex items-center gap-1.5 hover:bg-amber-400/20 active:scale-95 shadow-[0_0_15px_rgba(251,191,36,0.15)]"
+              >
+                <span className="inline-block animate-ping w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                PLAY IN FULL SCREEN FOR BEST EXPERIENCE!
+              </div>
+            )}
+
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.6 }}
-              className="inline-block p-1 bg-gradient-to-tr from-[#6366f1] to-amber-400 rounded-2xl shadow-[0_0_40px_rgba(99,102,241,0.25)]"
+              className="inline-block p-1 bg-gradient-to-tr from-[#6366f1] to-amber-400 rounded-2xl shadow-[0_0_40px_rgba(99,102,241,0.25)] w-full"
             >
               <div className="bg-slate-900 border border-white/5 p-4 py-6 rounded-xl">
                 <span className="text-[9px] font-mono tracking-[0.3em] text-[#818cf8] uppercase block mb-1">Dawning Core Client</span>
-                <h1 className="text-3xl font-black tracking-[0.1em] text-white font-display leading-none">
+                <h1 className="text-2xl sm:text-3xl font-black tracking-[0.1em] text-white font-display leading-none">
                   ELEMENTAL BATTLEGROUND
                 </h1>
                 <p className="text-[10px] text-slate-400 mt-2 font-mono uppercase tracking-wide">
