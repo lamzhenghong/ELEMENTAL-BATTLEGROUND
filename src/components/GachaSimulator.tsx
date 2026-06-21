@@ -949,19 +949,34 @@ export default function GachaSimulator({
                 })}
               </div>
 
-              {/* Confirmation Button */}
-              <motion.button
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: currentPullResults.length * 0.08 + 0.2 }}
-                onClick={() => {
-                  AetheriaAudioEngine.playClick();
-                  setAnimationPhase('none');
-                }}
-                className="bg-indigo-600 hover:bg-indigo-500 hover:scale-105 active:scale-95 text-white font-black text-xs uppercase tracking-widest px-8 py-3 rounded-lg cursor-pointer transition-all shadow-[0_0_20px_rgba(79,70,229,0.3)]"
-              >
-                📥 Confirm Acquisitions
-              </motion.button>
+              {/* Actions Footer */}
+              <div className="flex flex-wrap justify-center gap-4 z-20">
+                <motion.button
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: currentPullResults.length * 0.08 + 0.15 }}
+                  onClick={() => {
+                    executeWishPulls(10);
+                  }}
+                  className="bg-amber-500 hover:bg-amber-400 hover:scale-105 active:scale-95 text-slate-950 font-black text-xs uppercase tracking-widest px-6 py-3 rounded-lg cursor-pointer transition-all shadow-[0_0_20px_rgba(245,158,11,0.35)] flex items-center gap-1.5"
+                >
+                  <span>🔄 Summon x10 More</span>
+                  <span className="text-[10px] opacity-75 font-mono">(1440 Gems)</span>
+                </motion.button>
+
+                <motion.button
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: currentPullResults.length * 0.08 + 0.2 }}
+                  onClick={() => {
+                    AetheriaAudioEngine.playClick();
+                    setAnimationPhase('none');
+                  }}
+                  className="bg-indigo-600 hover:bg-indigo-500 hover:scale-105 active:scale-95 text-white font-black text-xs uppercase tracking-widest px-6 py-3 rounded-lg cursor-pointer transition-all shadow-[0_0_20px_rgba(79,70,229,0.3)]"
+                >
+                  📥 Confirm Acquisitions
+                </motion.button>
+              </div>
             </div>
           </motion.div>
         )}
@@ -1039,7 +1054,7 @@ export default function GachaSimulator({
               <span className="text-[8px] bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-black px-2 py-0.5 rounded uppercase tracking-widest">
                 {activeBanner.subtitle}
               </span>
-              {activeBanner.type === 'character' && (
+              {activeBanner.id === 'char_banner_1' && (
                 <span className="text-[8.5px] bg-amber-400/10 text-amber-400 border border-amber-400/30 font-mono font-black px-2 py-0.5 rounded uppercase tracking-wider flex items-center gap-1 animate-pulse shadow-[0_0_8px_rgba(251,191,36,0.1)]">
                   ⏱️ Rotation Switch: {timerString}
                 </span>
