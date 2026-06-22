@@ -191,16 +191,16 @@ canvas {
 .special-ultimate-mobile-button {
   position: fixed;
   left: 50%;
-  bottom: 1.25rem;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
   transform: translateX(-50%);
-  width: min(48vw, 300px);
-  min-height: 54px;
+  width: clamp(180px, 34vw, 220px);
+  min-height: 42px;
 }
 
 @media (orientation: portrait) {
   .special-ultimate-mobile-button {
-    bottom: 14rem;
-    width: min(78vw, 320px);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
+    width: clamp(170px, 46vw, 220px);
   }
 }
 

@@ -4553,8 +4553,8 @@ export default function CombatArena({
 
         {/* ACTIVE PAUSE SCREEN MODAL OVERLAY */}
         {isPaused && (
-          <div className="absolute inset-0 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-slate-900 border border-white/10 rounded-xl p-6 max-w-sm w-full text-center space-y-5 shadow-2xl">
+          <div className="absolute inset-0 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4">
+            <div className="bg-slate-900 border border-white/10 rounded-xl p-4 sm:p-6 max-w-sm w-full max-h-[calc(100dvh-1.5rem)] overflow-y-auto text-center space-y-4 sm:space-y-5 shadow-2xl">
               <h3 className="text-lg font-black text-slate-100 font-display tracking-widest uppercase flex items-center justify-center gap-2">
                 <Pause className="w-5 h-5 text-red-500" /> {t('paused', language)}
               </h3>
@@ -5026,7 +5026,7 @@ export default function CombatArena({
           ref={minimapCanvasRef} 
           width={90} 
           height={90}
-          className="absolute top-[60px] md:top-[70px] right-4 w-[90px] h-[90px] rounded-full border border-white/20 shadow-2xl z-40 bg-slate-950/85 backdrop-blur-md pointer-events-none select-none"
+          className="absolute top-3 md:top-[70px] right-3 md:right-4 w-[72px] h-[72px] md:w-[90px] md:h-[90px] rounded-full border border-white/20 shadow-2xl z-40 bg-slate-950/85 backdrop-blur-md pointer-events-none select-none"
         />
 
         {/* On screen active controls overlay for mobile and clicking explorers */}
@@ -5170,7 +5170,7 @@ export default function CombatArena({
 
       {isMobile && (
         <>
-          <div className="fixed left-4 top-14 z-40 flex flex-col gap-2 pointer-events-auto">
+          <div className="fixed left-4 top-[6.25rem] z-40 flex max-h-[calc(100dvh-13rem)] flex-col gap-1.5 overflow-y-auto pr-1 pointer-events-auto">
             {combatParty.map((c, i) => {
               const activeRatio = (c.currentHp / c.maxHp) * 100;
               const isCurrent = activePartyIndex === i;
@@ -5221,11 +5221,11 @@ export default function CombatArena({
                 e.preventDefault();
                 triggerSpecialUltimate();
               }}
-              className="special-ultimate-mobile-button rgb-special-button z-50 rounded-2xl border border-white/60 px-4 py-2 text-center font-black uppercase tracking-widest shadow-2xl active:scale-95 transition-all touch-none"
+              className="special-ultimate-mobile-button rgb-special-button z-50 rounded-xl border border-white/60 px-3 py-1.5 text-center font-black uppercase tracking-widest shadow-2xl active:scale-95 transition-all touch-none"
               style={{ touchAction: 'none' }}
             >
-              <span className="block text-[10px] leading-tight">SPECIAL ULTIMATE READY!</span>
-              <span className="block text-[8px] font-mono opacity-80 mt-0.5 leading-tight">{availableSpecialUltimate.combo.name}</span>
+              <span className="block text-[8.5px] leading-tight">SPECIAL ULTIMATE READY!</span>
+              <span className="block text-[7px] font-mono opacity-80 mt-0.5 leading-tight">{availableSpecialUltimate.combo.name}</span>
             </button>
           )}
           <MobileControls 
