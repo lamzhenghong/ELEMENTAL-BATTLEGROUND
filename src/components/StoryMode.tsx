@@ -35,6 +35,7 @@ export default function StoryMode({
 
   // Character Stories Sub-state
   const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
+  const [storySearchQuery, setStorySearchQuery] = useState('');
   const [storyRarityFilter, setStoryRarityFilter] = useState<'All' | 3 | 4 | 5>('All');
   const [storyElementFilter, setStoryElementFilter] = useState<'All' | ElementType>('All');
 
@@ -124,9 +125,14 @@ export default function StoryMode({
     .sort((a, b) => b.rarity - a.rarity || a.name.localeCompare(b.name));
 
   const filteredStoryCharacters = ownedCharacters.filter((c) => {
+    const query = storySearchQuery.trim().toLowerCase();
+    const matchesSearch = query === '' ||
+      c.name.toLowerCase().includes(query) ||
+      c.element.toLowerCase().includes(query) ||
+      c.weaponType.toLowerCase().includes(query);
     const matchesRarity = storyRarityFilter === 'All' || c.rarity === storyRarityFilter;
     const matchesElement = storyElementFilter === 'All' || c.element === storyElementFilter;
-    return matchesRarity && matchesElement;
+    return matchesSearch && matchesRarity && matchesElement;
   });
 
   return (
@@ -307,6 +313,28 @@ export default function StoryMode({
                 Select Owned Character ({filteredStoryCharacters.length}/{ownedCharacters.length}):
               </h4>
               <div className="bg-slate-950/45 border border-white/5 rounded-xl p-2 space-y-2">
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={storySearchQuery}
+                    onChange={(e) => setStorySearchQuery(e.target.value)}
+                    placeholder="Search character stories..."
+                    className="w-full rounded-lg border border-white/10 bg-black/35 px-3 py-2 pr-8 text-[10px] font-bold uppercase tracking-wide text-slate-200 placeholder-slate-600 outline-none transition-all focus:border-indigo-400/70"
+                  />
+                  {storySearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStorySearchQuery('');
+                        AetheriaAudioEngine.playClick();
+                      }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-500 transition-colors hover:text-slate-200"
+                      aria-label="Clear character story search"
+                    >
+                      X
+                    </button>
+                  )}
+                </div>
                 <div className="flex flex-wrap gap-1">
                   {(['All', 5, 4, 3] as const).map((rarity) => (
                     <button
@@ -347,6 +375,11 @@ export default function StoryMode({
                 </div>
               </div>
               <div className="space-y-1.5">
+                {filteredStoryCharacters.length === 0 && (
+                  <div className="rounded-xl border border-white/5 bg-black/25 p-4 text-center text-[10px] font-mono uppercase tracking-wider text-slate-500">
+                    No character stories match this search.
+                  </div>
+                )}
                 {filteredStoryCharacters.map((char) => {
                   const isSelected = selectedCharId === char.id;
                   const completedCount = storyProgress.completedCharacterStoryActs[char.id] || 0;

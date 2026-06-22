@@ -570,17 +570,6 @@ export default function InventoryManager({
               </button>
               <button
                 onClick={() => {
-                  setActiveTab('items');
-                  AetheriaAudioEngine.playClick();
-                }}
-                className={`flex-1 shrink-0 sm:shrink text-center py-2.5 px-2 sm:px-3 rounded-md text-[9px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest transition-all cursor-pointer ${
-                  activeTab === 'items' ? 'bg-amber-400 text-slate-955 font-black' : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                Augments
-              </button>
-              <button
-                onClick={() => {
                   setActiveTab('artifacts');
                   AetheriaAudioEngine.playClick();
                 }}
@@ -589,6 +578,17 @@ export default function InventoryManager({
                 }`}
               >
                 Artifacts
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab('items');
+                  AetheriaAudioEngine.playClick();
+                }}
+                className={`flex-1 shrink-0 sm:shrink text-center py-2.5 px-2 sm:px-3 rounded-md text-[9px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest transition-all cursor-pointer ${
+                  activeTab === 'items' ? 'bg-amber-400 text-slate-955 font-black' : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                Augments
               </button>
             </div>
 

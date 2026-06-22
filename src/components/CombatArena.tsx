@@ -1111,7 +1111,7 @@ export default function CombatArena({
         for (const entry of entries) {
           const { width, height } = entry.contentRect;
           const w = Math.max(width, 320);
-          const h = isMobile ? Math.max(height, 240) : Math.max(height, 520);
+          const h = isMobile ? Math.max(height, 200) : 400;
           setDimensions(prev => {
             if (prev.width === w && prev.height === h) {
               return prev;
@@ -4089,7 +4089,7 @@ export default function CombatArena({
     <div 
       className={isMobile 
         ? `fixed inset-0 z-50 w-screen h-screen bg-slate-950 overflow-hidden flex flex-col min-h-0`
-        : `bg-[#0b0f19]/85 border rounded-xl overflow-hidden flex flex-col h-[calc(100vh-140px)] min-h-[720px] backdrop-blur-md transition-all duration-500 ${activeTheme.borderClass} ${activeTheme.shadowGlow} ${activeTheme.pulseGlowClass}`
+        : `bg-[#0b0f19]/85 border rounded-xl overflow-hidden flex flex-col h-full min-h-[600px] backdrop-blur-md transition-all duration-500 ${activeTheme.borderClass} ${activeTheme.shadowGlow} ${activeTheme.pulseGlowClass}`
       }
       id="combat-arena-container"
       style={{
@@ -4222,7 +4222,7 @@ export default function CombatArena({
       </div>
 
       {/* Primary interactive Combat Container */}
-      <div ref={containerRef} className="flex-1 min-h-[480px] bg-[#03060f] relative overflow-hidden flex flex-col justify-end">
+      <div ref={containerRef} className="flex-1 min-h-[350px] bg-[#03060f] relative overflow-hidden flex flex-col justify-end">
         
         {/* Weather Sunny Ray beam visual overlay */}
         {currentWeather === 'Sunny' && (
@@ -5156,7 +5156,7 @@ export default function CombatArena({
                 <span className="absolute inset-x-0 top-0 h-1 bg-white/50" />
                 <Sparkles className="w-6 h-6 animate-pulse" />
                 <span className="text-[11px] uppercase font-black tracking-widest font-display leading-tight">
-                  SPECIAL ULTIMATE READY!
+                  SPECIAL ULTIMATE READY! [Z]
                 </span>
                 <span className="text-[9px] uppercase font-mono tracking-wider opacity-80">
                   {availableSpecialUltimate.combo.name}
