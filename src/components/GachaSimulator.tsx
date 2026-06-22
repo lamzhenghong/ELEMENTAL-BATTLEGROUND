@@ -12,6 +12,13 @@ import { Sparkles, HelpCircle, History, RefreshCw, Star, X, Info, Shield, Sword,
 import { AetheriaAudioEngine } from '../utils/audio';
 import { LanguageType, t } from '../utils/i18n';
 import { DAY_MS, getLimitedCharacterBannerForTime, getStandardFiveStarCharacters } from '../utils/limitedBanners';
+import {
+  FIVE_STAR_BASE_RATE,
+  FOUR_STAR_BASE_RATE,
+  getDuplicateWeaponMoraRefund,
+  isFiveStarRoll,
+  isFourStarRoll
+} from '../utils/gachaEconomy';
 import aureliaBanner from '../../assets/aurelia_banner.png';
 import kaelenBanner from '../../assets/kaelen_banner.png';
 import maelisBanner from '../../assets/maelis_banner.png';
@@ -517,6 +524,8 @@ export default function GachaSimulator({
 
     const results: { id: string; name: string; rarity: number; isCharacter: boolean; element?: ElementType; isNew?: boolean; nextPortrait?: number | null }[] = [];
     const pullsToLog: { name: string; rarity: number }[] = [];
+    let duplicateWeaponRefundTotal = 0;
+    const duplicateWeaponRefunds: { name: string; rarity: 3 | 4 | 5; mora: number }[] = [];
 
     for (let i = 0; i < pullCount; i++) {
       localPity5++;
@@ -531,7 +540,7 @@ export default function GachaSimulator({
       const rand = Math.random();
 
       // check 5-star threshold (Hard pity at 90)
-      const isFiveStar = rand < 0.006 || localPity5 >= 90;
+      const isFiveStar = isFiveStarRoll(rand, localPity5);
       
       if (isFiveStar) {
         rolledRarity = 5;
@@ -581,7 +590,7 @@ export default function GachaSimulator({
         }
       } 
       // check 4-star threshold (Hard pity at 10)
-      else if (rand < 0.051 + 0.006 || localPity4 >= 10) {
+      else if (isFourStarRoll(rand, localPity4)) {
         rolledRarity = 4;
         localPity4 = 0;
 
@@ -626,6 +635,7 @@ export default function GachaSimulator({
 
       let isNew = false;
       let nextPortrait: number | null = null;
+      let duplicateWeaponRefund = 0;
 
       if (isChar && rolledId) {
         if (!initialOwnedChars.has(rolledId)) {
@@ -642,6 +652,14 @@ export default function GachaSimulator({
         if (!initialOwnedWeapons.has(rolledName)) {
           isNew = true;
           initialOwnedWeapons.add(rolledName);
+        } else {
+          duplicateWeaponRefund = getDuplicateWeaponMoraRefund(rolledRarity as 3 | 4 | 5);
+          duplicateWeaponRefundTotal += duplicateWeaponRefund;
+          duplicateWeaponRefunds.push({
+            name: rolledName,
+            rarity: rolledRarity as 3 | 4 | 5,
+            mora: duplicateWeaponRefund
+          });
         }
       }
 
@@ -660,7 +678,9 @@ export default function GachaSimulator({
         onUnlockCharacter(rolledId);
       } else {
         // If it is a weapon, dynamically forge and gift to player roster inventory so they can equip and refine!
-        if (onAddWeapon) {
+        if (duplicateWeaponRefund > 0) {
+          // Duplicate weapon copies are converted to Mora below.
+        } else if (onAddWeapon) {
           const weaponObj = createWeaponFromPull(rolledName, rolledRarity as 3 | 4 | 5);
           onAddWeapon(weaponObj);
         }
@@ -670,6 +690,15 @@ export default function GachaSimulator({
     }
 
     onLogPulls(pullsToLog);
+    if (duplicateWeaponRefundTotal > 0) {
+      onModifyCurrencies(0, duplicateWeaponRefundTotal);
+      const topRefund = duplicateWeaponRefunds.sort((a, b) => b.rarity - a.rarity)[0];
+      onShowAlert(
+        "Duplicate weapon converted to Mora.",
+        `${topRefund.name} and duplicate weapon copies returned +${duplicateWeaponRefundTotal.toLocaleString()} Mora to your account.`,
+        "success"
+      );
+    }
     setMaxRarityInPull(maxRarity);
     onUpdatePity(activeBanner.id, localPity5, localPity4, localGuaranteed5);
     setCurrentPullResults(results);
@@ -1034,7 +1063,7 @@ export default function GachaSimulator({
           {devCheatsEnabled && (
             <button 
               type="button"
-              onClick={() => onModifyCurrencies(20000, 50000)}
+              onClick={() => onModifyCurrencies(20000, 0)}
               className="bg-[#0e1628] hover:bg-indigo-950/80 text-indigo-400 text-[9px] font-black uppercase tracking-wider px-3.5 py-2 rounded-lg border border-indigo-500/20 active:scale-95 transition-all cursor-pointer font-sans"
             >
               +20,000 Gems Tool
@@ -1361,11 +1390,11 @@ export default function GachaSimulator({
                 <>
                   <div className="flex justify-between border-b border-white/5 pb-1">
                     <span className="font-extrabold text-amber-400">5-Star Hero</span>
-                    <span className="text-slate-400">0.6% Base (Hard 90)</span>
+                    <span className="text-slate-400">{(FIVE_STAR_BASE_RATE * 100).toFixed(1)}% Base (Hard 90)</span>
                   </div>
                   <div className="flex justify-between border-b border-white/5 pb-1">
                     <span className="font-extrabold text-purple-400">4-Star Hero</span>
-                    <span className="text-slate-400">5.1% Base (Hard 10)</span>
+                    <span className="text-slate-400">{(FOUR_STAR_BASE_RATE * 100).toFixed(1)}% Base (Hard 10)</span>
                   </div>
                   <div className="flex justify-between border-b border-white/5 pb-1">
                     <span className="font-semibold text-slate-500">3-Star Hero</span>
@@ -1376,11 +1405,11 @@ export default function GachaSimulator({
                 <>
                   <div className="flex justify-between border-b border-white/5 pb-1">
                     <span className="font-extrabold text-amber-400">5-Star Armament Item</span>
-                    <span className="text-slate-400">0.6% Base (Hard 90)</span>
+                    <span className="text-slate-400">{(FIVE_STAR_BASE_RATE * 100).toFixed(1)}% Base (Hard 90)</span>
                   </div>
                   <div className="flex justify-between border-b border-white/5 pb-1">
                     <span className="font-extrabold text-purple-400">4-Star Armament Item</span>
-                    <span className="text-slate-400">5.1% Base (Hard 10)</span>
+                    <span className="text-slate-400">{(FOUR_STAR_BASE_RATE * 100).toFixed(1)}% Base (Hard 10)</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="font-semibold text-slate-500">3-Star Armament items</span>

@@ -183,7 +183,7 @@ export const GDD_DATA: GDDData = {
       iconName: 'Sparkles',
       summary: 'Players spend AetherGems to perform wishes (summons) to acquire some of the 22 legendary playable characters.',
       details: [
-        'Drop Rates: 5-Star Character Base Rate is 0.6% (cumulative 1.6% across pity). 4-Star Character Base Rate is 5.1%.',
+        'Drop Rates: 5-Star Character and Weapon Base Rate is 0.5% before hard pity. 4-Star Base Rate is 5.1%.',
         '90-Pull Pity Counter (5-Star Guarantee): If a player fails to pull a 5-Star character after 89 pulls, pull 90 is guaranteed to be a premium 5-Star character.',
         '10-Pull Pity Counter (4-Star Guarantee): Every 10 pulls guarantees a 4-Star character or weapon.',
         '50-50 Featured Rule: When pulling a 5-star, there is a 50% chance it is the featured banner character. If not, the NEXT 5-star pulled is guaranteed to be the featured character.'

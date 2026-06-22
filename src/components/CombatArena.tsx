@@ -495,6 +495,7 @@ export default function CombatArena({
   const [activeEchoNotification, setActiveEchoNotification] = useState<string | null>(null);
   const bossProjectilesRef = useRef<any[]>([]);
   const hasRevivedRef = useRef<boolean>(false);
+  const waveResolvingRef = useRef<boolean>(false);
 
   // Weather, stamina and premium visual states
   const [currentWeather, setCurrentWeather] = useState<'Sunny' | 'Rain' | 'Thunderstorm' | 'Snow'>('Sunny');
@@ -739,6 +740,12 @@ export default function CombatArena({
     dungeonMode,
     storyMode,
     isUltCutsceneActive: false,
+    currentWave,
+    gameScore,
+    waveClearMessage,
+    storyVictory,
+    dungeonVictory,
+    isArtifactGrindMode,
     activeResonances: [] as { name: string; desc: string; key: string }[]
   });
 
@@ -766,9 +773,15 @@ export default function CombatArena({
       dungeonMode,
       storyMode,
       isUltCutsceneActive,
+      currentWave,
+      gameScore,
+      waveClearMessage,
+      storyVictory,
+      dungeonVictory,
+      isArtifactGrindMode,
       activeResonances
     };
-  }, [combatParty, activePartyIndex, isParrying, isDashing, shieldActive, shieldWeight, dimensions, timeDisordered, activeChar, isPaused, isGameOver, battleStarted, countdownValue, fpsLimit, dungeonBuffs, dungeonMode, storyMode, isUltCutsceneActive, activeResonances]);
+  }, [combatParty, activePartyIndex, isParrying, isDashing, shieldActive, shieldWeight, dimensions, timeDisordered, activeChar, isPaused, isGameOver, battleStarted, countdownValue, fpsLimit, dungeonBuffs, dungeonMode, storyMode, isUltCutsceneActive, currentWave, gameScore, waveClearMessage, storyVictory, dungeonVictory, isArtifactGrindMode, activeResonances]);
 
   // Start music loop once battle starts
   useEffect(() => {
@@ -787,6 +800,18 @@ export default function CombatArena({
       case 'Anemo': return '#10b981';
       case 'Geo': return '#f59e0b';
       case 'Dendro': return '#22c55e';
+    }
+  };
+
+  const getElementBadgeText = (element: ElementType) => {
+    switch (element) {
+      case 'Pyro': return 'PY';
+      case 'Hydro': return 'HY';
+      case 'Cryo': return 'CR';
+      case 'Electro': return 'EL';
+      case 'Anemo': return 'AN';
+      case 'Geo': return 'GE';
+      case 'Dendro': return 'DE';
     }
   };
 
@@ -1086,7 +1111,7 @@ export default function CombatArena({
         for (const entry of entries) {
           const { width, height } = entry.contentRect;
           const w = Math.max(width, 320);
-          const h = isMobile ? Math.max(height, 200) : 400;
+          const h = isMobile ? Math.max(height, 240) : Math.max(height, 520);
           setDimensions(prev => {
             if (prev.width === w && prev.height === h) {
               return prev;
@@ -1104,6 +1129,7 @@ export default function CombatArena({
 
   // Spawn enemies by progressive Wave — procedurally generated, scales with wave number and dungeon depth
   const triggerSpawnWave = (waveNum: number) => {
+    waveResolvingRef.current = false;
     setCurrentWave(waveNum);
     setIsGameOver(false);
     setIsPaused(false);
@@ -1835,15 +1861,15 @@ export default function CombatArena({
     specialUltimateTimeoutsRef.current = [
       setTimeout(() => {
         setSpecialUltPresentation(prev => prev ? { ...prev, dialogueIndex: 1 } : prev);
-      }, 800),
+      }, 1300),
       setTimeout(() => {
         setSpecialUltPresentation(prev => prev ? { ...prev, phase: 'name' } : prev);
         spawnFloatingDamageText(px, py - 90, `SPECIAL ULTIMATE: ${combo.name}`, '#fef3c7', 22, true);
-      }, 1550),
+      }, 2800),
       setTimeout(() => {
         setSpecialUltPresentation(prev => prev ? { ...prev, phase: 'impact' } : prev);
 
-        for (let i = 0; i < 46; i++) {
+        for (let i = 0; i < 64; i++) {
           const particle = new CombatParticle(px, py, Math.random() > 0.45 ? impactColor : secondaryColor, 5);
           particle.vx *= combo.style === 'vapor' ? 3.2 : 2.5;
           particle.vy *= combo.style === 'vapor' ? 3.2 : 2.8;
@@ -1866,12 +1892,12 @@ export default function CombatArena({
             setTimeout(() => arenaEl.classList.remove('animate-shake'), 500);
           }
         }
-      }, 2350),
+      }, 4000),
       setTimeout(() => {
         setSpecialUltPresentation(null);
         setIsUltCutsceneActive(false);
         setTimeDisordered(0);
-      }, 3600)
+      }, 5600)
     ];
   };
 
@@ -2018,6 +2044,79 @@ export default function CombatArena({
       }
       return c;
     }));
+  };
+
+  const resolveAllEnemiesDefeated = () => {
+    const combatState = loopStateRef.current;
+    if (
+      waveResolvingRef.current ||
+      combatState.waveClearMessage ||
+      combatState.storyVictory ||
+      combatState.dungeonVictory ||
+      combatState.isGameOver
+    ) return;
+    const hasEnemies = enemiesRef.current.length > 0;
+    const anyAlive = enemiesRef.current.some(e => e.hp > 0);
+    if (!hasEnemies || anyAlive) return;
+
+    waveResolvingRef.current = true;
+
+    if (combatState.storyMode) {
+      const elapsed = Math.round((Date.now() - (battleStartTimeRef.current || Date.now())) / 1000);
+      let stars = 1;
+      if (characterDeathsRef.current === 0) stars++;
+      if (elapsed < 60) stars++;
+
+      setStoryStarsEarned(stars);
+      setStoryElapsedSecs(elapsed);
+      setStoryVictory(true);
+      AetheriaAudioEngine.playWaveClear();
+      AetheriaAudioEngine.setBossFightActive(false);
+      spawnTextRef.current(450, 250, 'STAGE SECURED!', '#f59e0b', 22, true, false);
+      return;
+    }
+
+    if (combatState.dungeonMode) {
+      setDungeonVictory(true);
+      AetheriaAudioEngine.playWaveClear();
+      spawnTextRef.current(400, 200, 'ROOM CLEANSED!', '#10b981', 20, true, false);
+      return;
+    }
+
+    const waveNumber = combatState.currentWave;
+    const rewardGems = 40 + waveNumber * 15;
+    const rewardMora = 500 + waveNumber * 200;
+    const rewardExp = 30 + waveNumber * 15;
+
+    AetheriaAudioEngine.playWaveClear();
+    onEarnRewards(rewardGems, rewardMora, rewardExp);
+
+    const witReward = 1 + Math.floor(waveNumber / 3);
+    onAddItems?.('char_xp', witReward);
+    spawnFloatingDamageText(playerRef.current.x, playerRef.current.y - 60, `+${witReward} Hero's Wit`, '#a78bfa', 13, true);
+
+    let artifactMessage = '';
+    if (combatState.isArtifactGrindMode) {
+      const newArt = generateRandomArtifact(waveNumber);
+      setDroppedArtifacts(prev => [...prev, newArt]);
+      onAwardArtifact?.(newArt);
+      const rarityStr = newArt.rarity === 5 ? 'Gold 5*' : newArt.rarity === 4 ? 'Purple 4*' : 'Blue 3*';
+      setActiveArtifactNotification(`Artifact Dropped: ${newArt.name} (${rarityStr})`);
+      spawnFloatingDamageText(playerRef.current.x, playerRef.current.y - 90, `DROPPED: ${newArt.name}!`, '#fbbf24', 14, true);
+      setTimeout(() => {
+        setActiveArtifactNotification(null);
+      }, 3000);
+      artifactMessage = ` - Artifact Dropped: ${newArt.name}`;
+    }
+
+    const nextWave = waveNumber + 1;
+    onUpdateHighScore?.(waveNumber, combatState.gameScore + 200);
+
+    setWaveClearMessage(`WAVE ${waveNumber} SECURED! +${rewardGems} Gems / +${rewardMora} Mora / +${rewardExp} XP${artifactMessage}`);
+    setTimeout(() => {
+      setWaveClearMessage(null);
+      triggerSpawnWave(nextWave);
+    }, 2200);
   };
 
   const applySkillDamage = (enemy: any, baseDmg: number, type: ElementType, isUlt: boolean = false, isCrit: boolean = false, source: 'basic' | 'skill' | 'ultimate' = 'skill') => {
@@ -2437,6 +2536,8 @@ export default function CombatArena({
       // Dynamic automatic wave advancement check
       const anyAlive = enemiesRef.current.some(e => e.id !== enemy.id && e.hp > 0);
       if (!anyAlive && !waveClearMessage) {
+        if (waveResolvingRef.current) return;
+        waveResolvingRef.current = true;
         if (storyMode) {
           const elapsed = Math.round((Date.now() - (battleStartTimeRef.current || Date.now())) / 1000);
           let stars = 1;
@@ -2563,6 +2664,12 @@ export default function CombatArena({
         }
         ctx.restore();
 
+        animationId = requestAnimationFrame(updateGameLoop);
+        return;
+      }
+
+      if (enemiesRef.current.length > 0 && enemiesRef.current.every(e => e.hp <= 0)) {
+        resolveAllEnemiesDefeated();
         animationId = requestAnimationFrame(updateGameLoop);
         return;
       }
@@ -3752,6 +3859,7 @@ export default function CombatArena({
       // Handle direct key activations to bypass event delay issues in fast canvas updates
       if (key === 'j' || key === 'f') triggerBasicAttack();
       if (key === 'q') triggerUltimate();
+      if (key === 'z') triggerSpecialUltimate();
       if (key === 'e') triggerElementalSkill();
       if (key === ' ') {
         e.preventDefault();
@@ -3778,7 +3886,7 @@ export default function CombatArena({
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [triggerBasicAttack, triggerUltimate, triggerElementalSkill, triggerDodgeDash, triggerParryBlock, swapPartyIndex]);
+  }, [triggerBasicAttack, triggerUltimate, triggerSpecialUltimate, triggerElementalSkill, triggerDodgeDash, triggerParryBlock, swapPartyIndex]);
 
   // Handle combat damage logic hitting player target
   const handlePlayerHit = (enemy: any, amount: number = 200) => {
@@ -3975,12 +4083,13 @@ export default function CombatArena({
   const bossPhase = bossHpPct === null ? 1 : bossHpPct <= 0.20 ? 3 : bossHpPct <= 0.50 ? 2 : 1;
 
   const activeTheme = getElementUiTheme(activeChar?.element);
+  const activeSkillCooldown = activeChar?.skillCooldownRemaining || 0;
 
   return (
     <div 
       className={isMobile 
         ? `fixed inset-0 z-50 w-screen h-screen bg-slate-950 overflow-hidden flex flex-col min-h-0`
-        : `bg-[#0b0f19]/85 border rounded-xl overflow-hidden flex flex-col h-full min-h-[600px] backdrop-blur-md transition-all duration-500 ${activeTheme.borderClass} ${activeTheme.shadowGlow} ${activeTheme.pulseGlowClass}`
+        : `bg-[#0b0f19]/85 border rounded-xl overflow-hidden flex flex-col h-[calc(100vh-140px)] min-h-[720px] backdrop-blur-md transition-all duration-500 ${activeTheme.borderClass} ${activeTheme.shadowGlow} ${activeTheme.pulseGlowClass}`
       }
       id="combat-arena-container"
       style={{
@@ -4113,7 +4222,7 @@ export default function CombatArena({
       </div>
 
       {/* Primary interactive Combat Container */}
-      <div ref={containerRef} className="flex-1 min-h-[350px] bg-[#03060f] relative overflow-hidden flex flex-col justify-end">
+      <div ref={containerRef} className="flex-1 min-h-[480px] bg-[#03060f] relative overflow-hidden flex flex-col justify-end">
         
         {/* Weather Sunny Ray beam visual overlay */}
         {currentWeather === 'Sunny' && (
@@ -4319,6 +4428,10 @@ export default function CombatArena({
             <span className="bg-white/10 px-1 py-0.2 rounded font-black text-amber-400 font-mono">Q</span>
           </div>
           <div className="flex items-center gap-2 justify-between">
+            <span>Special Ultimate:</span>
+            <span className="bg-white/10 px-1 py-0.2 rounded font-black text-fuchsia-300 font-mono">Z</span>
+          </div>
+          <div className="flex items-center gap-2 justify-between">
             <span>Switch Hero:</span>
             <span className="bg-white/10 px-1 py-0.2 rounded font-black text-slate-205 font-mono">1-4</span>
           </div>
@@ -4352,13 +4465,25 @@ export default function CombatArena({
                 <div className="bg-black/45 border border-white/5 p-3 md:p-4 rounded-xl space-y-2 md:space-y-3">
                   <span className="text-[9px] md:text-[9.5px] text-slate-500 uppercase block font-black text-left font-mono border-b border-white/5 pb-1">Deploying Strike Team:</span>
                   <div className="grid grid-cols-2 gap-2 text-left">
-                    {combatParty.map((c) => (
-                      <div key={c.id} className="flex items-center gap-1.5 text-[10px] md:text-xs text-slate-200">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    {combatParty.map((c) => {
+                      const badgeColor = getElementColorHex(c.element);
+                      return (
+                      <div key={c.id} className="flex items-center gap-1.5 text-[10px] md:text-xs text-slate-200 min-w-0">
+                        <span
+                          className="w-6 h-6 rounded-lg border flex items-center justify-center text-[8px] font-black font-mono shrink-0"
+                          style={{
+                            color: badgeColor,
+                            borderColor: `${badgeColor}66`,
+                            backgroundColor: `${badgeColor}18`
+                          }}
+                        >
+                          {getElementBadgeText(c.element)}
+                        </span>
                         <span className="truncate max-w-[100px] md:max-w-[120px] font-bold uppercase tracking-tight text-slate-200">{c.name}</span>
                         <span className="font-mono text-[8px] md:text-[9px] text-slate-500">LV.{c.level}</span>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -4780,6 +4905,8 @@ export default function CombatArena({
           {specialUltPresentation && (() => {
             const combo = specialUltPresentation.combo;
             const dialogueLine = combo.dialogue[specialUltPresentation.dialogueIndex] || combo.dialogue[0];
+            const dialogueCharacter = PLAYABLE_CHARACTERS.find(c => c.id === dialogueLine.characterId);
+            const dialogueColor = dialogueCharacter ? getElementColorHex(dialogueCharacter.element) : '#fef3c7';
             const isVapor = combo.style === 'vapor';
             return (
               <motion.div
@@ -4813,7 +4940,10 @@ export default function CombatArena({
                 >
                   {specialUltPresentation.phase === 'dialogue' && (
                     <div className="mx-auto rounded-2xl border border-white/15 bg-black/55 px-6 py-5 md:px-10 md:py-8 shadow-[0_0_45px_rgba(255,255,255,0.08)] backdrop-blur-md">
-                      <p className={`text-[10px] md:text-xs font-black font-mono uppercase tracking-[0.35em] ${isVapor ? 'text-orange-300' : 'text-emerald-300'}`}>
+                      <p
+                        className="text-lg md:text-3xl font-black font-mono uppercase tracking-[0.22em] drop-shadow-[0_0_18px_rgba(255,255,255,0.18)]"
+                        style={{ color: dialogueColor }}
+                      >
                         {dialogueLine.speaker}
                       </p>
                       <p className="mt-3 text-3xl md:text-6xl font-black text-white font-display uppercase tracking-wide drop-shadow-[0_0_22px_rgba(255,255,255,0.28)]">
@@ -4997,10 +5127,17 @@ export default function CombatArena({
 
             <button
               onClick={() => triggerElementalSkill()}
-              className="bg-indigo-650/15 hover:bg-indigo-600/30 text-indigo-400 border border-indigo-500/40 p-4 rounded-xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all w-36 h-24 cursor-pointer hover:border-indigo-400 font-black shadow-[0_0_15px_rgba(99,102,241,0.25)]"
+              disabled={activeSkillCooldown > 0}
+              className={`border p-4 rounded-xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all w-36 h-24 font-black shadow-[0_0_15px_rgba(99,102,241,0.25)] ${
+                activeSkillCooldown > 0
+                  ? 'bg-indigo-950/30 border-indigo-500/20 text-indigo-500/45 cursor-not-allowed opacity-60'
+                  : 'bg-indigo-650/15 hover:bg-indigo-600/30 text-indigo-400 border-indigo-500/40 cursor-pointer hover:border-indigo-400'
+              }`}
             >
-              <Zap className="w-6 h-6 text-indigo-400" />
-              <span className="text-xs uppercase font-extrabold tracking-widest font-display">SKILL [E]</span>
+              <Zap className={`w-6 h-6 ${activeSkillCooldown > 0 ? 'text-indigo-500/35' : 'text-indigo-400'}`} />
+              <span className="text-xs uppercase font-extrabold tracking-widest font-display">
+                {activeSkillCooldown > 0 ? `${activeSkillCooldown.toFixed(1)}s` : 'SKILL [E]'}
+              </span>
             </button>
 
             <button
@@ -5014,11 +5151,7 @@ export default function CombatArena({
             {showSpecialUltimateButton && availableSpecialUltimate && (
               <button
                 onClick={() => triggerSpecialUltimate()}
-                className={`relative overflow-hidden p-4 rounded-xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all w-52 h-24 cursor-pointer font-black border animate-pop-pulse ${
-                  availableSpecialUltimate.combo.style === 'vapor'
-                    ? 'bg-orange-400 text-slate-950 border-cyan-200/70 shadow-[0_0_30px_rgba(251,146,60,0.65)]'
-                    : 'bg-purple-500 text-white border-emerald-200/70 shadow-[0_0_30px_rgba(168,85,247,0.65)]'
-                }`}
+                className="rgb-special-button relative overflow-hidden p-4 rounded-xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all w-52 h-24 cursor-pointer font-black border border-white/60 shadow-[0_0_30px_rgba(255,255,255,0.35)]"
               >
                 <span className="absolute inset-x-0 top-0 h-1 bg-white/50" />
                 <Sparkles className="w-6 h-6 animate-pulse" />
@@ -5088,11 +5221,7 @@ export default function CombatArena({
                 e.preventDefault();
                 triggerSpecialUltimate();
               }}
-              className={`fixed left-1/2 bottom-[7.25rem] z-50 -translate-x-1/2 w-[min(72vw,300px)] min-h-[54px] rounded-2xl border px-4 py-2 text-center font-black uppercase tracking-widest shadow-2xl active:scale-95 transition-all animate-pop-pulse touch-none ${
-                availableSpecialUltimate.combo.style === 'vapor'
-                  ? 'bg-orange-400 text-slate-950 border-cyan-100/80 shadow-[0_0_28px_rgba(251,146,60,0.7)]'
-                  : 'bg-purple-500 text-white border-emerald-100/80 shadow-[0_0_28px_rgba(168,85,247,0.7)]'
-              }`}
+              className="special-ultimate-mobile-button rgb-special-button z-50 rounded-2xl border border-white/60 px-4 py-2 text-center font-black uppercase tracking-widest shadow-2xl active:scale-95 transition-all touch-none"
               style={{ touchAction: 'none' }}
             >
               <span className="block text-[10px] leading-tight">SPECIAL ULTIMATE READY!</span>

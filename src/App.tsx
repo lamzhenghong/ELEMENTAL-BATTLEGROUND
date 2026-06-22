@@ -31,6 +31,7 @@ import { getArtifactFusionRule, isSameArtifactPart } from './utils/artifactFusio
 import { UI_THEMES, UI_THEME_UNLOCK_LEVEL, getUiTheme, isUiThemeUnlocked, normalizeUiTheme } from './utils/uiThemes';
 import { getStandardFiveStarCharacters } from './utils/limitedBanners';
 import { SPECIAL_ULTIMATE_UNLOCK_LEVEL } from './utils/specialUltimates';
+import { assignUniqueWeaponOwner, normalizeUniqueEquippedWeapons } from './utils/equipmentRules';
 import mainMenuBg from '../assets/main_menu_bg.png';
 import gameLogoImg from '../assets/game_logo.png';
 import StoryMode from './components/StoryMode';
@@ -686,6 +687,11 @@ export default function App() {
         if (!merged.activeDamageSkin || !validSkins.includes(merged.activeDamageSkin)) {
           merged.activeDamageSkin = 'Default';
         }
+        const loadedPartyIds = Array.isArray(parsed.partyIds) ? parsed.partyIds : defaultState.partyIds;
+        merged.partyIds = loadedPartyIds
+          .filter((id: string) => merged.unlockedCharacterIds.includes(id))
+          .slice(0, 4);
+        merged.characterEquippedWeapon = normalizeUniqueEquippedWeapons(merged.characterEquippedWeapon || {});
         merged.activeUiTheme = normalizeUiTheme(merged.activeUiTheme, merged.playerLevel || 1);
         if (merged.lastShopRefreshHour === undefined) {
           merged.lastShopRefreshHour = 0;
@@ -826,6 +832,7 @@ export default function App() {
       // Always include the latest play time in saves
       const withPlayTime = {
         ...updated,
+        characterEquippedWeapon: normalizeUniqueEquippedWeapons(updated.characterEquippedWeapon || {}),
         stats: { ...updated.stats, playTime: currentPlayTime }
       };
       try {
@@ -1021,8 +1028,8 @@ export default function App() {
         characterLevels: { ...prev.characterLevels, [id]: 1 },
         characterPortraits: { ...currentPortraits, [id]: 0 },
         characterHp: { ...prev.characterHp, [id]: charTemplate?.baseStats.hp || 1000 },
-        characterEquippedWeapon: { ...prev.characterEquippedWeapon, [id]: defaultWeaponId },
-        partyIds: prev.partyIds.length < 4 ? [...prev.partyIds, id] : prev.partyIds
+        characterEquippedWeapon: assignUniqueWeaponOwner(prev.characterEquippedWeapon || {}, id, defaultWeaponId),
+        partyIds: prev.partyIds
       };
 
       // Sync character owned count progress quest
@@ -1083,10 +1090,7 @@ export default function App() {
   const handleEquipWeapon = (charId: string, weaponUid: string) => {
     triggerSaveUpdate(prev => ({
       ...prev,
-      characterEquippedWeapon: {
-        ...prev.characterEquippedWeapon,
-        [charId]: weaponUid
-      }
+      characterEquippedWeapon: assignUniqueWeaponOwner(prev.characterEquippedWeapon || {}, charId, weaponUid)
     }));
   };
 
@@ -1623,8 +1627,7 @@ export default function App() {
           nextCharacterLevels[id] = 1;
           nextCharacterPortraits[id] = 0;
           nextCharacterHp[id] = charTemplate?.baseStats.hp || 1000;
-          nextCharacterEquippedWeapon[id] = defaultWeaponId;
-          if (nextPartyIds.length < 4) nextPartyIds.push(id);
+          nextCharacterEquippedWeapon = assignUniqueWeaponOwner(nextCharacterEquippedWeapon, id, defaultWeaponId);
         }
       }
 
@@ -1792,8 +1795,10 @@ export default function App() {
           characterLevels: { ...prev.characterLevels, [chosen.id]: prev.characterLevels[chosen.id] || 1 },
           characterPortraits: { ...currentPortraits, [chosen.id]: nextLvl },
           characterHp: { ...prev.characterHp, [chosen.id]: prev.characterHp[chosen.id] || chosen.baseStats.hp },
-          characterEquippedWeapon: { ...prev.characterEquippedWeapon, [chosen.id]: prev.characterEquippedWeapon[chosen.id] || defaultWeaponId },
-          partyIds: prev.partyIds.includes(chosen.id) ? prev.partyIds : (prev.partyIds.length < 4 ? [...prev.partyIds, chosen.id] : prev.partyIds),
+          characterEquippedWeapon: prev.characterEquippedWeapon[chosen.id]
+            ? prev.characterEquippedWeapon
+            : assignUniqueWeaponOwner(prev.characterEquippedWeapon || {}, chosen.id, defaultWeaponId),
+          partyIds: prev.partyIds,
           loginRewardClaimedDays: [...currentClaimed, day]
         };
 
@@ -1886,8 +1891,10 @@ export default function App() {
           characterLevels: { ...prev.characterLevels, [chosen.id]: prev.characterLevels[chosen.id] || 1 },
           characterPortraits: { ...currentPortraits, [chosen.id]: nextLvl },
           characterHp: { ...prev.characterHp, [chosen.id]: prev.characterHp[chosen.id] || chosen.baseStats.hp },
-          characterEquippedWeapon: { ...prev.characterEquippedWeapon, [chosen.id]: prev.characterEquippedWeapon[chosen.id] || defaultWeaponId },
-          partyIds: prev.partyIds.includes(chosen.id) ? prev.partyIds : (prev.partyIds.length < 4 ? [...prev.partyIds, chosen.id] : prev.partyIds),
+          characterEquippedWeapon: prev.characterEquippedWeapon[chosen.id]
+            ? prev.characterEquippedWeapon
+            : assignUniqueWeaponOwner(prev.characterEquippedWeapon || {}, chosen.id, defaultWeaponId),
+          partyIds: prev.partyIds,
           loginRewardClaimedDays: [...currentClaimed, day]
         };
 
@@ -3440,6 +3447,24 @@ export default function App() {
                             );
                           })}
                         </div>
+                      </div>
+
+                      <div className="border-t border-white/5 pt-4">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            AetheriaAudioEngine.playClick();
+                            triggerSaveUpdate(prev => ({ ...prev, partyIds: [] }));
+                          }}
+                          disabled={saveState.partyIds.length === 0}
+                          className={`w-full p-3 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${
+                            saveState.partyIds.length === 0
+                              ? 'bg-slate-950/30 border-white/5 text-slate-600 cursor-not-allowed'
+                              : 'bg-red-500/10 border-red-500/35 text-red-300 hover:bg-red-500/20 hover:border-red-400 cursor-pointer'
+                          }`}
+                        >
+                          Unequip All Heroes From Party
+                        </button>
                       </div>
                     </div>
 

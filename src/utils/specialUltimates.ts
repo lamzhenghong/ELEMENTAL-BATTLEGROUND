@@ -55,7 +55,7 @@ export const SPECIAL_ULTIMATE_COMBOS: readonly SpecialUltimateCombo[] = [
       { characterId: 'kaelen', speaker: 'Kaelen', line: 'Always.' }
     ],
     damageElement: 'Pyro',
-    damageMultiplier: 10,
+    damageMultiplier: 20,
     impactText: 'MASSIVE VAPORIZE DETONATION',
     style: 'vapor'
   },
@@ -68,7 +68,7 @@ export const SPECIAL_ULTIMATE_COMBOS: readonly SpecialUltimateCombo[] = [
       { characterId: 'veyra', speaker: 'Veyra', line: 'Then let the heavens roar.' }
     ],
     damageElement: 'Electro',
-    damageMultiplier: 10.5,
+    damageMultiplier: 21,
     impactText: 'HYPERBLOOM WORLDSTORM',
     style: 'worldstorm'
   }

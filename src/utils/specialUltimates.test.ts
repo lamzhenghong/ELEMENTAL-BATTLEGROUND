@@ -36,6 +36,7 @@ const eternalVapor = getAvailableSpecialUltimate({
 });
 assert.equal(eternalVapor?.combo.id, 'eternal_vapor');
 assert.equal(eternalVapor?.combo.name, 'Eternal Vapor');
+assert.equal(eternalVapor?.combo.damageMultiplier, 20);
 
 const worldstormGenesis = getAvailableSpecialUltimate({
   partyIds: ['maelis', 'veyra'],
@@ -48,6 +49,7 @@ const worldstormGenesis = getAvailableSpecialUltimate({
 });
 assert.equal(worldstormGenesis?.combo.id, 'worldstorm_genesis');
 assert.equal(worldstormGenesis?.combo.name, 'Worldstorm Genesis');
+assert.equal(worldstormGenesis?.combo.damageMultiplier, 21);
 
 assert.equal(getAvailableSpecialUltimate({
   partyIds: ['aurelia', 'maelis'],

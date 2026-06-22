@@ -35,6 +35,8 @@ export default function StoryMode({
 
   // Character Stories Sub-state
   const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
+  const [storyRarityFilter, setStoryRarityFilter] = useState<'All' | 3 | 4 | 5>('All');
+  const [storyElementFilter, setStoryElementFilter] = useState<'All' | ElementType>('All');
 
   // Visual Novel Cutscene overlay states
   const [activeCutsceneSlides, setActiveCutsceneSlides] = useState<any[] | null>(null);
@@ -117,9 +119,15 @@ export default function StoryMode({
     });
   };
 
-  const ownedCharacters = PLAYABLE_CHARACTERS.filter((c) =>
-    saveState.unlockedCharacterIds.includes(c.id)
-  );
+  const ownedCharacters = [...PLAYABLE_CHARACTERS]
+    .filter((c) => saveState.unlockedCharacterIds.includes(c.id))
+    .sort((a, b) => b.rarity - a.rarity || a.name.localeCompare(b.name));
+
+  const filteredStoryCharacters = ownedCharacters.filter((c) => {
+    const matchesRarity = storyRarityFilter === 'All' || c.rarity === storyRarityFilter;
+    const matchesElement = storyElementFilter === 'All' || c.element === storyElementFilter;
+    return matchesRarity && matchesElement;
+  });
 
   return (
     <div className="space-y-6 select-none relative">
@@ -296,10 +304,50 @@ export default function StoryMode({
             {/* Left Column: owned character list */}
             <div className="space-y-2 max-h-[450px] overflow-y-auto pr-1">
               <h4 className="text-[9.5px] font-black text-slate-500 uppercase tracking-widest block font-mono px-2">
-                Select Owned Character ({ownedCharacters.length}):
+                Select Owned Character ({filteredStoryCharacters.length}/{ownedCharacters.length}):
               </h4>
+              <div className="bg-slate-950/45 border border-white/5 rounded-xl p-2 space-y-2">
+                <div className="flex flex-wrap gap-1">
+                  {(['All', 5, 4, 3] as const).map((rarity) => (
+                    <button
+                      key={rarity}
+                      type="button"
+                      onClick={() => {
+                        setStoryRarityFilter(rarity);
+                        AetheriaAudioEngine.playClick();
+                      }}
+                      className={`px-2 py-1 rounded-md border text-[8px] font-black uppercase tracking-wider transition-all ${
+                        storyRarityFilter === rarity
+                          ? 'bg-amber-400 text-slate-950 border-amber-300'
+                          : 'bg-black/30 border-white/10 text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      {rarity === 'All' ? 'All' : `${rarity} Star`}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {(['All', 'Pyro', 'Hydro', 'Cryo', 'Electro', 'Anemo', 'Geo', 'Dendro'] as const).map((element) => (
+                    <button
+                      key={element}
+                      type="button"
+                      onClick={() => {
+                        setStoryElementFilter(element);
+                        AetheriaAudioEngine.playClick();
+                      }}
+                      className={`px-2 py-1 rounded-md border text-[8px] font-black uppercase tracking-wider transition-all ${
+                        storyElementFilter === element
+                          ? 'bg-indigo-500 text-white border-indigo-300'
+                          : 'bg-black/30 border-white/10 text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      {element}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="space-y-1.5">
-                {ownedCharacters.map((char) => {
+                {filteredStoryCharacters.map((char) => {
                   const isSelected = selectedCharId === char.id;
                   const completedCount = storyProgress.completedCharacterStoryActs[char.id] || 0;
 

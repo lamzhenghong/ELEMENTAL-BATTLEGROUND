@@ -1388,7 +1388,13 @@ export default function InventoryManager({
                   </div>
 
                   <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-1">
-                    {activeCompatibleWeapons.map((w) => (
+                    {activeCompatibleWeapons.map((w) => {
+                      const ownerEntry = Object.entries(characterEquippedWeapon).find(([, weaponId]) => weaponId === w.id);
+                      const ownerId = ownerEntry?.[0];
+                      const ownerName = ownerId ? PLAYABLE_CHARACTERS.find(c => c.id === ownerId)?.name : null;
+                      const ownedByOther = Boolean(ownerId && ownerId !== selectedChar.id);
+
+                      return (
                       <button
                         key={w.id}
                         type="button"
@@ -1399,7 +1405,9 @@ export default function InventoryManager({
                         className={`w-full text-left p-3 rounded-lg border text-sm flex justify-between items-center transition-all cursor-pointer ${
                           equippedWeaponId === w.id
                             ? 'bg-[#0f172a] border-indigo-500/75 text-indigo-200 font-extrabold shadow-[0_0_10px_rgba(99,102,241,0.2)]'
-                            : 'bg-black/25 border-white/5 text-slate-400 hover:border-white/10'
+                            : ownedByOther
+                              ? 'bg-amber-950/15 border-amber-500/20 text-amber-200 hover:border-amber-400/40'
+                              : 'bg-black/25 border-white/5 text-slate-400 hover:border-white/10'
                         }`}
                       >
                         <div>
@@ -1409,12 +1417,15 @@ export default function InventoryManager({
                         <span className={`text-[10px] uppercase font-black tracking-widest px-2.5 py-1 rounded-md ${
                           equippedWeaponId === w.id
                             ? 'bg-indigo-500/25 border border-indigo-500/40 text-indigo-300'
-                            : 'bg-white/5 border border-white/15 text-slate-400'
+                            : ownedByOther
+                              ? 'bg-amber-400/10 border border-amber-400/25 text-amber-300'
+                              : 'bg-white/5 border border-white/15 text-slate-400'
                         }`}>
-                          {equippedWeaponId === w.id ? 'Equipped' : 'Equip'}
+                          {equippedWeaponId === w.id ? 'Equipped' : ownedByOther ? `Used by ${ownerName || 'Hero'}` : 'Equip'}
                         </span>
                       </button>
-                    ))}
+                      );
+                    })}
 
                     {activeCompatibleWeapons.length === 0 && (
                       <div className="text-xs text-slate-500 italic py-8 text-center font-mono uppercase tracking-wider">

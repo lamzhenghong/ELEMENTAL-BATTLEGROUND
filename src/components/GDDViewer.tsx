@@ -1360,10 +1360,10 @@ export default function GDDViewer({
                         <span className="font-extrabold text-slate-950 bg-amber-400 px-2 py-0.5 rounded">Unlocks at Player LV.40</span>
                       </div>
                       <p className="text-slate-300 leading-normal text-[10px]">
-                        Bring Aurelia + Kaelen for Eternal Vapor, or Maelis + Veyra for Worldstorm Genesis. Both partner Ultimate Gauges must be full, the active hero must be one of the pair, and the glowing Special Ultimate button appears beside Burst on desktop or center-bottom on mobile.
+                        Some limited 5-star heroes can awaken hidden partner attacks when paired with the right ally. Fill both partner Ultimate Gauges, stay on one of those heroes, then watch for the glowing Special Ultimate button beside Burst on desktop or near the lower center on mobile.
                       </p>
                       <p className="text-slate-500 leading-normal text-[10px]">
-                        Normal Burst still works separately. Using either partner's normal Burst spends that hero's gauge, so Special Ultimate hides until both gauges are full again. Special Ultimate has a shared 60 second cooldown.
+                        Normal Burst still works separately. Using either partner's normal Burst spends that hero's gauge, so the hidden attack disappears until the pair is ready again. Special Ultimate has a shared 60 second cooldown.
                       </p>
                     </div>
                     <div className="flex justify-between items-center bg-black/35 p-2 rounded border border-white/5">
