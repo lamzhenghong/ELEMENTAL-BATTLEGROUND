@@ -2191,7 +2191,7 @@ export default function App() {
   // ENHANCED IMMERSIVE MAIN MENU UI
   if (activeScreen === 'menu') {
     return (
-      <div className="min-h-screen text-slate-100 flex flex-col font-sans relative antialiased leading-normal overflow-x-hidden justify-between">
+      <div className="mobile-main-menu-scroll min-h-screen text-slate-100 flex flex-col font-sans relative antialiased leading-normal overflow-x-hidden justify-between">
         {/* Full-bleed generated background image */}
         <div 
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"

@@ -121,10 +121,16 @@
 html,
 body,
 #root {
-  touch-action: none;
   overscroll-behavior: none;
   user-select: none;
   -webkit-user-select: none;
+}
+
+.mobile-main-menu-scroll {
+  touch-action: pan-y;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 
 canvas {
