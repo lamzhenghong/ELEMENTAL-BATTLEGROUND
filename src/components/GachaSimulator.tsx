@@ -8,11 +8,14 @@ import { motion, AnimatePresence } from 'motion/react';
 import { PLAYABLE_CHARACTERS } from '../data/characters';
 import { WEAPONS_DATABASE } from '../data/weapons';
 import { PlayableCharacter, ElementType, Weapon } from '../types';
-import { Sparkles, Coins, HelpCircle, History, RefreshCw, Star, X, Info, Shield, Sword, Eye, Sparkle } from 'lucide-react';
+import { Sparkles, HelpCircle, History, RefreshCw, Star, X, Info, Shield, Sword, Eye, Sparkle } from 'lucide-react';
 import { AetheriaAudioEngine } from '../utils/audio';
 import { LanguageType, t } from '../utils/i18n';
+import { DAY_MS, getLimitedCharacterBannerForTime, getStandardFiveStarCharacters } from '../utils/limitedBanners';
 import aureliaBanner from '../../assets/aurelia_banner.png';
 import kaelenBanner from '../../assets/kaelen_banner.png';
+import maelisBanner from '../../assets/maelis_banner.png';
+import veyraBanner from '../../assets/veyra_banner.png';
 import weaponBanner from '../../assets/weapon_banner.png';
 import standardBanner from '../../assets/standard_banner.png';
 
@@ -20,6 +23,8 @@ const getBannerImage = (featured5StarId: string, type: 'character' | 'weapon') =
   if (type === 'weapon') return weaponBanner;
   if (featured5StarId === 'aurelia') return aureliaBanner;
   if (featured5StarId === 'kaelen') return kaelenBanner;
+  if (featured5StarId === 'maelis') return maelisBanner;
+  if (featured5StarId === 'veyra') return veyraBanner;
   if (featured5StarId === 'standard_banner') return standardBanner;
   return aureliaBanner;
 };
@@ -33,6 +38,12 @@ const getBannerGradient = (featured5StarId: string, type: 'character' | 'weapon'
   }
   if (featured5StarId === 'kaelen') {
     return 'linear-gradient(to right, rgba(10, 16, 28, 0.95) 0%, rgba(10, 16, 28, 0.7) 55%, rgba(10, 16, 28, 0.2) 100%)';
+  }
+  if (featured5StarId === 'maelis') {
+    return 'linear-gradient(to right, rgba(5, 20, 13, 0.96) 0%, rgba(5, 20, 13, 0.72) 55%, rgba(5, 20, 13, 0.24) 100%)';
+  }
+  if (featured5StarId === 'veyra') {
+    return 'linear-gradient(to right, rgba(12, 8, 28, 0.96) 0%, rgba(12, 8, 28, 0.72) 55%, rgba(12, 8, 28, 0.24) 100%)';
   }
   if (featured5StarId === 'standard_banner') {
     return 'linear-gradient(to right, rgba(15, 12, 28, 0.95) 0%, rgba(15, 12, 28, 0.7) 55%, rgba(15, 12, 28, 0.2) 100%)';
@@ -410,50 +421,27 @@ export default function GachaSimulator({
   const [animationPhase, setAnimationPhase] = useState<'none' | 'meteor' | 'showcase'>('none');
   const [maxRarityInPull, setMaxRarityInPull] = useState(3);
   const [selectedWeaponName, setSelectedWeaponName] = useState<string>('Solar Searing Blade');
+  const [devFeaturedOffset, setDevFeaturedOffset] = useState(0);
 
-  const [msRemaining, setMsRemaining] = useState(86400000 - (Date.now() % 86400000));
+  const [msRemaining, setMsRemaining] = useState(DAY_MS - (Date.now() % DAY_MS));
   
   useEffect(() => {
     const timer = setInterval(() => {
-      setMsRemaining(86400000 - (Date.now() % 86400000));
+      setMsRemaining(DAY_MS - (Date.now() % DAY_MS));
     }, 1000);
     return () => clearInterval(timer);
   }, []);
 
-  const isSwapped = Math.floor(Date.now() / 86400000) % 2 === 1;
+  const activeLimitedBanner = getLimitedCharacterBannerForTime(Date.now(), devFeaturedOffset);
 
-  const dynamicBanners = BANNERS.map(banner => {
+  const limitedRotationBanners = BANNERS.map(banner => {
     if (banner.id === 'char_banner_1') {
-      return isSwapped ? {
-        ...banner,
-        title: 'Drifting Sea-Mist Tempest',
-        subtitle: 'LIMITED BANNER',
-        desc: 'Brave the crushing waves and chilling blizzards! Uprated chance for 5★ Kaelen Tidebound. Controls powerful field elemental catalysts.',
-        featured5Star: 'Kaelen Tidebound',
-        featured5StarId: 'kaelen',
-        featured4Stars: ['Marina Dewdrop', 'Lyra Frostbloom'],
-        tag: 'LIMITED BANNER',
-        themeColor: 'border-cyan-500/50 shadow-[0_0_20px_rgba(6,182,212,0.15)]',
-        gradientStyle: 'from-cyan-950/70 via-[#0d152a] to-[#050811]',
-        details: '5★ Rate: 50% chance to summon Kaelen Tidebound [EVENT LIMITED]. If not, any other standard 5★ character (excluding Aurelia Sunflare).'
-      } : {
-        ...banner,
-        title: 'Solar Crucible Dawning',
-        subtitle: 'LIMITED BANNER',
-        desc: 'Unleash the ultimate power of solar flames! Greatly enhanced drop-rates for 5★ Aurelia Sunflare. Commands lightning fast Sword slashes.',
-        featured5Star: 'Aurelia Sunflare',
-        featured5StarId: 'aurelia',
-        featured4Stars: ['Ignis Hearthward', 'Raijin Volt'],
-        tag: 'LIMITED BANNER',
-        themeColor: 'border-orange-500/50 shadow-[0_0_20px_rgba(244,63,94,0.15)]',
-        gradientStyle: 'from-orange-950/70 via-[#100d1c] to-[#08070f]',
-        details: '5★ Rate: 50% chance to summon Aurelia Sunflare [EVENT LIMITED]. If not, any other standard 5★ character (excluding Kaelen Tidebound).'
-      };
+      return { ...banner, ...activeLimitedBanner };
     }
     return banner;
   });
 
-  const rawActiveBanner = dynamicBanners[selectedBannerIdx] || dynamicBanners[0];
+  const rawActiveBanner = limitedRotationBanners[selectedBannerIdx] || limitedRotationBanners[0];
   const activeBanner = rawActiveBanner.type === 'weapon' ? {
     ...rawActiveBanner,
     featured5Star: selectedWeaponName,
@@ -553,12 +541,7 @@ export default function GachaSimulator({
           isChar = true;
           
           if (activeBanner.id === 'char_banner_2') {
-            // STANDARD BANNER: contains all non-limited characters (Lyra, Zephyr, Goliath, Raijin)
-            const standardFiveStars = PLAYABLE_CHARACTERS.filter(c => 
-              c.rarity === 5 && 
-              c.id !== 'aurelia' && 
-              c.id !== 'kaelen'
-            );
+            const standardFiveStars = getStandardFiveStarCharacters(PLAYABLE_CHARACTERS);
             const chosen = standardFiveStars.length > 0 
               ? standardFiveStars[Math.floor(Math.random() * standardFiveStars.length)]
               : PLAYABLE_CHARACTERS.find(c => c.id === 'lyra')!;
@@ -578,12 +561,8 @@ export default function GachaSimulator({
               }
               localGuaranteed5 = false;
             } else {
-              // Roll any random standard 5-star character (excluding the featured one and the other limited character)
-              const standardFiveStars = PLAYABLE_CHARACTERS.filter(c => 
-                c.rarity === 5 && 
-                c.id !== 'aurelia' && 
-                c.id !== 'kaelen'
-              );
+              // Losing 50/50 always rolls from standard 5-stars only.
+              const standardFiveStars = getStandardFiveStarCharacters(PLAYABLE_CHARACTERS);
               const chosen = standardFiveStars.length > 0 
                 ? standardFiveStars[Math.floor(Math.random() * standardFiveStars.length)]
                 : PLAYABLE_CHARACTERS.find(c => c.id === activeBanner.featured5StarId)!;
@@ -1024,10 +1003,32 @@ export default function GachaSimulator({
 
         {/* Currency displays */}
         <div className="flex items-center gap-3">
+          {devCheatsEnabled && (
+            <button
+              type="button"
+              onClick={() => {
+                const nextFeaturedOffset = devFeaturedOffset + 1;
+                setDevFeaturedOffset(nextFeaturedOffset);
+                const nextBanner = getLimitedCharacterBannerForTime(Date.now(), nextFeaturedOffset);
+                setSelectedBannerIdx(0);
+                AetheriaAudioEngine.playClick();
+                onShowAlert(
+                  'Featured Character Switched',
+                  `${nextBanner.featured5Star} is now featured on the limited banner for testing.`,
+                  'info'
+                );
+              }}
+              disabled={pulling}
+              className="bg-emerald-950/70 hover:bg-emerald-900/80 text-emerald-300 text-[8.5px] font-black uppercase tracking-wider px-3 py-2 rounded-lg border border-emerald-500/25 active:scale-95 transition-all cursor-pointer font-sans disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+            >
+              <RefreshCw className="w-3 h-3" />
+              Switch Featured Characters
+            </button>
+          )}
           <div className="bg-black/30 border border-white/10 px-3 py-1.5 rounded-lg flex items-center gap-2">
-            <Coins className="w-3.5 h-3.5 text-amber-400" />
+            <Sparkles className="w-3.5 h-3.5 text-sky-300" />
             <span className="text-[9px] text-slate-400 font-mono uppercase">GEMS BALANCE:</span>
-            <span className="text-[10px] font-black text-amber-400 font-mono">{aetherGems.toLocaleString()}</span>
+            <span className="text-[10px] font-black text-sky-300 font-mono">{aetherGems.toLocaleString()}</span>
           </div>
 
           {devCheatsEnabled && (
@@ -1044,7 +1045,7 @@ export default function GachaSimulator({
 
       {/* Banner selection tabs */}
       <div className="flex flex-wrap gap-2 mt-4">
-        {dynamicBanners.map((b, idx) => (
+        {limitedRotationBanners.map((b, idx) => (
           <button
             key={b.id}
             onClick={() => {

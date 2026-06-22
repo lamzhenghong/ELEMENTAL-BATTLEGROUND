@@ -127,6 +127,86 @@ export const PLAYABLE_CHARACTERS: PlayableCharacter[] = [
     ]
   },
   {
+    id: 'maelis',
+    name: 'Maelis Verdantveil',
+    title: 'Rootbound Prince of the Canopy',
+    rarity: 5,
+    element: 'Dendro',
+    weaponType: 'Claymore',
+    personality: 'Gentle, scholarly, and quietly stubborn. He speaks with calm precision, but becomes fiercely protective when ancient forests or frightened civilians are threatened.',
+    backstory: 'Maelis is the male heir of a vanished Canopy guardian line, raised inside a living archive where every tree records memories in sap and leaf-vein scripture. After the archive roots began turning black from abyssal poison, he forged a colossal claymore from emerald heartwood and left seclusion to cut the corruption out at its source.',
+    avatarPlaceholder: 'bg-gradient-to-tr from-emerald-700 to-lime-300 border-emerald-300',
+    themeColor: '#10b981',
+    baseStats: { hp: 1120, atk: 91, def: 76, critRate: 0.12, critDmg: 0.70 },
+    skills: {
+      basic: {
+        name: 'Verdant Cleave',
+        desc: 'Performs weighty claymore slashes that scatter leaf sigils. The final strike releases a short Dendro shockwave.',
+        cooldown: 0,
+        damageMultiplier: 0.88,
+        element: 'Dendro'
+      },
+      skill: {
+        name: 'Heartwood Aegis',
+        desc: 'Raises a living root shield that absorbs damage and lashes nearby enemies with Dendro thorns when struck.',
+        cooldown: 13,
+        damageMultiplier: 1.9,
+        element: 'Dendro'
+      },
+      ultimate: {
+        name: 'Canopy Sovereign Bloom',
+        desc: 'Splits the ground with his heartwood claymore, growing a luminous forest circle that deals massive Dendro damage and strengthens reaction damage for allies standing inside.',
+        cooldown: 22,
+        damageMultiplier: 5.1,
+        element: 'Dendro'
+      }
+    },
+    relations: [
+      { targetName: 'Verdant Sporebinder', type: 'Research Kin', desc: 'Compares ancient Canopy field notes with Verdant, though Maelis finds his detached experiments emotionally difficult to trust.' },
+      { targetName: 'Flora Bloom', type: 'Gentle Ally', desc: 'Protects Flora during dangerous mushroom surveys and quietly labels every sample she forgets to catalog.' }
+    ]
+  },
+  {
+    id: 'veyra',
+    name: 'Veyra Stormglass',
+    title: 'Prism Archer of Thunder Spires',
+    rarity: 5,
+    element: 'Electro',
+    weaponType: 'Bow',
+    personality: 'Confident, razor-focused, and dryly playful. She enjoys impossible shots, hates sloppy timing, and treats every storm like a puzzle waiting to be solved.',
+    backstory: 'Veyra is a female archer from the floating Thunder Spires, where crystal observatories predict lightning paths before they strike. She survived a shattered-sky disaster by firing a prism arrow through seven storm mirrors, and now hunts the abyssal signal that cracked her home\'s weather engine.',
+    avatarPlaceholder: 'bg-gradient-to-tr from-violet-700 to-cyan-300 border-violet-300',
+    themeColor: '#8b5cf6',
+    baseStats: { hp: 960, atk: 96, def: 58, critRate: 0.18, critDmg: 0.66 },
+    skills: {
+      basic: {
+        name: 'Prism Bolt',
+        desc: 'Fires quick crystal arrows. Fully aimed shots arc Electro between marked enemies.',
+        cooldown: 0,
+        damageMultiplier: 0.68,
+        element: 'Electro'
+      },
+      skill: {
+        name: 'Stormglass Refract',
+        desc: 'Places a floating prism that repeats Veyra\'s next charged shot as an Electro ricochet through nearby targets.',
+        cooldown: 10,
+        damageMultiplier: 1.7,
+        element: 'Electro'
+      },
+      ultimate: {
+        name: 'Nocturne Thunderfall',
+        desc: 'Draws a constellation bowstring and rains violet lightning arrows across the field, dealing heavy Electro damage in rapid pulses.',
+        cooldown: 21,
+        damageMultiplier: 5.3,
+        element: 'Electro'
+      }
+    },
+    relations: [
+      { targetName: 'Raijin Volt', type: 'Competitive Rival', desc: 'Raijin claims raw lightning is superior; Veyra keeps proving precise lightning wins battles faster.' },
+      { targetName: 'Luna Spark', type: 'Workshop Partner', desc: 'Lets Luna borrow prism shards as long as every experiment is labeled, grounded, and at least ten meters away from Veyra\'s bow.' }
+    ]
+  },
+  {
     id: 'marina',
     name: 'Marina Dewdrop',
     title: 'Oceanic Cartographer',

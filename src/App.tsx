@@ -29,6 +29,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AetheriaAudioEngine } from './utils/audio';
 import { getArtifactFusionRule, isSameArtifactPart } from './utils/artifactFusion';
 import { UI_THEMES, UI_THEME_UNLOCK_LEVEL, getUiTheme, isUiThemeUnlocked, normalizeUiTheme } from './utils/uiThemes';
+import { getStandardFiveStarCharacters } from './utils/limitedBanners';
 import mainMenuBg from '../assets/main_menu_bg.png';
 import gameLogoImg from '../assets/game_logo.png';
 import StoryMode from './components/StoryMode';
@@ -1828,7 +1829,7 @@ export default function App() {
         rewardMsg = `Claimed +5,000 Aether Gems!`;
       } else if (day === 7) {
         // Day 7: random non-limited 5-star hero
-        const fiveStarHeroes = PLAYABLE_CHARACTERS.filter(c => c.rarity === 5);
+        const fiveStarHeroes = getStandardFiveStarCharacters(PLAYABLE_CHARACTERS);
         const unowned = fiveStarHeroes.filter(c => !prev.unlockedCharacterIds.includes(c.id));
         const chosen = unowned.length > 0 
           ? unowned[Math.floor(Math.random() * unowned.length)] 

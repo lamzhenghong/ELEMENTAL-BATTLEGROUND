@@ -181,7 +181,7 @@ export const GDD_DATA: GDDData = {
       id: 'banner_rules',
       title: 'Celestial Wishes (Gacha Wheel)',
       iconName: 'Sparkles',
-      summary: 'Players spend AetherGems to perform wishes (summons) to acquire some of the 20 legendary playable characters.',
+      summary: 'Players spend AetherGems to perform wishes (summons) to acquire some of the 22 legendary playable characters.',
       details: [
         'Drop Rates: 5-Star Character Base Rate is 0.6% (cumulative 1.6% across pity). 4-Star Character Base Rate is 5.1%.',
         '90-Pull Pity Counter (5-Star Guarantee): If a player fails to pull a 5-Star character after 89 pulls, pull 90 is guaranteed to be a premium 5-Star character.',

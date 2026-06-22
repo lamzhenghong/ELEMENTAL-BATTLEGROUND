@@ -17,6 +17,8 @@ import { LanguageType, t } from '../utils/i18n';
 
 import aureliaBanner from '../../assets/aurelia_banner.png';
 import kaelenBanner from '../../assets/kaelen_banner.png';
+import maelisBanner from '../../assets/maelis_banner.png';
+import veyraBanner from '../../assets/veyra_banner.png';
 import weaponBanner from '../../assets/weapon_banner.png';
 
 import pyroBg from '../../assets/pyro_bg.png';
@@ -36,6 +38,8 @@ import polearmBg from '../../assets/polearm_bg.png';
 const getCharacterBg = (charId: string, element: ElementType) => {
   if (charId === 'aurelia') return aureliaBanner;
   if (charId === 'kaelen') return kaelenBanner;
+  if (charId === 'maelis') return maelisBanner;
+  if (charId === 'veyra') return veyraBanner;
   switch (element) {
     case 'Pyro': return pyroBg;
     case 'Hydro': return hydroBg;
@@ -439,7 +443,7 @@ export default function GDDViewer({
               className="grid grid-cols-1 md:grid-cols-4 gap-6"
               key="tab_characters"
             >
-              {/* Characters sidebar (20 entries) */}
+              {/* Characters sidebar */}
               <div className="space-y-1.5 overflow-y-auto max-h-[500px] pr-1 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-2 mb-1">
                   Roster Checklist ({PLAYABLE_CHARACTERS.length})
