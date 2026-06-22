@@ -18,7 +18,7 @@ export default defineConfig(() => {
           description: 'Realtime Elemental RPG Simulator',
           theme_color: '#0f172a',
           background_color: '#02050c',
-          display: 'standalone',
+          display: 'fullscreen',
           orientation: 'any',
           start_url: '/',
           icons: [

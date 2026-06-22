@@ -38,7 +38,47 @@ import StoryMode from './components/StoryMode';
 import StoryCutscene from './components/StoryCutscene';
 import { getStageSpec, getStageDialogue } from './data/storyStages';
 
-const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+const isMobileLikeDevice = () => {
+  if (typeof window === 'undefined') return false;
+  return isMobile || window.matchMedia('(pointer: coarse)').matches || window.matchMedia('(max-width: 768px)').matches;
+};
+
+const getFullscreenElement = () => {
+  if (typeof document === 'undefined') return null;
+  return document.fullscreenElement || (document as Document & { webkitFullscreenElement?: Element | null }).webkitFullscreenElement || null;
+};
+
+const requestAppFullscreen = async () => {
+  if (typeof document === 'undefined' || getFullscreenElement()) return;
+  const root = document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> | void };
+
+  try {
+    if (root.requestFullscreen) {
+      await root.requestFullscreen();
+    } else if (root.webkitRequestFullscreen) {
+      await root.webkitRequestFullscreen();
+    }
+  } catch {
+    // Mobile browsers can block fullscreen until the first trusted user gesture.
+  }
+};
+
+const exitAppFullscreen = async () => {
+  if (typeof document === 'undefined' || !getFullscreenElement()) return;
+  const doc = document as Document & { webkitExitFullscreen?: () => Promise<void> | void };
+
+  try {
+    if (document.exitFullscreen) {
+      await document.exitFullscreen();
+    } else if (doc.webkitExitFullscreen) {
+      await doc.webkitExitFullscreen();
+    }
+  } catch {
+    // Keep UI responsive even when the browser rejects fullscreen changes.
+  }
+};
 
 const INITIAL_SAVE_STATE: SaveState = {
   mora: 30000, 
@@ -158,7 +198,7 @@ export default function App() {
 
   useEffect(() => {
     // Check if already running in standalone mode
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: fullscreen)').matches || (navigator as any).standalone;
     if (isStandalone) {
       return;
     }
@@ -416,18 +456,46 @@ export default function App() {
 
   // Fullscreen handler
   const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
+    if (!getFullscreenElement()) {
+      requestAppFullscreen().then(() => setIsFullscreen(!!getFullscreenElement()));
     } else {
-      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
+      exitAppFullscreen().then(() => setIsFullscreen(!!getFullscreenElement()));
     }
   };
 
+  useEffect(() => {
+    if (!isMobileLikeDevice()) return;
+
+    document.documentElement.classList.add('mobile-auto-fullscreen');
+    void requestAppFullscreen();
+
+    const tryFullscreenFromGesture = () => {
+      void requestAppFullscreen();
+    };
+    const retryEvents = ['pointerdown', 'touchstart', 'keydown'] as const;
+
+    retryEvents.forEach(eventName => {
+      window.addEventListener(eventName, tryFullscreenFromGesture, { once: true, passive: true });
+    });
+
+    return () => {
+      document.documentElement.classList.remove('mobile-auto-fullscreen');
+      retryEvents.forEach(eventName => {
+        window.removeEventListener(eventName, tryFullscreenFromGesture);
+      });
+    };
+  }, []);
+
   // Keep fullscreen state in sync with browser Esc key
   useEffect(() => {
-    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    const handler = () => setIsFullscreen(!!getFullscreenElement());
     document.addEventListener('fullscreenchange', handler);
-    return () => document.removeEventListener('fullscreenchange', handler);
+    document.addEventListener('webkitfullscreenchange', handler);
+    handler();
+    return () => {
+      document.removeEventListener('fullscreenchange', handler);
+      document.removeEventListener('webkitfullscreenchange', handler);
+    };
   }, []);
 
   // FPS and latency fluctuator arrays
@@ -2176,7 +2244,7 @@ export default function App() {
         <main className="max-w-md w-full mx-auto px-6 py-12 text-center space-y-8 z-10">
           <div className="flex flex-col items-center gap-4">
             {/* Pulsing prompt for fullscreen */}
-            {!isFullscreen && (
+            {!isMobile && !isFullscreen && (
               <div 
                 onClick={() => {
                   toggleFullscreen();
@@ -2591,17 +2659,21 @@ export default function App() {
             <span className="hidden md:inline">Settings Panel</span>
           </button>
 
-          {/* FULLSCREEN TOGGLE */}
-          <button
-            type="button"
-            onClick={toggleFullscreen}
-            title={isFullscreen ? 'Exit Fullscreen (Esc)' : 'Enter Fullscreen'}
-            className="p-1 md:p-1.5 px-2 md:px-2.5 bg-slate-900 border border-white/10 hover:border-amber-500/40 rounded-lg text-[9px] md:text-[10px] uppercase font-black tracking-wider transition-all active:scale-95 cursor-pointer flex items-center gap-1 shadow-md hover:shadow-amber-500/10 text-white font-sans shrink-0"
-          >
-            {isFullscreen
-              ? <Minimize2 className="w-3.5 h-3.5 text-amber-400" />
-              : <Maximize2 className="w-3.5 h-3.5 text-amber-400" />}
-          </button>
+          {!isMobile && (
+            <>
+              {/* FULLSCREEN TOGGLE */}
+              <button
+                type="button"
+                onClick={toggleFullscreen}
+                title={isFullscreen ? 'Exit Fullscreen (Esc)' : 'Enter Fullscreen'}
+                className="p-1 md:p-1.5 px-2 md:px-2.5 bg-slate-900 border border-white/10 hover:border-amber-500/40 rounded-lg text-[9px] md:text-[10px] uppercase font-black tracking-wider transition-all active:scale-95 cursor-pointer flex items-center gap-1 shadow-md hover:shadow-amber-500/10 text-white font-sans shrink-0"
+              >
+                {isFullscreen
+                  ? <Minimize2 className="w-3.5 h-3.5 text-amber-400" />
+                  : <Maximize2 className="w-3.5 h-3.5 text-amber-400" />}
+              </button>
+            </>
+          )}
         </div>
       </header>
 
