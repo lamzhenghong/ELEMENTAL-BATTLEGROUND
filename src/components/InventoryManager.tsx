@@ -456,8 +456,8 @@ export default function InventoryManager({
           <h3 id="artifact-salvage-confirm-title" className="font-display text-sm font-black uppercase tracking-wider text-slate-100 sm:text-md">
             Salvage Artifact?
           </h3>
-          <p className="font-mono text-[10px] uppercase leading-relaxed text-slate-350 sm:text-[10.5px]">
-            Are you sure you want to delete and salvage <span className="font-extrabold text-red-400">{salvageConfirmArtifact.name}</span>? This action is permanent and cannot be undone!
+          <p className="font-mono text-[11px] font-bold uppercase leading-snug text-slate-100 drop-shadow-[0_1px_2px_rgba(0,0,0,0.75)] sm:text-xs">
+            Are you sure you want to delete and salvage <span className="font-black text-red-300 drop-shadow-[0_0_8px_rgba(248,113,113,0.45)]">{salvageConfirmArtifact.name}</span>? This action is permanent and cannot be undone!
           </p>
         </div>
 
