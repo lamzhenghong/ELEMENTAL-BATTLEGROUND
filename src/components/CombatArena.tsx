@@ -27,6 +27,17 @@ import MobileJoystick from './MobileJoystick';
 import MobileControls from './MobileControls';
 import { getStageSpec } from '../data/storyStages';
 import StoryRewards from './StoryRewards';
+import {
+  getReactionDamageOutcome,
+  getSpecialUltimateStatDamage,
+  getStatScaledAttackDamage
+} from '../utils/combatDamage';
+import {
+  BOSS_VISUAL_VARIANTS,
+  ENEMY_VISUAL_VARIANTS,
+  getRandomEnemyVisualVariant,
+  sanitizeEnemyName
+} from '../utils/enemyVisuals';
 
 const WORLD_WIDTH = 2000;
 const WORLD_HEIGHT = 2000;
@@ -71,6 +82,7 @@ interface CombatArenaProps {
   onStoryBattleEnd?: (victory: boolean, stats: { stars: number; hp: Record<string, number>; ult: Record<string, number>; duration: number; deaths: number }) => void;
   saveState?: any;
   activeDamageSkin?: string;
+  disableGameplayCutscenes?: boolean;
 }
 
 interface FloatingDamageTextDOMProps {
@@ -283,27 +295,24 @@ class CrystalShard {
 const BOSS_TEMPLATES = [
   {
     bossType: 'fire_dragon',
-    name: 'Calamity Pyro Dragon',
-    element: 'Pyro' as ElementType,
-    color: '#dc2626',
+    name: BOSS_VISUAL_VARIANTS.fire_dragon.name,
+    color: BOSS_VISUAL_VARIANTS.fire_dragon.color,
     radius: 65,
     maxHp: 25000,
     speed: 0.7
   },
   {
     bossType: 'ice_golem',
-    name: 'Glacial Frost Golem',
-    element: 'Cryo' as ElementType,
-    color: '#06b6d4',
+    name: BOSS_VISUAL_VARIANTS.ice_golem.name,
+    color: BOSS_VISUAL_VARIANTS.ice_golem.color,
     radius: 68,
     maxHp: 27000,
     speed: 0.6
   },
   {
     bossType: 'thunderbird',
-    name: 'Tempest Thunderbird',
-    element: 'Electro' as ElementType,
-    color: '#a855f7',
+    name: BOSS_VISUAL_VARIANTS.thunderbird.name,
+    color: BOSS_VISUAL_VARIANTS.thunderbird.color,
     radius: 60,
     maxHp: 23000,
     speed: 0.8
@@ -346,7 +355,8 @@ export default function CombatArena({
   isHardMode = false,
   onStoryBattleEnd,
   saveState,
-  activeDamageSkin = 'Default'
+  activeDamageSkin = 'Default',
+  disableGameplayCutscenes = false
 }: CombatArenaProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const minimapCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -1144,16 +1154,7 @@ export default function CombatArena({
     const centerY = WORLD_HEIGHT / 2;
 
     const createRandomSlime = (id: string, scale: number) => {
-      const elements: { element: ElementType; color: string; name: string }[] = [
-        { element: 'Pyro', color: '#f97316', name: 'Pyro Slime' },
-        { element: 'Hydro', color: '#3b82f6', name: 'Hydro Slime' },
-        { element: 'Cryo', color: '#60a5fa', name: 'Cryo Slime' },
-        { element: 'Electro', color: '#a855f7', name: 'Electro Slime' },
-        { element: 'Anemo', color: '#10b981', name: 'Anemo Slime' },
-        { element: 'Geo', color: '#fbbf24', name: 'Geo Slime' },
-        { element: 'Dendro', color: '#22c55e', name: 'Dendro Slime' }
-      ];
-      const tpl = elements[Math.floor(Math.random() * elements.length)];
+      const tpl = getRandomEnemyVisualVariant(ENEMY_VISUAL_VARIANTS.slice(0, 7));
       const baseHp = 500 + Math.random() * 200;
       const hp = Math.round(baseHp * scale);
       const speed = 1.2 + Math.random() * 0.4;
@@ -1161,7 +1162,6 @@ export default function CombatArena({
         id,
         name: tpl.name,
         type: 'Normal' as const,
-        element: tpl.element,
         color: tpl.color,
         x: centerX + (Math.random() - 0.5) * 800,
         y: centerY + (Math.random() - 0.5) * 800,
@@ -1178,9 +1178,9 @@ export default function CombatArena({
 
     const createRandomElite = (id: string, scale: number) => {
       const eliteTypes = [
-        { name: 'Abyss Obsidian Berserker', element: 'Geo' as ElementType, color: '#78350f', baseHp: 3500, radius: 36, speed: 1.0, telegraphType: 'circle' as const },
-        { name: 'Abyss Cryo Channeler', element: 'Cryo' as ElementType, color: '#0284c7', baseHp: 2800, radius: 35, speed: 0.9, telegraphType: 'line' as const },
-        { name: 'Epoch Ruin Guard', element: (Math.random() > 0.5 ? 'Geo' : 'Cryo') as ElementType, color: '#4b5563', baseHp: 4500, radius: 40, speed: 1.1, telegraphType: (Math.random() > 0.5 ? 'circle' : 'line') as ('circle' | 'line') }
+        { name: 'Abyss Berserker', color: '#78350f', baseHp: 3500, radius: 36, speed: 1.0, telegraphType: 'circle' as const },
+        { name: 'Abyss Channeler', color: '#0284c7', baseHp: 2800, radius: 35, speed: 0.9, telegraphType: 'line' as const },
+        { name: 'Epoch Ruin Guard', color: '#4b5563', baseHp: 4500, radius: 40, speed: 1.1, telegraphType: (Math.random() > 0.5 ? 'circle' : 'line') as ('circle' | 'line') }
       ];
       const tpl = eliteTypes[Math.floor(Math.random() * eliteTypes.length)];
       const hp = Math.round(tpl.baseHp * scale);
@@ -1188,7 +1188,6 @@ export default function CombatArena({
         id,
         name: tpl.name,
         type: 'Elite' as const,
-        element: tpl.element,
         color: tpl.color,
         x: centerX + (Math.random() - 0.5) * 900,
         y: centerY + (Math.random() - 0.5) * 900,
@@ -1212,7 +1211,6 @@ export default function CombatArena({
         name: bossTpl.name,
         type: 'Boss' as const,
         bossType: bossTpl.bossType,
-        element: bossTpl.element,
         color: bossTpl.color,
         x: centerX,
         y: centerY - 80,
@@ -1243,10 +1241,9 @@ export default function CombatArena({
           const hp = Math.round(bossTpl.maxHp * scaleMultiplier);
           const boss = {
             id: enemyId,
-            name: enemySpec.name,
+            name: sanitizeEnemyName(enemySpec.name) || bossTpl.name,
             type: 'Boss' as const,
             bossType: bossTpl.bossType,
-            element: enemySpec.element,
             color: bossTpl.color,
             x: centerX,
             y: centerY - 80,
@@ -1270,17 +1267,17 @@ export default function CombatArena({
         } else if (enemySpec.type === 'Elite') {
           setSpawnerPreset('elites');
           const eliteTypes = [
-            { name: 'Abyss Obsidian Berserker', element: 'Geo' as ElementType, color: '#78350f', baseHp: 3500, radius: 36, speed: 1.0, telegraphType: 'circle' as const },
-            { name: 'Abyss Cryo Channeler', element: 'Cryo' as ElementType, color: '#0284c7', baseHp: 2800, radius: 35, speed: 0.9, telegraphType: 'line' as const },
-            { name: 'Epoch Ruin Guard', element: 'Geo' as ElementType, color: '#4b5563', baseHp: 4500, radius: 40, speed: 1.1, telegraphType: 'circle' as const }
+            { name: 'Abyss Berserker', color: '#78350f', baseHp: 3500, radius: 36, speed: 1.0, telegraphType: 'circle' as const },
+            { name: 'Abyss Channeler', color: '#0284c7', baseHp: 2800, radius: 35, speed: 0.9, telegraphType: 'line' as const },
+            { name: 'Epoch Ruin Guard', color: '#4b5563', baseHp: 4500, radius: 40, speed: 1.1, telegraphType: 'circle' as const }
           ];
-          const tpl = eliteTypes.find(e => e.name === enemySpec.name || e.element === enemySpec.element) || eliteTypes[0];
+          const neutralName = sanitizeEnemyName(enemySpec.name);
+          const tpl = eliteTypes.find(e => e.name === neutralName) || eliteTypes[0];
           const hp = Math.round(tpl.baseHp * scaleMultiplier);
           list.push({
             id: enemyId,
-            name: enemySpec.name,
+            name: neutralName || tpl.name,
             type: 'Elite' as const,
-            element: enemySpec.element,
             color: tpl.color,
             x: centerX + (Math.random() - 0.5) * 800,
             y: centerY + (Math.random() - 0.5) * 800,
@@ -1295,24 +1292,14 @@ export default function CombatArena({
             burningTicks: 0
           });
         } else {
-          const elements = [
-            { element: 'Pyro' as ElementType, color: '#f97316' },
-            { element: 'Hydro' as ElementType, color: '#3b82f6' },
-            { element: 'Cryo' as ElementType, color: '#60a5fa' },
-            { element: 'Electro' as ElementType, color: '#a855f7' },
-            { element: 'Anemo' as ElementType, color: '#10b981' },
-            { element: 'Geo' as ElementType, color: '#fbbf24' },
-            { element: 'Dendro' as ElementType, color: '#22c55e' }
-          ];
-          const tpl = elements.find(e => e.element === enemySpec.element) || elements[0];
+          const tpl = getRandomEnemyVisualVariant(ENEMY_VISUAL_VARIANTS.slice(0, 7));
           const baseHp = 500 + Math.random() * 200;
           const hp = Math.round(baseHp * scaleMultiplier);
           const speed = 1.2 + Math.random() * 0.4;
           list.push({
             id: enemyId,
-            name: enemySpec.name,
+            name: sanitizeEnemyName(enemySpec.name) || tpl.name,
             type: 'Normal' as const,
-            element: enemySpec.element,
             color: tpl.color,
             x: centerX + (Math.random() - 0.5) * 800,
             y: centerY + (Math.random() - 0.5) * 800,
@@ -1658,7 +1645,7 @@ export default function CombatArena({
       const dist = Math.hypot(dx, dy);
 
       if (dist < skillRadius + enemy.radius) {
-        applySkillDamage(enemy, currentActiveChar.atk * currentActiveChar.skills.skill.damageMultiplier, currentActiveChar.element, false, false, 'skill');
+        applySkillDamage(enemy, getStatScaledAttackDamage(currentActiveChar.atk, currentActiveChar.skills.skill.damageMultiplier), currentActiveChar.element, false, false, 'skill');
       }
     });
 
@@ -1673,7 +1660,7 @@ export default function CombatArena({
         const dist = Math.hypot(dx, dy);
 
         if (dist < skillRadius + enemy.radius) {
-          applySkillDamage(enemy, currentActiveChar.atk * currentActiveChar.skills.skill.damageMultiplier * echo.damageMultiplier, currentActiveChar.element, false, false, 'skill');
+          applySkillDamage(enemy, getStatScaledAttackDamage(currentActiveChar.atk, currentActiveChar.skills.skill.damageMultiplier, echo.damageMultiplier), currentActiveChar.element, false, false, 'skill');
           spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 35, `ECHO x${echo.damageMultiplier}`, echo.auraColor, 10, echo.rarity === 'Legendary');
         }
       });
@@ -1741,9 +1728,11 @@ export default function CombatArena({
       return;
     }
 
-    // Enter Ultimate Cutscene mode
-    setIsUltCutsceneActive(true);
-    setActiveUltCutscene(currentActiveChar);
+    // Enter Ultimate Cutscene mode unless the player disabled gameplay cutscenes.
+    if (!disableGameplayCutscenes) {
+      setIsUltCutsceneActive(true);
+      setActiveUltCutscene(currentActiveChar);
+    }
 
     // Play SFX
     AetheriaAudioEngine.playUltimate();
@@ -1756,8 +1745,7 @@ export default function CombatArena({
       return c;
     }));
 
-    // Delay damage and visual explosion resolution by 750ms to match the cutscene duration
-    setTimeout(() => {
+    const resolveUltimateImpact = () => {
       setIsUltCutsceneActive(false);
       setActiveUltCutscene(null);
 
@@ -1790,7 +1778,7 @@ export default function CombatArena({
       // Mega damage across all targets
       enemiesRef.current.forEach(enemy => {
          if (enemy.hp <= 0) return;
-         applySkillDamage(enemy, currentActiveChar.atk * currentActiveChar.skills.ultimate.damageMultiplier, currentActiveChar.element, true, false, 'ultimate');
+         applySkillDamage(enemy, getStatScaledAttackDamage(currentActiveChar.atk, currentActiveChar.skills.ultimate.damageMultiplier), currentActiveChar.element, true, false, 'ultimate');
       });
 
       const echo = activeAetherEchoRef.current;
@@ -1798,11 +1786,18 @@ export default function CombatArena({
         spawnAetherEchoPulse(`Echo Ultimate x${echo.damageMultiplier}`, echo, echo.rarity === 'Legendary' ? 13 : 11);
         enemiesRef.current.forEach(enemy => {
           if (enemy.hp <= 0) return;
-          applySkillDamage(enemy, currentActiveChar.atk * currentActiveChar.skills.ultimate.damageMultiplier * echo.damageMultiplier, currentActiveChar.element, true, false, 'ultimate');
+          applySkillDamage(enemy, getStatScaledAttackDamage(currentActiveChar.atk, currentActiveChar.skills.ultimate.damageMultiplier, echo.damageMultiplier), currentActiveChar.element, true, false, 'ultimate');
           spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 45, `ECHO ULT x${echo.damageMultiplier}`, echo.auraColor, 11, echo.rarity === 'Legendary');
         });
       }
-    }, 750);
+    };
+
+    if (disableGameplayCutscenes) {
+      resolveUltimateImpact();
+    } else {
+      // Delay damage and visual explosion resolution by 750ms to match the cutscene duration.
+      setTimeout(resolveUltimateImpact, 750);
+    }
   };
 
   const triggerSpecialUltimate = () => {
@@ -1836,17 +1831,63 @@ export default function CombatArena({
     const combo = available.combo;
     const participantIds = new Set(combo.requiredCharacterIds);
     const participants = currentParty.filter(c => participantIds.has(c.id));
-    const averageAtk = participants.reduce((sum, c) => sum + c.atk, 0) / Math.max(1, participants.length);
-    const specialDamage = averageAtk * combo.damageMultiplier;
+    const specialDamage = getSpecialUltimateStatDamage(currentActiveChar.atk, participants.map(c => c.atk), combo.damageMultiplier);
     const px = playerRef.current.x;
     const py = playerRef.current.y;
     const impactColor = combo.style === 'vapor' ? '#fb923c' : '#a855f7';
     const secondaryColor = combo.style === 'vapor' ? '#22d3ee' : '#22c55e';
+    const resetParticipantEnergy = () => {
+      setCombatParty(prev => {
+        const next = prev.map(c => participantIds.has(c.id) ? { ...c, ultimateEnergy: 0 } : c);
+        loopStateRef.current.combatParty = next;
+        return next;
+      });
+    };
+    const resolveSpecialUltimateImpact = () => {
+      if (!disableGameplayCutscenes) {
+        setSpecialUltPresentation(prev => prev ? { ...prev, phase: 'impact' } : prev);
+      }
+
+      for (let i = 0; i < 64; i++) {
+        const particle = new CombatParticle(px, py, Math.random() > 0.45 ? impactColor : secondaryColor, 5);
+        particle.vx *= combo.style === 'vapor' ? 3.2 : 2.5;
+        particle.vy *= combo.style === 'vapor' ? 3.2 : 2.8;
+        particlesRef.current.push(particle);
+      }
+
+      enemiesRef.current.forEach(enemy => {
+        if (enemy.hp <= 0) return;
+        applySkillDamage(enemy, specialDamage, combo.damageElement, true, true, 'ultimate');
+        spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 58, combo.impactText, impactColor, 13, true);
+      });
+
+      if (screenShakeEnabled) {
+        shakeRef.current.intensity = 24;
+        shakeRef.current.x = (Math.random() - 0.5) * 24;
+        shakeRef.current.y = (Math.random() - 0.5) * 24;
+        const arenaEl = document.getElementById('combat-arena-container');
+        if (arenaEl) {
+          arenaEl.classList.add('animate-shake');
+          setTimeout(() => arenaEl.classList.remove('animate-shake'), 500);
+        }
+      }
+    };
 
     clearSpecialUltimateTimeouts();
     setSpecialUltimateCooldownReadyAt(now + SPECIAL_ULTIMATE_COOLDOWN_MS);
     specialUltimateCooldownReadyAtRef.current = now + SPECIAL_ULTIMATE_COOLDOWN_MS;
     setSpecialUltimateNow(now);
+
+    if (disableGameplayCutscenes) {
+      AetheriaAudioEngine.playSpecialUltimate();
+      resetParticipantEnergy();
+      resolveSpecialUltimateImpact();
+      setSpecialUltPresentation(null);
+      setIsUltCutsceneActive(false);
+      setTimeDisordered(0);
+      return;
+    }
+
     setIsUltCutsceneActive(true);
     setActiveUltCutscene(null);
     setTimeDisordered(80);
@@ -1854,11 +1895,7 @@ export default function CombatArena({
     AetheriaAudioEngine.playSpecialUltimateTheme();
     AetheriaAudioEngine.playSpecialUltimate();
 
-    setCombatParty(prev => {
-      const next = prev.map(c => participantIds.has(c.id) ? { ...c, ultimateEnergy: 0 } : c);
-      loopStateRef.current.combatParty = next;
-      return next;
-    });
+    resetParticipantEnergy();
 
     specialUltimateTimeoutsRef.current = [
       setTimeout(() => {
@@ -1869,31 +1906,7 @@ export default function CombatArena({
         spawnFloatingDamageText(px, py - 90, `SPECIAL ULTIMATE: ${combo.name}`, '#fef3c7', 22, true);
       }, 4800),
       setTimeout(() => {
-        setSpecialUltPresentation(prev => prev ? { ...prev, phase: 'impact' } : prev);
-
-        for (let i = 0; i < 64; i++) {
-          const particle = new CombatParticle(px, py, Math.random() > 0.45 ? impactColor : secondaryColor, 5);
-          particle.vx *= combo.style === 'vapor' ? 3.2 : 2.5;
-          particle.vy *= combo.style === 'vapor' ? 3.2 : 2.8;
-          particlesRef.current.push(particle);
-        }
-
-        enemiesRef.current.forEach(enemy => {
-          if (enemy.hp <= 0) return;
-          applySkillDamage(enemy, specialDamage, combo.damageElement, true, true, 'ultimate');
-          spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 58, combo.impactText, impactColor, 13, true);
-        });
-
-        if (screenShakeEnabled) {
-          shakeRef.current.intensity = 24;
-          shakeRef.current.x = (Math.random() - 0.5) * 24;
-          shakeRef.current.y = (Math.random() - 0.5) * 24;
-          const arenaEl = document.getElementById('combat-arena-container');
-          if (arenaEl) {
-            arenaEl.classList.add('animate-shake');
-            setTimeout(() => arenaEl.classList.remove('animate-shake'), 500);
-          }
-        }
+        resolveSpecialUltimateImpact();
       }, 6800),
       setTimeout(() => {
         setSpecialUltPresentation(null);
@@ -1965,7 +1978,7 @@ export default function CombatArena({
         }
 
         const crit = Math.random() < charCritRate;
-        let baseDmg = currentActiveChar.atk * currentActiveChar.skills.basic.damageMultiplier;
+        let baseDmg = getStatScaledAttackDamage(currentActiveChar.atk, currentActiveChar.skills.basic.damageMultiplier);
 
         // White Tassel passive: +24% Normal Attack damage
         if (currentActiveChar.equippedWeaponName?.includes('White Tassel')) {
@@ -2240,6 +2253,7 @@ export default function CombatArena({
       }
     }
     const index = activeDebuffs.indexOf(type);
+    const reactionOutcome = getReactionDamageOutcome(activeDebuffs, type, finalDmg);
     
     // Check Shatter Combo (Frozen State broken by heavy elemental strikes)
     if (enemy.isFrozen > 0 && (type === 'Anemo' || type === 'Geo' || type === 'Pyro' || type === 'Electro')) {
@@ -2270,7 +2284,7 @@ export default function CombatArena({
     else if (activeDebuffs.length > 0 && !activeDebuffs.includes(type)) {
       // Hydro + Pyro = Vaporize (2x damage)
       if ((activeDebuffs.includes('Hydro') && type === 'Pyro') || (activeDebuffs.includes('Pyro') && type === 'Hydro')) {
-        finalDmg *= 2;
+        finalDmg = reactionOutcome?.finalDamage ?? Math.round(finalDmg * 2);
         reactionName = 'VAPORIZE (2x!)';
         damageColor = '#f97316';
         onIncrementStat('reactions');
@@ -2280,6 +2294,7 @@ export default function CombatArena({
       // Hydro + Cryo = Frozen (Freeze 3.5s)
       else if ((activeDebuffs.includes('Hydro') && type === 'Cryo') || (activeDebuffs.includes('Cryo') && type === 'Hydro')) {
         enemy.isFrozen = 200; // freeze timer frames
+        finalDmg = reactionOutcome?.finalDamage ?? Math.round(finalDmg * 1.1);
         reactionName = '🎨 FROZEN! 🎨';
         damageColor = '#38bdf8';
         onIncrementStat('reactions');
@@ -2287,7 +2302,7 @@ export default function CombatArena({
       }
       // Dendro + Hydro = Bloom Eruption
       else if ((activeDebuffs.includes('Dendro') && type === 'Hydro') || (activeDebuffs.includes('Hydro') && type === 'Dendro')) {
-        finalDmg += 750;
+        finalDmg = reactionOutcome?.finalDamage ?? Math.round(finalDmg * 1.75);
         reactionName = '🌿 BLOOM ERUPTION! 🌿';
         damageColor = '#22c55e';
         onIncrementStat('reactions');
@@ -2304,16 +2319,17 @@ export default function CombatArena({
           if (other.id !== enemy.id && other.hp > 0) {
             const splDist = Math.hypot(other.x - enemy.x, other.y - enemy.y);
             if (splDist < 120) {
-              other.hp = Math.max(0, other.hp - 450);
+              const splashDmg = Math.max(1, Math.round(finalDmg * 0.35));
+              other.hp = Math.max(0, other.hp - splashDmg);
               const isOtherCrit = Math.random() < 0.15;
-              spawnTextRef.current(other.x, other.y - 20, `${isOtherCrit ? 'CRIT ' : ''}450 🌿`, '#22c55e', 11, isOtherCrit);
+              spawnTextRef.current(other.x, other.y - 20, `${isOtherCrit ? 'CRIT ' : ''}${splashDmg} 🌿`, '#22c55e', 11, isOtherCrit);
             }
           }
         });
       }
       // Dendro + Electro = Hyperbloom Quasar
       else if ((activeDebuffs.includes('Dendro') && type === 'Electro') || (activeDebuffs.includes('Electro') && type === 'Dendro')) {
-        finalDmg = Math.round(finalDmg * 2.3);
+        finalDmg = reactionOutcome?.finalDamage ?? Math.round(finalDmg * 2.3);
         reactionName = '⚡ HYPERBLOOM QUASAR ⚡';
         damageColor = '#10b981';
         onIncrementStat('reactions');
@@ -2338,7 +2354,7 @@ export default function CombatArena({
       }
       // Pyro + Electro = Overloaded (Knockback + Red crit explosion)
       else if ((activeDebuffs.includes('Pyro') && type === 'Electro') || (activeDebuffs.includes('Electro') && type === 'Pyro')) {
-        finalDmg += 400;
+        finalDmg = reactionOutcome?.finalDamage ?? Math.round(finalDmg * 1.65);
         reactionName = '💥 OVERLOADED 💥';
         damageColor = '#ec4899';
         onIncrementStat('reactions');
@@ -2350,7 +2366,7 @@ export default function CombatArena({
       }
       // Cryo + Pyro = Melt (2x damage)
       else if ((activeDebuffs.includes('Cryo') && type === 'Pyro') || (activeDebuffs.includes('Pyro') && type === 'Cryo')) {
-        finalDmg *= 2;
+        finalDmg = reactionOutcome?.finalDamage ?? Math.round(finalDmg * 2);
         reactionName = 'MELT (2x!)';
         damageColor = '#f59e0b';
         onIncrementStat('reactions');
@@ -2358,7 +2374,7 @@ export default function CombatArena({
       }
       // Hydro + Electro = Electro-Charged (Continuous tick shock & chain)
       else if ((activeDebuffs.includes('Hydro') && type === 'Electro') || (activeDebuffs.includes('Electro') && type === 'Hydro')) {
-        finalDmg += 300;
+        finalDmg = reactionOutcome?.finalDamage ?? Math.round(finalDmg * 1.55);
         reactionName = '⚡ ELECTRO-CHARGED ⚡';
         damageColor = '#a855f7';
         onIncrementStat('reactions');
@@ -2371,7 +2387,7 @@ export default function CombatArena({
             const dist = Math.hypot(other.x - enemy.x, other.y - enemy.y);
             if (dist < 150) {
               shockCount++;
-              const chainDmg = 250;
+              const chainDmg = Math.max(1, Math.round(finalDmg * 0.28));
               other.hp = Math.max(0, other.hp - chainDmg);
               spawnTextRef.current(other.x, other.y - 12, `${chainDmg} ⚡`, '#a855f7', 10);
               if (!other.activeElements.includes('Electro')) {
@@ -2383,7 +2399,7 @@ export default function CombatArena({
       }
       // Cryo + Electro = Superconduct (DEF Shred applied)
       else if ((activeDebuffs.includes('Cryo') && type === 'Electro') || (activeDebuffs.includes('Electro') && type === 'Cryo')) {
-        finalDmg += 200;
+        finalDmg = reactionOutcome?.finalDamage ?? Math.round(finalDmg * 1.45);
         reactionName = '⚡ SUPERCONDUCT (DEF SHRED) ⚡';
         damageColor = '#c084fc';
         onIncrementStat('reactions');
@@ -2393,14 +2409,18 @@ export default function CombatArena({
       // Dendro + Pyro = Burning
       else if ((activeDebuffs.includes('Dendro') && type === 'Pyro') || (activeDebuffs.includes('Pyro') && type === 'Dendro')) {
         enemy.burningTicks = 120; // 120 frames tick damage
+        finalDmg = reactionOutcome?.finalDamage ?? Math.round(finalDmg * 1.25);
+        enemy.burningTickDamage = Math.max(20, Math.round(finalDmg * 0.08));
         reactionName = '🔥 BURNING 🔥';
         damageColor = '#e11d48';
+        onIncrementStat('reactions');
         enemy.activeElements = [];
       }
       // Geo + any Element = Crystallize drops
       else if (type === 'Geo') {
         const shardElement = activeDebuffs[0]; // grab the trigger
         shardsRef.current.push(new CrystalShard(enemy.x, enemy.y, shardElement, getElementColorHex(shardElement)));
+        finalDmg = reactionOutcome?.finalDamage ?? Math.round(finalDmg * 1.15);
         reactionName = '💎 CRYSTALLIZE SHARD DROPPED 💎';
         damageColor = '#eab308';
         onIncrementStat('reactions');
@@ -2409,6 +2429,7 @@ export default function CombatArena({
       // Anemo + any Element = Swirl spreads and consumes elements
       else if (type === 'Anemo') {
         const swirledElement = activeDebuffs[0];
+        finalDmg = reactionOutcome?.finalDamage ?? Math.round(finalDmg * 1.25);
         reactionName = '🌀 SWIRL SPLASH! 🌀';
         damageColor = '#34d399';
         onIncrementStat('reactions');
@@ -2717,8 +2738,7 @@ export default function CombatArena({
           rainTickRef.current = 0;
           enemiesRef.current.forEach(enemy => {
             if (enemy.hp > 0 && !enemy.activeElements.includes('Hydro')) {
-              enemy.activeElements.push('Hydro');
-              spawnTextRef.current(enemy.x, enemy.y - 20, '💧 WET 💧', '#3b82f6', 10);
+              spawnTextRef.current(enemy.x, enemy.y - 20, 'RAIN', '#3b82f6', 10);
             }
           });
         }
@@ -2774,9 +2794,6 @@ export default function CombatArena({
                 const enemyDist = Math.hypot(enemy.x - warning.x, enemy.y - warning.y);
                 if (enemyDist < 45 + enemy.radius) {
                   enemy.hp = Math.max(0, enemy.hp - 1200);
-                  if (!enemy.activeElements.includes('Electro')) {
-                    enemy.activeElements.push('Electro');
-                  }
                   spawnTextRef.current(enemy.x, enemy.y - 10, '1200 ⚡', '#a855f7', 12, true);
                   if (enemy.type === 'Boss') {
                     setBossHp(prev => (prev !== null ? Math.max(0, prev - 1200) : null));
@@ -3477,8 +3494,9 @@ export default function CombatArena({
         if (enemy.burningTicks > 0) {
           enemy.burningTicks -= 1;
           if (enemy.burningTicks % 20 === 0) {
-            enemy.hp = Math.max(0, enemy.hp - 20);
-            textsRef.current.push(new FloatingDamageText(enemy.x + (Math.random() - 0.5) * 15, enemy.y - enemy.radius, '20 🔥', '#f43f5e', 11));
+            const burnTickDamage = enemy.burningTickDamage || 20;
+            enemy.hp = Math.max(0, enemy.hp - burnTickDamage);
+            textsRef.current.push(new FloatingDamageText(enemy.x + (Math.random() - 0.5) * 15, enemy.y - enemy.radius, `${burnTickDamage} 🔥`, '#f43f5e', 11));
           }
         }
 
@@ -4087,6 +4105,44 @@ export default function CombatArena({
 
   const activeTheme = getElementUiTheme(activeChar?.element);
   const activeSkillCooldown = activeChar?.skillCooldownRemaining || 0;
+  const renderSpecialUltimateButton = (placement: 'desktop-story' | 'desktop-default' | 'mobile') => {
+    if (!showSpecialUltimateButton || !availableSpecialUltimate) return null;
+
+    if (placement === 'mobile') {
+      return (
+        <button
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            triggerSpecialUltimate();
+          }}
+          className="special-ultimate-mobile-button rgb-special-button z-50 rounded-xl border border-white/60 px-3 py-1.5 text-center font-black uppercase tracking-widest shadow-2xl active:scale-95 transition-all touch-none"
+          style={{ touchAction: 'none' }}
+        >
+          <span className="block text-[8.5px] leading-tight">SPECIAL ULTIMATE READY!</span>
+          <span className="block text-[7px] font-mono opacity-80 mt-0.5 leading-tight">{availableSpecialUltimate.combo.name}</span>
+        </button>
+      );
+    }
+
+    return (
+      <button
+        onClick={() => triggerSpecialUltimate()}
+        className={`rgb-special-button relative overflow-hidden p-4 rounded-xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all h-24 cursor-pointer font-black border border-white/60 shadow-[0_0_30px_rgba(255,255,255,0.35)] ${
+          placement === 'desktop-story' ? 'w-40 xl:w-48' : 'w-52'
+        }`}
+      >
+        <span className="absolute inset-x-0 top-0 h-1 bg-white/50" />
+        <Sparkles className="w-6 h-6 animate-pulse" />
+        <span className="text-[11px] uppercase font-black tracking-widest font-display leading-tight">
+          SPECIAL ULTIMATE READY! [Z]
+        </span>
+        <span className="text-[9px] uppercase font-mono tracking-wider opacity-80">
+          {availableSpecialUltimate.combo.name}
+        </span>
+      </button>
+    );
+  };
 
   return (
     <div 
@@ -5143,29 +5199,18 @@ export default function CombatArena({
               </span>
             </button>
 
-            <button
-              onClick={() => triggerUltimate()}
-              className="bg-amber-400 hover:bg-amber-350 text-slate-950 p-4 rounded-xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all w-36 h-24 cursor-pointer font-black shadow-[0_0_20px_rgba(251,191,36,0.45)] border border-amber-300/40"
-            >
-              <Sparkles className="w-6 h-6 text-slate-950 animate-spin" />
-              <span className="text-xs uppercase font-extrabold tracking-widest font-display">Burst [Q]</span>
-            </button>
-
-            {showSpecialUltimateButton && availableSpecialUltimate && (
+            <div className="flex items-center justify-center gap-3.5">
               <button
-                onClick={() => triggerSpecialUltimate()}
-                className="rgb-special-button relative overflow-hidden p-4 rounded-xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all w-52 h-24 cursor-pointer font-black border border-white/60 shadow-[0_0_30px_rgba(255,255,255,0.35)]"
+                onClick={() => triggerUltimate()}
+                className="bg-amber-400 hover:bg-amber-350 text-slate-950 p-4 rounded-xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all w-36 h-24 cursor-pointer font-black shadow-[0_0_20px_rgba(251,191,36,0.45)] border border-amber-300/40"
               >
-                <span className="absolute inset-x-0 top-0 h-1 bg-white/50" />
-                <Sparkles className="w-6 h-6 animate-pulse" />
-                <span className="text-[11px] uppercase font-black tracking-widest font-display leading-tight">
-                  SPECIAL ULTIMATE READY! [Z]
-                </span>
-                <span className="text-[9px] uppercase font-mono tracking-wider opacity-80">
-                  {availableSpecialUltimate.combo.name}
-                </span>
+                <Sparkles className="w-6 h-6 text-slate-950 animate-spin" />
+                <span className="text-xs uppercase font-extrabold tracking-widest font-display">Burst [Q]</span>
               </button>
-            )}
+              {storyMode ? renderSpecialUltimateButton('desktop-story') : null}
+            </div>
+
+            {!storyMode ? renderSpecialUltimateButton('desktop-default') : null}
           </div>
         </div>
         )}
@@ -5217,20 +5262,7 @@ export default function CombatArena({
               mobileJoystickState.current = { active, x, y };
             }}
           />
-          {showSpecialUltimateButton && availableSpecialUltimate && (
-            <button
-              onPointerDown={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                triggerSpecialUltimate();
-              }}
-              className="special-ultimate-mobile-button rgb-special-button z-50 rounded-xl border border-white/60 px-3 py-1.5 text-center font-black uppercase tracking-widest shadow-2xl active:scale-95 transition-all touch-none"
-              style={{ touchAction: 'none' }}
-            >
-              <span className="block text-[8.5px] leading-tight">SPECIAL ULTIMATE READY!</span>
-              <span className="block text-[7px] font-mono opacity-80 mt-0.5 leading-tight">{availableSpecialUltimate.combo.name}</span>
-            </button>
-          )}
+          {renderSpecialUltimateButton('mobile')}
           <MobileControls 
             onAttack={() => {
               if (isPaused || isGameOver || countdownValue !== null) return;

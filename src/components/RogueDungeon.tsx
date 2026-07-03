@@ -29,6 +29,7 @@ interface RogueDungeonProps {
   fpsLimit?: '60' | 'none';
   language?: LanguageType;
   activeDamageSkin?: string;
+  disableGameplayCutscenes?: boolean;
 }
 
 const DUNGEON_BUFFS = [
@@ -59,7 +60,8 @@ export default function RogueDungeon({
   combatSpeed = 1.0,
   fpsLimit = '60',
   language = 'en',
-  activeDamageSkin = 'Default'
+  activeDamageSkin = 'Default',
+  disableGameplayCutscenes = false
 }: RogueDungeonProps) {
   // Parse helper for loading state from localStorage
   const getSavedValue = (key: string, defaultValue: any) => {
@@ -390,6 +392,7 @@ export default function RogueDungeon({
           combatSpeed={combatSpeed}
           fpsLimit={fpsLimit}
           language={language}
+          disableGameplayCutscenes={disableGameplayCutscenes}
         />
       );
     }

@@ -69,6 +69,7 @@ const INITIAL_SAVE_STATE: SaveState = {
   playerExp: 0,
   playerExpMax: 100,
   specialUltimateUnlockNotified: false,
+  disableGameplayCutscenes: false,
   inventoryWeapons: [
     { id: 'start_w_1', name: 'Dull Blade (Sword)', rarity: 3, weaponType: 'Sword', baseAtk: 18, statBonus: 'ATK +3%', level: 1 },
     { id: 'start_w_2', name: 'Iron Point (Claymore)', rarity: 3, weaponType: 'Claymore', baseAtk: 24, statBonus: 'Physical DMG +4%', level: 1 },
@@ -3031,6 +3032,7 @@ export default function App() {
                     characterEquippedArtifacts={saveState.characterEquippedArtifacts || {}}
                     onAwardArtifact={handleAwardArtifact}
                     activeDamageSkin={saveState.activeDamageSkin || 'Default'}
+                    disableGameplayCutscenes={saveState.disableGameplayCutscenes || false}
                   />
                 </motion.div>
               )}
@@ -3063,6 +3065,7 @@ export default function App() {
                     fpsLimit={fpsLimit}
                     language={language}
                     activeDamageSkin={saveState.activeDamageSkin || 'Default'}
+                    disableGameplayCutscenes={saveState.disableGameplayCutscenes || false}
                   />
                 </motion.div>
               )}
@@ -4073,6 +4076,24 @@ export default function App() {
                     </button>
                   </div>
 
+                  <div className="flex justify-between items-center border-b border-white/5 pb-3">
+                    <div>
+                      <span className="text-[11px] text-slate-300 uppercase font-bold block">Disable Gameplay Cutscenes</span>
+                      <span className="text-[9px] text-slate-500">Skips Burst and Special Ultimate cinematic overlays.</span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        triggerSaveUpdate(prev => ({ ...prev, disableGameplayCutscenes: !prev.disableGameplayCutscenes }));
+                        AetheriaAudioEngine.playClick();
+                      }}
+                      className={`p-1.5 px-3 rounded text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                        saveState.disableGameplayCutscenes ? activeUiTheme.settingsButtonClass : 'bg-slate-800 text-slate-500 border border-white/5'
+                      }`}
+                    >
+                      {saveState.disableGameplayCutscenes ? 'ENABLED' : 'DISABLED'}
+                    </button>
+                  </div>
+
                   <div className="space-y-1.5">
                     <span className="text-[11px] text-slate-300 uppercase font-bold block">Combat Speed Multiplier</span>
                     <div className="flex gap-1.5">
@@ -4254,6 +4275,7 @@ export default function App() {
             characterEquippedArtifacts={saveState.characterEquippedArtifacts || {}}
             onAwardArtifact={handleAwardArtifact}
             activeDamageSkin={saveState.activeDamageSkin || 'Default'}
+            disableGameplayCutscenes={saveState.disableGameplayCutscenes || false}
           />
         </motion.div>
       )}

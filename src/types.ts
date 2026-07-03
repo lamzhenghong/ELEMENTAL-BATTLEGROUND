@@ -150,6 +150,7 @@ export interface SaveState {
   playerExp?: number;
   playerExpMax?: number;
   specialUltimateUnlockNotified?: boolean;
+  disableGameplayCutscenes?: boolean;
   inventoryWeapons: Weapon[];
   inventoryArtifacts?: Artifact[];
   inventoryItems: InventoryItem[];
