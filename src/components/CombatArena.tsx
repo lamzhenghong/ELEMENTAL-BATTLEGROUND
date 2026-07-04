@@ -4624,9 +4624,9 @@ export default function CombatArena({
           </div>
         )}
         {comboCount >= 2 && (
-          <div className="absolute top-2 right-3 md:right-auto md:top-[19.5rem] md:left-4 z-30 pointer-events-none select-none">
+          <div className={`${isMobile ? 'absolute top-2 right-3' : 'absolute top-[19.5rem] left-4'} z-30 pointer-events-none select-none`}>
             <div
-              className={`rounded-full border bg-black/55 backdrop-blur-md px-3 py-1.5 text-center shadow-xl ${
+              className={`rounded-full border bg-black/55 backdrop-blur-md ${isMobile ? 'px-2.5 py-1' : 'px-3 py-1.5'} text-center shadow-xl ${
                 comboPulse ? 'combo-pulse-badge' : ''
               }`}
               style={{
@@ -4634,10 +4634,10 @@ export default function CombatArena({
                 boxShadow: comboPulse ? `0 0 24px ${comboPulse.color}77` : '0 0 16px rgba(15,23,42,0.7)'
               }}
             >
-              <div className="text-[15px] md:text-xl font-black font-display tracking-wider text-white leading-none">
+              <div className={`${isMobile ? 'text-[15px]' : 'text-xl'} font-black font-display tracking-wider text-white leading-none`}>
                 {comboCount}
               </div>
-              <div className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.24em] text-cyan-200">
+              <div className={`${isMobile ? 'text-[8px]' : 'text-[9px]'} font-black uppercase tracking-[0.24em] text-cyan-200`}>
                 Combo
               </div>
             </div>
