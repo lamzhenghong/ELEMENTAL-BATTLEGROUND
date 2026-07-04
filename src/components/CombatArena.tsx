@@ -38,6 +38,25 @@ import {
   getRandomEnemyVisualVariant,
   sanitizeEnemyName
 } from '../utils/enemyVisuals';
+import {
+  COMBO_TIMEOUT_FRAMES,
+  CombatWeather,
+  NormalWeather,
+  WeatherRarity,
+  getBossPhaseEvents,
+  getComboMilestone,
+  getWeatherAnnouncement,
+  getWeatherDamageMultiplier,
+  getWeatherDodgeCooldownMultiplier,
+  getWeatherEnemySpeedMultiplier,
+  getWeatherEnergyMultiplier,
+  getWeatherHealingMultiplier,
+  getWeatherIncomingDamageMultiplier,
+  getWeatherMoveSpeedMultiplier,
+  getWeatherRewardMultiplier,
+  isNormalWeather,
+  rollNextWeather
+} from '../utils/combatPolish';
 
 const WORLD_WIDTH = 2000;
 const WORLD_HEIGHT = 2000;
@@ -443,6 +462,8 @@ export default function CombatArena({
   useEffect(() => {
     return () => {
       if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+      if (weatherAnnouncementTimerRef.current) clearTimeout(weatherAnnouncementTimerRef.current);
+      if (comboPulseTimerRef.current) clearTimeout(comboPulseTimerRef.current);
       specialUltimateTimeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
       AetheriaAudioEngine.stopSpecialUltimateTheme(false);
     };
@@ -509,9 +530,14 @@ export default function CombatArena({
   const waveResolvingRef = useRef<boolean>(false);
 
   // Weather, stamina and premium visual states
-  const [currentWeather, setCurrentWeather] = useState<'Sunny' | 'Rain' | 'Thunderstorm' | 'Snow'>('Sunny');
+  const [currentWeather, setCurrentWeather] = useState<CombatWeather>('Sunny');
   const weatherTimerRef = useRef<number>(1200); // 20 seconds at 60fps
-  const weatherRef = useRef<'Sunny' | 'Rain' | 'Thunderstorm' | 'Snow'>('Sunny');
+  const weatherRef = useRef<CombatWeather>('Sunny');
+  const normalWeatherCursorRef = useRef<NormalWeather>('Sunny');
+  const [weatherRarity, setWeatherRarity] = useState<WeatherRarity>('Normal');
+  const [weatherAnnouncement, setWeatherAnnouncement] = useState<{ title: string; subtitle: string; color: string; rarity: WeatherRarity } | null>(null);
+  const weatherAnnouncementTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const weatherMeteorTimerRef = useRef<number>(0);
   const [stamina, setStamina] = useState<number>(100);
   const staminaRef = useRef<number>(100);
   const [domDamageTexts, setDomDamageTexts] = useState<{ id: string; x: number; y: number; text: string; color: string; size: number; isCrit: boolean; skin?: string }[]>([]);
@@ -519,6 +545,18 @@ export default function CombatArena({
   const lightningStrikeVisualRef = useRef<{ x: number; y: number; duration: number } | null>(null);
   const lightningTimerRef = useRef<number>(0);
   const rainTickRef = useRef<number>(0);
+
+  const [comboCount, setComboCount] = useState<number>(0);
+  const comboCountRef = useRef<number>(0);
+  const comboTimeoutRef = useRef<number>(0);
+  const comboMilestonesRef = useRef<Set<number>>(new Set());
+  const [comboPulse, setComboPulse] = useState<{ hits: number; color: string; until: number } | null>(null);
+  const comboPulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const perfectDodgeWindowRef = useRef<number>(0);
+  const perfectDodgeCooldownRef = useRef<number>(0);
+  const perfectDodgeDamageBuffRef = useRef<number>(0);
+  const [perfectDodgeFlash, setPerfectDodgeFlash] = useState<boolean>(false);
+  const bossPhaseMilestonesRef = useRef<Set<string>>(new Set());
 
   // Dungeon Mode status
   const [dungeonVictory, setDungeonVictory] = useState<boolean>(false);
@@ -617,6 +655,121 @@ export default function CombatArena({
   };
   const spawnTextRef = useRef(spawnFloatingDamageText);
   spawnTextRef.current = spawnFloatingDamageText;
+
+  const showWeatherAnnouncement = (weather: CombatWeather, rarity: WeatherRarity) => {
+    const announcement = getWeatherAnnouncement(weather, rarity);
+    setWeatherAnnouncement(announcement);
+    if (weatherAnnouncementTimerRef.current) clearTimeout(weatherAnnouncementTimerRef.current);
+    weatherAnnouncementTimerRef.current = setTimeout(() => {
+      setWeatherAnnouncement(null);
+    }, 1900);
+    spawnTextRef.current(
+      dimensions.width / 2,
+      96,
+      `${announcement.title} - ${announcement.subtitle}`,
+      announcement.color,
+      rarity === 'Legendary' ? 17 : 14,
+      rarity !== 'Normal',
+      false
+    );
+  };
+
+  const setCombatWeather = (weather: CombatWeather, rarity: WeatherRarity, replacedNormal: NormalWeather) => {
+    weatherRef.current = weather;
+    normalWeatherCursorRef.current = replacedNormal;
+    setWeatherRarity(rarity);
+    setCurrentWeather(weather);
+    rainTickRef.current = 0;
+    lightningTimerRef.current = 0;
+    weatherMeteorTimerRef.current = 0;
+    lightningWarningRef.current = null;
+    lightningStrikeVisualRef.current = null;
+    AetheriaAudioEngine.updateWeatherBgm(replacedNormal);
+    showWeatherAnnouncement(weather, rarity);
+  };
+
+  const advanceCombatWeather = () => {
+    const next = rollNextWeather(normalWeatherCursorRef.current);
+    setCombatWeather(next.weather, next.rarity, next.replacedNormalWeather);
+  };
+
+  const resetWeatherState = () => {
+    weatherRef.current = 'Sunny';
+    normalWeatherCursorRef.current = 'Sunny';
+    weatherTimerRef.current = 1200;
+    rainTickRef.current = 0;
+    lightningTimerRef.current = 0;
+    weatherMeteorTimerRef.current = 0;
+    lightningWarningRef.current = null;
+    lightningStrikeVisualRef.current = null;
+    setWeatherRarity('Normal');
+    setCurrentWeather('Sunny');
+    setWeatherAnnouncement(null);
+    AetheriaAudioEngine.updateWeatherBgm('Sunny');
+  };
+
+  const resetComboState = () => {
+    comboCountRef.current = 0;
+    comboTimeoutRef.current = 0;
+    comboMilestonesRef.current.clear();
+    setComboCount(0);
+    setComboPulse(null);
+  };
+
+  const resetCombatPolishState = (resetWeather: boolean = false) => {
+    resetComboState();
+    perfectDodgeWindowRef.current = 0;
+    perfectDodgeCooldownRef.current = 0;
+    perfectDodgeDamageBuffRef.current = 0;
+    bossPhaseMilestonesRef.current.clear();
+    setPerfectDodgeTriggered(false);
+    setPerfectDodgeFlash(false);
+    setComboPulse(null);
+    if (resetWeather) {
+      resetWeatherState();
+    }
+  };
+
+  const applyWeatherRewards = (gems: number, mora: number, exp: number) => {
+    const rewardMultiplier = getWeatherRewardMultiplier(weatherRef.current);
+    return {
+      gems: Math.round(gems * rewardMultiplier),
+      mora: Math.round(mora * rewardMultiplier),
+      exp,
+      boosted: rewardMultiplier > 1
+    };
+  };
+
+  const awardCombatRewards = (gems: number, mora: number, exp: number) => {
+    const rewards = applyWeatherRewards(gems, mora, exp);
+    onEarnRewards(rewards.gems, rewards.mora, rewards.exp);
+    if (rewards.boosted) {
+      spawnTextRef.current(playerRef.current.x, playerRef.current.y - 86, 'BLOOD MOON REWARD +20%', '#ef4444', 12, true);
+    }
+    return rewards;
+  };
+
+  const registerComboHit = (x: number, y: number) => {
+    comboTimeoutRef.current = 0;
+    const nextCombo = comboCountRef.current + 1;
+    comboCountRef.current = nextCombo;
+    setComboCount(nextCombo);
+
+    const milestone = getComboMilestone(nextCombo);
+    if (milestone && !comboMilestonesRef.current.has(milestone.hits)) {
+      comboMilestonesRef.current.add(milestone.hits);
+      setComboPulse({ hits: milestone.hits, color: milestone.color, until: Date.now() + 900 });
+      if (comboPulseTimerRef.current) clearTimeout(comboPulseTimerRef.current);
+      comboPulseTimerRef.current = setTimeout(() => setComboPulse(null), 900);
+      spawnTextRef.current(x, y - 80, milestone.label, milestone.color, milestone.hits >= 50 ? 18 : 14, true);
+      if (milestone.shake > 0 && screenShakeEnabled) {
+        shakeRef.current.intensity = milestone.shake;
+      }
+      if (milestone.hits >= 100) {
+        AetheriaAudioEngine.playWaveClear();
+      }
+    }
+  };
 
   const getElementUiTheme = (element: ElementType | undefined) => {
     if (!element) return {
@@ -797,7 +950,7 @@ export default function CombatArena({
   // Start music loop once battle starts
   useEffect(() => {
     if (battleStarted) {
-      AetheriaAudioEngine.updateWeatherBgm(weatherRef.current);
+      AetheriaAudioEngine.updateWeatherBgm(isNormalWeather(weatherRef.current) ? weatherRef.current : normalWeatherCursorRef.current);
     }
   }, [battleStarted]);
 
@@ -1141,6 +1294,7 @@ export default function CombatArena({
   // Spawn enemies by progressive Wave — procedurally generated, scales with wave number and dungeon depth
   const triggerSpawnWave = (waveNum: number) => {
     waveResolvingRef.current = false;
+    bossPhaseMilestonesRef.current.clear();
     setCurrentWave(waveNum);
     setIsGameOver(false);
     setIsPaused(false);
@@ -1489,6 +1643,29 @@ export default function CombatArena({
     }));
   };
 
+  const isPlayerInsidePendingEnemyStrike = (enemy: any) => {
+    if (enemy.hp <= 0 || enemy.telegraphTimer < 103 || enemy.telegraphTimer > 115) return false;
+    const dmgDist = Math.hypot(playerRef.current.x - enemy.x, playerRef.current.y - enemy.y);
+    return dmgDist < 70;
+  };
+
+  const isPlayerInsidePendingHazard = (hazard: any) => {
+    if (!hazard) return false;
+    if (hazard.type !== 'meteor_warning' && hazard.type !== 'lightning_strike_warning') return false;
+    if (hazard.timer > 12) return false;
+    return Math.hypot(playerRef.current.x - hazard.x, playerRef.current.y - hazard.y) < hazard.radius + playerRef.current.radius;
+  };
+
+  const hasPerfectDodgeThreat = () => {
+    if (enemiesRef.current.some(isPlayerInsidePendingEnemyStrike)) return true;
+    if (bossProjectilesRef.current.some(isPlayerInsidePendingHazard)) return true;
+    const lightningWarning = lightningWarningRef.current;
+    if (lightningWarning && lightningWarning.timer <= 12) {
+      return Math.hypot(playerRef.current.x - lightningWarning.x, playerRef.current.y - lightningWarning.y) < 45 + playerRef.current.radius;
+    }
+    return false;
+  };
+
   const triggerDodgeDash = () => {
     const { isDashing: currentIsDashing, combatParty: currentParty, activePartyIndex: currentPartyIndex } = loopStateRef.current;
     const currentActiveChar = currentParty[currentPartyIndex] || null;
@@ -1503,11 +1680,13 @@ export default function CombatArena({
     setStamina(Math.round(staminaRef.current));
 
     // Set cooldown (reduce by 30% if Zephyr Pace is active in Dungeon)
-    const baseCd = loopStateRef.current.dungeonMode && loopStateRef.current.dungeonBuffs.includes('Zephyr Pace') ? 0.7 : 1.0;
+    const baseCd = (loopStateRef.current.dungeonMode && loopStateRef.current.dungeonBuffs.includes('Zephyr Pace') ? 0.7 : 1.0) *
+      getWeatherDodgeCooldownMultiplier(weatherRef.current);
     dodgeCdRef.current = baseCd;
     setDodgeCd(baseCd);
 
     setIsDashing(true);
+    perfectDodgeWindowRef.current = 12;
     
     // Play SFX
     AetheriaAudioEngine.playDodge();
@@ -1546,7 +1725,7 @@ export default function CombatArena({
 
     // Filter telegraph triggers nearby for Perfect Dodge checks
     enemiesRef.current.forEach(enemy => {
-      if (enemy.telegraphTimer > 5 && enemy.telegraphTimer < 45) {
+      if (false && enemy.telegraphTimer > 5 && enemy.telegraphTimer < 45) {
         const dx = playerRef.current.x - enemy.x;
         const dy = playerRef.current.y - enemy.y;
         const dist = Math.hypot(dx, dy);
@@ -1557,21 +1736,29 @@ export default function CombatArena({
         }
       }
     });
+    if (hasPerfectDodgeThreat()) {
+      triggerPerfectDodge();
+    }
   };
 
   const triggerPerfectDodge = () => {
+    if (perfectDodgeCooldownRef.current > 0) return false;
     const { activePartyIndex: currentPartyIndex } = loopStateRef.current;
+    perfectDodgeCooldownRef.current = 24;
+    perfectDodgeWindowRef.current = 0;
+    perfectDodgeDamageBuffRef.current = 1;
     setPerfectDodgeTriggered(true);
-    setTimeDisordered(130); // sets frames of bullet slowdown
+    setPerfectDodgeFlash(true);
+    setTimeDisordered(t => Math.max(t, 30)); // about 0.5s at 60fps
     onIncrementStat('perfectDodges');
 
     // Play SFX
     AetheriaAudioEngine.playWaveClear();
 
-    // Fill Energy to max!
+    // Reward a small ultimate charge and empower the next player hit.
     setCombatParty(pList => pList.map((c, i) => {
       if (i === currentPartyIndex) {
-        return { ...c, ultimateEnergy: c.ultimateMaxEnergy };
+        return { ...c, ultimateEnergy: Math.min(c.ultimateMaxEnergy, c.ultimateEnergy + 10) };
       }
       return c;
     }));
@@ -1579,12 +1766,19 @@ export default function CombatArena({
     // Alert floats
     const px = playerRef.current.x;
     const py = playerRef.current.y;
+    spawnFloatingDamageText(px, py - 88, 'PERFECT DODGE', '#bfdbfe', 16, true);
+    spawnFloatingDamageText(px, py - 44, '+10 ULT ENERGY / NEXT HIT +50%', '#60a5fa', 11);
+    if (screenShakeEnabled) {
+      shakeRef.current.intensity = 7;
+    }
+    setTimeout(() => setPerfectDodgeFlash(false), 180);
     spawnFloatingDamageText(px, py - 65, '⚡ PERFECT DODGE ⚡', '#a855f7', 16, true);
-    spawnFloatingDamageText(px, py - 40, 'BULLET TIME + ENERGY CHARGED!', '#c084fc', 12);
+    spawnFloatingDamageText(px, py - 22, 'SLOW-MO WINDOW', '#93c5fd', 10);
 
     setTimeout(() => {
       setPerfectDodgeTriggered(false);
-    }, 2500);
+    }, 700);
+    return true;
   };
 
   const triggerParryBlock = () => {
@@ -1683,7 +1877,9 @@ export default function CombatArena({
 
         const has2Hydro = loopStateRef.current.activeResonances.some(r => r.key === 'hydro');
         const resonanceEnergyMult = has2Hydro ? 1.20 : 1.0;
-        const energyMultiplier = (loopStateRef.current.dungeonMode && loopStateRef.current.dungeonBuffs.includes('Recharge Matrix') ? 1.5 : 1.0) * resonanceEnergyMult;
+        const energyMultiplier = (loopStateRef.current.dungeonMode && loopStateRef.current.dungeonBuffs.includes('Recharge Matrix') ? 1.5 : 1.0) *
+          resonanceEnergyMult *
+          getWeatherEnergyMultiplier(weatherRef.current);
 
         let debateTimerVal = c.debateClubTimer || 0;
         if (c.equippedWeaponName?.includes('Debate Club')) {
@@ -2054,7 +2250,9 @@ export default function CombatArena({
       if (i === currentPartyIndex) {
         const has2Hydro = loopStateRef.current.activeResonances.some(r => r.key === 'hydro');
         const resonanceEnergyMult = has2Hydro ? 1.20 : 1.0;
-        const energyMultiplier = (loopStateRef.current.dungeonMode && loopStateRef.current.dungeonBuffs.includes('Recharge Matrix') ? 1.5 : 1.0) * resonanceEnergyMult;
+        const energyMultiplier = (loopStateRef.current.dungeonMode && loopStateRef.current.dungeonBuffs.includes('Recharge Matrix') ? 1.5 : 1.0) *
+          resonanceEnergyMult *
+          getWeatherEnergyMultiplier(weatherRef.current);
         const energyGain = (hitSomething ? 2 : 1) * energyMultiplier; // bonus reward for hitting targets
         return { ...c, ultimateEnergy: Math.min(c.ultimateMaxEnergy, c.ultimateEnergy + energyGain) };
       }
@@ -2074,6 +2272,7 @@ export default function CombatArena({
     const hasEnemies = enemiesRef.current.length > 0;
     const anyAlive = enemiesRef.current.some(e => e.hp > 0);
     if (!hasEnemies || anyAlive) return;
+    resetCombatPolishState(storyMode || dungeonMode);
 
     waveResolvingRef.current = true;
 
@@ -2105,7 +2304,7 @@ export default function CombatArena({
     const rewardExp = 30 + waveNumber * 15;
 
     AetheriaAudioEngine.playWaveClear();
-    onEarnRewards(rewardGems, rewardMora, rewardExp);
+    const boostedRewards = awardCombatRewards(rewardGems, rewardMora, rewardExp);
 
     const witReward = 1 + Math.floor(waveNumber / 3);
     onAddItems?.('char_xp', witReward);
@@ -2128,7 +2327,7 @@ export default function CombatArena({
     const nextWave = waveNumber + 1;
     onUpdateHighScore?.(waveNumber, combatState.gameScore + 200);
 
-    setWaveClearMessage(`WAVE ${waveNumber} SECURED! +${rewardGems} Gems / +${rewardMora} Mora / +${rewardExp} XP${artifactMessage}`);
+    setWaveClearMessage(`WAVE ${waveNumber} SECURED! +${boostedRewards.gems} Gems / +${boostedRewards.mora} Mora / +${boostedRewards.exp} XP${artifactMessage}`);
     setTimeout(() => {
       setWaveClearMessage(null);
       triggerSpawnWave(nextWave);
@@ -2177,9 +2376,12 @@ export default function CombatArena({
     let reactionName = '';
     let damageColor = getElementColorHex(type) || '#ffffff';
 
-    // Apply weather Pyro damage multiplier (+10% under Sunny weather)
-    if (weatherRef.current === 'Sunny' && type === 'Pyro') {
-      finalDmg *= 1.1;
+    finalDmg *= getWeatherDamageMultiplier(weatherRef.current, source, type);
+
+    if (perfectDodgeDamageBuffRef.current > 0) {
+      perfectDodgeDamageBuffRef.current = Math.max(0, perfectDodgeDamageBuffRef.current - 1);
+      finalDmg *= 1.5;
+      spawnTextRef.current(playerRef.current.x, playerRef.current.y - 62, 'PERFECT DODGE STRIKE +50%', '#bfdbfe', 12, true);
     }
 
     // Apply element reaction engine
@@ -2275,6 +2477,7 @@ export default function CombatArena({
           const bDist = Math.hypot(other.x - enemy.x, other.y - enemy.y);
           if (bDist < 160) {
             other.hp = Math.max(0, other.hp - 600);
+            registerComboHit(other.x, other.y);
             other.isFrozen = 120; // secondary freeze loop
             spawnTextRef.current(other.x, other.y - 25, `600 ❄️ FREZ!`, '#38bdf8', 11, false);
           }
@@ -2321,6 +2524,7 @@ export default function CombatArena({
             if (splDist < 120) {
               const splashDmg = Math.max(1, Math.round(finalDmg * 0.35));
               other.hp = Math.max(0, other.hp - splashDmg);
+              registerComboHit(other.x, other.y);
               const isOtherCrit = Math.random() < 0.15;
               spawnTextRef.current(other.x, other.y - 20, `${isOtherCrit ? 'CRIT ' : ''}${splashDmg} 🌿`, '#22c55e', 11, isOtherCrit);
             }
@@ -2344,6 +2548,7 @@ export default function CombatArena({
               sparkTargets++;
               const shockDmg = Math.round(finalDmg * 0.4);
               other.hp = Math.max(0, other.hp - shockDmg);
+              registerComboHit(other.x, other.y);
               spawnTextRef.current(other.x, other.y - 12, `${shockDmg} ⚡`, '#a855f7', 10, false);
               for(let j = 0; j < 6; j++) {
                 particlesRef.current.push(new CombatParticle(other.x, other.y, '#a855f7', 3));
@@ -2389,6 +2594,7 @@ export default function CombatArena({
               shockCount++;
               const chainDmg = Math.max(1, Math.round(finalDmg * 0.28));
               other.hp = Math.max(0, other.hp - chainDmg);
+              registerComboHit(other.x, other.y);
               spawnTextRef.current(other.x, other.y - 12, `${chainDmg} ⚡`, '#a855f7', 10);
               if (!other.activeElements.includes('Electro')) {
                 other.activeElements.push('Electro');
@@ -2473,10 +2679,13 @@ export default function CombatArena({
     
     // Play crispy hit sound!
     AetheriaAudioEngine.playHit();
+    if (finalDmg > 0) {
+      registerComboHit(enemy.x, enemy.y);
+    }
     
     // Apply Vampiric Grace dungeon healing buff (3% of damage)
     if (loopStateRef.current.dungeonMode && loopStateRef.current.dungeonBuffs.includes('Vampiric Grace')) {
-      const healAmount = Math.round(finalDmg * 0.03);
+      const healAmount = Math.round(finalDmg * 0.03 * getWeatherHealingMultiplier(weatherRef.current));
       if (healAmount > 0) {
         const { activePartyIndex: currentPartyIndex } = loopStateRef.current;
         setCombatParty(pList => pList.map((c, i) => {
@@ -2547,14 +2756,14 @@ export default function CombatArena({
       // Check if boss beaten
       if (enemy.type === 'Boss') {
         onIncrementStat('bossesBeaten');
-        onEarnRewards(500, 25000, 150); // Massive boss payout!
+        awardCombatRewards(500, 25000, 150); // Massive boss payout!
         // Hero's Wit bonus on boss kill
         if (!dungeonMode) onAddItems?.('char_xp', 8);
         setBossHp(0);
         AetheriaAudioEngine.setBossFightActive(false);
         spawnTextRef.current(enemy.x, enemy.y, `🏆 ${enemy.name.toUpperCase()} DEFEATED! 🏆`, '#f59e0b', 24, true);
       } else {
-        onEarnRewards(50, 400, 15); // Standard mob payout
+        awardCombatRewards(50, 400, 15); // Standard mob payout
       }
 
       // Dynamic automatic wave advancement check
@@ -2562,6 +2771,7 @@ export default function CombatArena({
       if (!anyAlive && !waveClearMessage) {
         if (waveResolvingRef.current) return;
         waveResolvingRef.current = true;
+        resetCombatPolishState(storyMode || dungeonMode);
         if (storyMode) {
           const elapsed = Math.round((Date.now() - (battleStartTimeRef.current || Date.now())) / 1000);
           let stars = 1;
@@ -2584,7 +2794,7 @@ export default function CombatArena({
           const rewardExp = 30 + currentWave * 15;
           
           AetheriaAudioEngine.playWaveClear();
-          onEarnRewards(rewardGems, rewardMora, rewardExp);
+          const boostedRewards = awardCombatRewards(rewardGems, rewardMora, rewardExp);
 
           // Award Hero's Wit books on wave clear: 1 + 1 per 3 waves
           const witReward = 1 + Math.floor(currentWave / 3);
@@ -2613,7 +2823,7 @@ export default function CombatArena({
             onUpdateHighScore(currentWave, gameScore + 200);
           }
 
-          setWaveClearMessage(`WAVE ${currentWave} SECURED! +${rewardGems} Gems / +${rewardMora} Mora / +${rewardExp} XP${artifactMessage}`);
+          setWaveClearMessage(`WAVE ${currentWave} SECURED! +${boostedRewards.gems} Gems / +${boostedRewards.mora} Mora / +${boostedRewards.exp} XP${artifactMessage}`);
           setTimeout(() => {
             setWaveClearMessage(null);
             triggerSpawnWave(nextWave);
@@ -2698,11 +2908,31 @@ export default function CombatArena({
         return;
       }
 
+      if (comboCountRef.current > 0) {
+        comboTimeoutRef.current += 1 * combatSpeed;
+        if (comboTimeoutRef.current >= COMBO_TIMEOUT_FRAMES) {
+          resetComboState();
+        }
+      }
+      if (perfectDodgeWindowRef.current > 0) {
+        perfectDodgeWindowRef.current = Math.max(0, perfectDodgeWindowRef.current - 1 * combatSpeed);
+      }
+      if (perfectDodgeCooldownRef.current > 0) {
+        perfectDodgeCooldownRef.current = Math.max(0, perfectDodgeCooldownRef.current - 1 * combatSpeed);
+      }
+
       // Keep bossHp and bossMaxHp in sync with the boss in enemiesRef.current
       const currentBoss = enemiesRef.current.find(e => e.type === 'Boss');
       if (currentBoss) {
         setBossHp(prev => (prev !== currentBoss.hp ? currentBoss.hp : prev));
         setBossMaxHp(prev => (prev !== currentBoss.maxHp ? currentBoss.maxHp : prev));
+        const phaseEvents = getBossPhaseEvents(currentBoss.hp / currentBoss.maxHp, bossPhaseMilestonesRef.current);
+        phaseEvents.forEach(event => {
+          spawnTextRef.current(currentBoss.x, currentBoss.y - currentBoss.radius - 72, event.label, event.color, event.key === '75' ? 14 : 18, true);
+          if (screenShakeEnabled && event.shake > 0) {
+            shakeRef.current.intensity = event.shake;
+          }
+        });
       } else {
         setBossHp(prev => (prev !== null ? null : prev));
       }
@@ -2711,24 +2941,7 @@ export default function CombatArena({
       weatherTimerRef.current -= 1 * combatSpeed;
       if (weatherTimerRef.current <= 0) {
         weatherTimerRef.current = 1200; // 20s
-        setCurrentWeather(curr => {
-          const weathers: ('Sunny' | 'Rain' | 'Thunderstorm' | 'Snow')[] = ['Sunny', 'Rain', 'Thunderstorm', 'Snow'];
-          const idx = weathers.indexOf(curr);
-          const nextIdx = (idx + 1) % weathers.length;
-          const nextWeather = weathers[nextIdx];
-          
-          let msg = '';
-          let color = '#fbbf24';
-          if (nextWeather === 'Sunny') { msg = '☀️ WEATHER: SUNNY (Pyro DMG +10%)'; color = '#fb923c'; }
-          else if (nextWeather === 'Rain') { msg = '🌧 WEATHER: RAIN (Wet status applied)'; color = '#38bdf8'; }
-          else if (nextWeather === 'Thunderstorm') { msg = '⛈ WEATHER: THUNDERSTORM (Lightning hazards active)'; color = '#a855f7'; }
-          else if (nextWeather === 'Snow') { msg = '❄ WEATHER: SNOW (Rapid stamina drain)'; color = '#67e8f9'; }
-          
-          weatherRef.current = nextWeather;
-          AetheriaAudioEngine.updateWeatherBgm(nextWeather);
-          spawnTextRef.current(400, 120, msg, color, 13, true, false);
-          return nextWeather;
-        });
+        advanceCombatWeather();
       }
 
       // Apply Rain wetting ticks
@@ -2812,6 +3025,31 @@ export default function CombatArena({
       } else {
         lightningStrikeVisualRef.current = null;
         lightningWarningRef.current = null;
+      }
+
+      if (weatherRef.current === 'Meteor Shower') {
+        weatherMeteorTimerRef.current += 1 * combatSpeed;
+        if (weatherMeteorTimerRef.current >= 165) {
+          weatherMeteorTimerRef.current = 0;
+          const aliveEnemies = enemiesRef.current.filter(e => e.hp > 0);
+          const targetEnemy = aliveEnemies.length > 0 && Math.random() < 0.55
+            ? aliveEnemies[Math.floor(Math.random() * aliveEnemies.length)]
+            : null;
+          bossProjectilesRef.current.push({
+            id: 'weather_meteor_' + Date.now(),
+            type: 'meteor_warning',
+            source: 'weather_meteor',
+            x: targetEnemy ? targetEnemy.x : playerRef.current.x + (Math.random() - 0.5) * 260,
+            y: targetEnemy ? targetEnemy.y : playerRef.current.y + (Math.random() - 0.5) * 260,
+            radius: 48,
+            damage: 150,
+            color: '#fb923c',
+            timer: 55,
+            maxTimer: 55
+          });
+        }
+      } else {
+        weatherMeteorTimerRef.current = 0;
       }
 
       // Local slow down factor for bullet frames
@@ -2924,7 +3162,7 @@ export default function CombatArena({
         const mag = Math.hypot(dx, dy);
         const has2Anemo = loopStateRef.current.activeResonances.some(r => r.key === 'anemo');
         const resonanceSpeedMultiplier = has2Anemo ? 1.15 : 1.0;
-        let finalPlayerSpeed = currentIsDashing ? 8.2 : runningSpeed;
+        let finalPlayerSpeed = (currentIsDashing ? 8.2 : runningSpeed) * getWeatherMoveSpeedMultiplier(activeWeather);
         
         const standsOnIcePatch = bossProjectilesRef.current.some(
           proj => proj.type === 'ice_patch' && Math.hypot(playerRef.current.x - proj.x, playerRef.current.y - proj.y) < proj.radius
@@ -3075,6 +3313,18 @@ export default function CombatArena({
                 playerRef.current.y = Math.max(25, Math.min(WORLD_HEIGHT - 25, playerRef.current.y + Math.sin(angle) * 75));
               }
             }
+            if (proj.source === 'weather_meteor') {
+              enemiesRef.current.forEach(enemy => {
+                if (enemy.hp <= 0) return;
+                if (Math.hypot(enemy.x - proj.x, enemy.y - proj.y) < proj.radius + enemy.radius) {
+                  enemy.hp = Math.max(0, enemy.hp - 600);
+                  spawnTextRef.current(enemy.x, enemy.y - 12, '600 METEOR', '#fb923c', 11, true);
+                  if (enemy.type === 'Boss') {
+                    setBossHp(prev => (prev !== null ? Math.max(0, prev - 600) : null));
+                  }
+                }
+              });
+            }
             // Spawn explosion particles
             const particleColor = proj.type === 'meteor_warning' ? '#dc2626' : '#a855f7';
             for (let i = 0; i < 20; i++) {
@@ -3210,7 +3460,7 @@ export default function CombatArena({
           // Detect phase transitions
           const hpPct = enemy.hp / enemy.maxHp;
           let newPhase = 1;
-          if (hpPct <= 0.20) {
+          if (hpPct <= 0.25) {
             newPhase = 3;
           } else if (hpPct <= 0.50) {
             newPhase = 2;
@@ -3496,6 +3746,7 @@ export default function CombatArena({
           if (enemy.burningTicks % 20 === 0) {
             const burnTickDamage = enemy.burningTickDamage || 20;
             enemy.hp = Math.max(0, enemy.hp - burnTickDamage);
+            registerComboHit(enemy.x, enemy.y);
             textsRef.current.push(new FloatingDamageText(enemy.x + (Math.random() - 0.5) * 15, enemy.y - enemy.radius, `${burnTickDamage} 🔥`, '#f43f5e', 11));
           }
         }
@@ -3504,8 +3755,9 @@ export default function CombatArena({
         const angleToPlayer = Math.atan2(playerRef.current.y - enemy.y, playerRef.current.x - enemy.x);
         // Apply a global 0.6x speed slowdown to make overall wave enemies slower as requested
         const globalWaveEnemySlowerMultiplier = 0.6;
-        enemy.x += Math.cos(angleToPlayer) * enemy.speed * speedModifier * globalWaveEnemySlowerMultiplier * combatSpeed;
-        enemy.y += Math.sin(angleToPlayer) * enemy.speed * speedModifier * globalWaveEnemySlowerMultiplier * combatSpeed;
+        const weatherEnemySpeed = getWeatherEnemySpeedMultiplier(weatherRef.current);
+        enemy.x += Math.cos(angleToPlayer) * enemy.speed * weatherEnemySpeed * speedModifier * globalWaveEnemySlowerMultiplier * combatSpeed;
+        enemy.y += Math.sin(angleToPlayer) * enemy.speed * weatherEnemySpeed * speedModifier * globalWaveEnemySlowerMultiplier * combatSpeed;
 
         // Increase Telegraph Attack counter metrics
         enemy.telegraphTimer++;
@@ -3743,6 +3995,41 @@ export default function CombatArena({
           ctx.fill();
         }
         ctx.restore();
+      } else if (weatherRef.current === 'Aurora') {
+        ctx.save();
+        ctx.globalAlpha = 0.18;
+        ctx.strokeStyle = '#22d3ee';
+        ctx.lineWidth = 2;
+        for (let a = 0; a < 4; a++) {
+          ctx.beginPath();
+          const y = 45 + a * 24 + Math.sin(Date.now() / 700 + a) * 8;
+          ctx.moveTo(0, y);
+          ctx.bezierCurveTo(dimensions.width * 0.25, y - 18, dimensions.width * 0.7, y + 22, dimensions.width, y - 8);
+          ctx.stroke();
+        }
+        ctx.restore();
+      } else if (weatherRef.current === 'Blossom Wind') {
+        ctx.save();
+        ctx.fillStyle = 'rgba(249, 168, 212, 0.45)';
+        for (let p = 0; p < 12; p++) {
+          ctx.beginPath();
+          ctx.ellipse(Math.random() * dimensions.width, Math.random() * dimensions.height, 2.5, 5, Math.random() * Math.PI, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      } else if (weatherRef.current === 'Meteor Shower') {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(251, 146, 60, 0.28)';
+        ctx.lineWidth = 2;
+        for (let m = 0; m < 7; m++) {
+          const mx = Math.random() * dimensions.width;
+          const my = Math.random() * dimensions.height * 0.55;
+          ctx.beginPath();
+          ctx.moveTo(mx, my);
+          ctx.lineTo(mx - 30, my + 42);
+          ctx.stroke();
+        }
+        ctx.restore();
       }
 
       // --- DRAW MINI-MAP OVERLAY (Separate canvas, Top-Right) ---
@@ -3915,6 +4202,12 @@ export default function CombatArena({
     const currentActiveChar = currentParty[currentPartyIndex] || null;
     if (!currentActiveChar) return;
 
+    if (perfectDodgeWindowRef.current > 0 && triggerPerfectDodge()) {
+      return;
+    }
+
+    const adjustedAmount = Math.round(amount * getWeatherIncomingDamageMultiplier(weatherRef.current));
+
     // If parry is active precisely
     if (currentIsParrying) {
       setIsParrying(false);
@@ -3937,13 +4230,13 @@ export default function CombatArena({
     // If shield absorbs damage first
     if (currentShieldWeight > 0) {
       setShieldWeight(w => {
-        const remaining = w - amount;
+        const remaining = w - adjustedAmount;
         if (remaining <= 0) {
           setShieldActive(null);
           spawnFloatingDamageText(playerRef.current.x, playerRef.current.y - 30, '🚨 CRYSTAL SHIELD BROKEN!', '#ef4444', 11, true);
           return 0;
         }
-        spawnFloatingDamageText(playerRef.current.x, playerRef.current.y - 25, `Shield absorbed ${amount}!`, '#38bdf8', 10);
+        spawnFloatingDamageText(playerRef.current.x, playerRef.current.y - 25, `Shield absorbed ${adjustedAmount}!`, '#38bdf8', 10);
         return remaining;
       });
       return;
@@ -3954,7 +4247,7 @@ export default function CombatArena({
       let revived = false;
       const updatedParty = pList.map((c, idx) => {
         if (idx === currentPartyIndex) {
-          const nextHp = c.currentHp - amount;
+          const nextHp = c.currentHp - adjustedAmount;
           if (nextHp <= 0 && loopStateRef.current.dungeonMode && loopStateRef.current.dungeonBuffs.includes('Aetheric Revival') && !hasRevivedRef.current) {
             hasRevivedRef.current = true;
             revived = true;
@@ -3973,12 +4266,13 @@ export default function CombatArena({
         AetheriaAudioEngine.playUltimate();
       } else {
         // Show float
-        spawnFloatingDamageText(playerRef.current.x, playerRef.current.y, `-${amount}`, '#f43f5e', 14, true);
+        spawnFloatingDamageText(playerRef.current.x, playerRef.current.y, `-${adjustedAmount}`, '#f43f5e', 14, true);
       }
 
       // Check if all party members are dead
       const anyAlive = updatedParty.some(c => c.currentHp > 0);
       if (!anyAlive) {
+        resetCombatPolishState(false);
         setIsGameOver(true);
         setWaveAetherEcho(null);
         setActiveEchoNotification(null);
@@ -3987,6 +4281,8 @@ export default function CombatArena({
         // Swap to another alive character if current active character just died
         const activeCharStillAlive = updatedParty[currentPartyIndex].currentHp > 0;
         if (!activeCharStillAlive) {
+          resetComboState();
+          perfectDodgeDamageBuffRef.current = 0;
           const firstAliveIdx = updatedParty.findIndex(c => c.currentHp > 0);
           if (firstAliveIdx !== -1) {
             setActivePartyIndex(firstAliveIdx);
@@ -4089,6 +4385,7 @@ export default function CombatArena({
     setActiveArtifactNotification(null);
     setActiveEchoNotification(null);
     setWaveAetherEcho(null);
+    resetCombatPolishState(true);
     
     setCombatParty(pList => pList.map(c => ({
       ...c,
@@ -4101,7 +4398,32 @@ export default function CombatArena({
   };
 
   const bossHpPct = bossHp !== null ? bossHp / bossMaxHp : null;
-  const bossPhase = bossHpPct === null ? 1 : bossHpPct <= 0.20 ? 3 : bossHpPct <= 0.50 ? 2 : 1;
+  const bossPhase = bossHpPct === null ? 1 : bossHpPct <= 0.25 ? 3 : bossHpPct <= 0.50 ? 2 : 1;
+  const bossHpPanelClass = bossHpPct !== null && bossHpPct <= 0.10
+    ? 'border-red-400 shadow-[0_0_38px_rgba(239,68,68,0.58)] animate-pulse'
+    : bossHpPct !== null && bossHpPct <= 0.25
+      ? 'border-red-500/70 shadow-[0_0_32px_rgba(220,38,38,0.45)]'
+      : bossHpPct !== null && bossHpPct <= 0.50
+        ? 'border-orange-400/60 shadow-[0_0_30px_rgba(251,146,60,0.38)]'
+        : bossHpPct !== null && bossHpPct <= 0.75
+          ? 'border-amber-400/45 shadow-[0_0_26px_rgba(251,191,36,0.32)]'
+          : 'border-white/15 shadow-[0_0_25px_rgba(239,68,68,0.25)]';
+  const bossHpFillClass = bossHpPct !== null && bossHpPct <= 0.10
+    ? 'bg-gradient-to-r from-red-700 via-rose-500 to-white animate-pulse'
+    : bossHpPct !== null && bossHpPct <= 0.25
+      ? 'bg-gradient-to-r from-red-700 via-red-500 to-orange-400 animate-pulse'
+      : bossHpPct !== null && bossHpPct <= 0.50
+        ? 'bg-gradient-to-r from-orange-600 via-red-500 to-amber-400'
+        : bossHpPct !== null && bossHpPct <= 0.75
+          ? 'bg-gradient-to-r from-amber-600 via-red-500 to-yellow-300'
+          : 'bg-gradient-to-r from-red-600 to-amber-500';
+  const rareWeatherOverlayClass =
+    currentWeather === 'Eclipse' ? 'bg-[radial-gradient(circle_at_50%_35%,rgba(88,28,135,0.22),rgba(2,6,23,0.42)_65%,rgba(0,0,0,0.34))]' :
+    currentWeather === 'Aurora' ? 'bg-[linear-gradient(115deg,rgba(34,211,238,0.12),rgba(34,197,94,0.10),rgba(168,85,247,0.12))] animate-pulse' :
+    currentWeather === 'Meteor Shower' ? 'bg-[linear-gradient(160deg,rgba(251,146,60,0.10),transparent_45%,rgba(15,23,42,0.18))]' :
+    currentWeather === 'Blossom Wind' ? 'bg-[linear-gradient(115deg,rgba(249,168,212,0.12),rgba(45,212,191,0.08),transparent)]' :
+    currentWeather === 'Blood Moon' ? 'bg-[radial-gradient(circle_at_50%_20%,rgba(220,38,38,0.24),rgba(69,10,10,0.34)_62%,rgba(0,0,0,0.22))] animate-pulse' :
+    '';
 
   const activeTheme = getElementUiTheme(activeChar?.element);
   const activeSkillCooldown = activeChar?.skillCooldownRemaining || 0;
@@ -4168,12 +4490,15 @@ export default function CombatArena({
                 currentWeather === 'Sunny' ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' :
                 currentWeather === 'Rain' ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400' :
                 currentWeather === 'Thunderstorm' ? 'bg-purple-500/10 border-purple-500/30 text-purple-400' :
-                'bg-sky-400/10 border-sky-400/30 text-sky-300'
+                currentWeather === 'Snow' ? 'bg-sky-400/10 border-sky-400/30 text-sky-300' :
+                weatherRarity === 'Legendary' ? 'bg-red-500/15 border-red-400/50 text-red-200' :
+                'bg-fuchsia-500/15 border-fuchsia-400/40 text-fuchsia-200'
               } flex items-center gap-1`}>
                 {currentWeather === 'Sunny' && <Sun className="w-3 h-3 text-amber-400 animate-spin" style={{ animationDuration: '6s' }} />}
                 {currentWeather === 'Rain' && <CloudRain className="w-3 h-3 text-cyan-400" />}
                 {currentWeather === 'Thunderstorm' && <CloudLightning className="w-3 h-3 text-purple-400" />}
                 {currentWeather === 'Snow' && <Snowflake className="w-3 h-3 text-sky-300 animate-pulse" />}
+                {!isNormalWeather(currentWeather) && <Sparkles className="w-3 h-3 animate-pulse" />}
                 <span>{currentWeather}</span>
               </span>
               {activeAetherEcho && (
@@ -4282,6 +4607,52 @@ export default function CombatArena({
 
       {/* Primary interactive Combat Container */}
       <div ref={containerRef} className="flex-1 min-h-[350px] bg-[#03060f] relative overflow-hidden flex flex-col justify-end">
+        {rareWeatherOverlayClass && (
+          <div className={`absolute inset-0 pointer-events-none z-10 mix-blend-screen ${rareWeatherOverlayClass}`} />
+        )}
+        {perfectDodgeFlash && (
+          <div className="absolute inset-0 pointer-events-none z-[45] bg-blue-100/22 mix-blend-screen perfect-dodge-flash" />
+        )}
+        {weatherAnnouncement && (
+          <div className="absolute top-[18%] left-1/2 -translate-x-1/2 z-[35] pointer-events-none select-none text-center px-4 w-full max-w-[92vw]">
+            <div
+              className={`inline-flex flex-col items-center rounded-xl border bg-black/55 px-5 py-3 backdrop-blur-md shadow-2xl weather-announcement-pop ${
+                weatherAnnouncement.rarity === 'Legendary' ? 'border-red-300/70' : weatherAnnouncement.rarity === 'Rare' ? 'border-purple-300/60' : 'border-white/20'
+              }`}
+              style={{ boxShadow: `0 0 30px ${weatherAnnouncement.color}66` }}
+            >
+              <span
+                className="text-base md:text-2xl font-black uppercase tracking-[0.24em] font-display leading-tight"
+                style={{ color: weatherAnnouncement.color }}
+              >
+                {weatherAnnouncement.title}
+              </span>
+              <span className="text-[10px] md:text-sm text-white font-black uppercase tracking-widest mt-1">
+                {weatherAnnouncement.subtitle}
+              </span>
+            </div>
+          </div>
+        )}
+        {comboCount >= 2 && (
+          <div className="absolute top-3 md:top-5 left-1/2 -translate-x-1/2 z-30 pointer-events-none select-none">
+            <div
+              className={`rounded-full border bg-black/55 backdrop-blur-md px-3 py-1.5 text-center shadow-xl ${
+                comboPulse ? 'combo-pulse-badge' : ''
+              }`}
+              style={{
+                borderColor: comboPulse?.color || 'rgba(255,255,255,0.2)',
+                boxShadow: comboPulse ? `0 0 24px ${comboPulse.color}77` : '0 0 16px rgba(15,23,42,0.7)'
+              }}
+            >
+              <div className="text-[15px] md:text-xl font-black font-display tracking-wider text-white leading-none">
+                {comboCount}
+              </div>
+              <div className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.24em] text-cyan-200">
+                Combo
+              </div>
+            </div>
+          </div>
+        )}
         
         {/* Weather Sunny Ray beam visual overlay */}
         {currentWeather === 'Sunny' && (
@@ -4436,7 +4807,7 @@ export default function CombatArena({
         {/* Dynamic active Boss Red Healthbar */}
         {spawnerPreset === 'boss' && bossHp !== null && (
           <div className="absolute top-4 left-1/2 -translate-x-1/2 max-w-lg w-full px-4 z-40">
-            <div className="bg-black/85 border border-white/15 p-3 rounded-lg flex flex-col gap-1.5 shadow-[0_0_25px_rgba(239,68,68,0.25)] backdrop-blur-md">
+            <div className={`bg-black/85 border p-3 rounded-lg flex flex-col gap-1.5 backdrop-blur-md ${bossHpPanelClass}`}>
               <div className="flex justify-between items-center text-[10px]">
                 <span className="font-extrabold text-red-400 tracking-wider uppercase font-display flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
@@ -4446,7 +4817,7 @@ export default function CombatArena({
               </div>
               <div className="bg-slate-950 rounded-sm h-3 overflow-hidden border border-white/10 p-[1px]">
                 <div 
-                  className="bg-gradient-to-r from-red-600 to-amber-500 h-full shadow-[0_0_10px_rgba(239,68,68,0.6)] transition-all duration-100"
+                  className={`${bossHpFillClass} h-full shadow-[0_0_10px_rgba(239,68,68,0.6)] transition-all duration-100`}
                   style={{ width: `${Math.max(0, (bossHp / bossMaxHp) * 100)}%` }}
                 />
               </div>
@@ -4694,6 +5065,7 @@ export default function CombatArena({
                             handleRestartCombat();
                           } else if (act === 'end_run') {
                             setIsPaused(false);
+                            resetCombatPolishState(true);
                             setCombatParty(pList => pList.map(c => ({
                               ...c,
                               currentHp: 0

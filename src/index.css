@@ -61,6 +61,35 @@
   animation: rotating-beams 120s linear infinite;
 }
 
+@keyframes weather-announcement-pop {
+  0% { opacity: 0; transform: translateY(10px) scale(0.92); filter: blur(2px); }
+  18% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+  82% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+  100% { opacity: 0; transform: translateY(-8px) scale(0.96); filter: blur(1px); }
+}
+
+.weather-announcement-pop {
+  animation: weather-announcement-pop 1.9s ease both;
+}
+
+@keyframes combo-pulse-badge {
+  0%, 100% { transform: scale(1); }
+  45% { transform: scale(1.12); }
+}
+
+.combo-pulse-badge {
+  animation: combo-pulse-badge 0.45s ease both;
+}
+
+@keyframes perfect-dodge-flash {
+  0% { opacity: 0.72; }
+  100% { opacity: 0; }
+}
+
+.perfect-dodge-flash {
+  animation: perfect-dodge-flash 0.18s ease-out both;
+}
+
 /* Elemental Pulse Animations */
 @keyframes pulse-pyro {
   0%, 100% { box-shadow: 0 0 15px rgba(239, 68, 68, 0.2), 0 0 5px rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3); }
