@@ -4624,7 +4624,7 @@ export default function CombatArena({
           </div>
         )}
         {comboCount >= 2 && (
-          <div className="absolute bottom-24 left-3 md:bottom-auto md:top-[19.5rem] md:left-4 z-30 pointer-events-none select-none">
+          <div className="absolute top-2 right-3 md:right-auto md:top-[19.5rem] md:left-4 z-30 pointer-events-none select-none">
             <div
               className={`rounded-full border bg-black/55 backdrop-blur-md px-3 py-1.5 text-center shadow-xl ${
                 comboPulse ? 'combo-pulse-badge' : ''
