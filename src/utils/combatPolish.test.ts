@@ -38,6 +38,8 @@ assert.equal(rollNextWeather('Thunderstorm', () => 0.001).rarity, 'Legendary');
 
 assert.equal(getWeatherDamageMultiplier('Eclipse', 'ultimate'), 1.2);
 assert.equal(getWeatherDamageMultiplier('Sunny', 'skill', 'Pyro'), 1.1);
+assert.equal(getWeatherDamageMultiplier('Rain', 'skill', 'Hydro'), 1.1);
+assert.equal(getWeatherDamageMultiplier('Rain', 'skill', 'Pyro'), 1);
 assert.equal(getWeatherEnergyMultiplier('Aurora'), 1.5);
 assert.equal(getWeatherRewardMultiplier('Blood Moon'), 1.2);
 

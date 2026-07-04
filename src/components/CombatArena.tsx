@@ -544,7 +544,6 @@ export default function CombatArena({
   const lightningWarningRef = useRef<{ x: number; y: number; timer: number } | null>(null);
   const lightningStrikeVisualRef = useRef<{ x: number; y: number; duration: number } | null>(null);
   const lightningTimerRef = useRef<number>(0);
-  const rainTickRef = useRef<number>(0);
 
   const [comboCount, setComboCount] = useState<number>(0);
   const comboCountRef = useRef<number>(0);
@@ -657,6 +656,12 @@ export default function CombatArena({
   spawnTextRef.current = spawnFloatingDamageText;
 
   const showWeatherAnnouncement = (weather: CombatWeather, rarity: WeatherRarity) => {
+    if (weather === 'Rain') {
+      setWeatherAnnouncement(null);
+      if (weatherAnnouncementTimerRef.current) clearTimeout(weatherAnnouncementTimerRef.current);
+      return;
+    }
+
     const announcement = getWeatherAnnouncement(weather, rarity);
     setWeatherAnnouncement(announcement);
     if (weatherAnnouncementTimerRef.current) clearTimeout(weatherAnnouncementTimerRef.current);
@@ -679,7 +684,6 @@ export default function CombatArena({
     normalWeatherCursorRef.current = replacedNormal;
     setWeatherRarity(rarity);
     setCurrentWeather(weather);
-    rainTickRef.current = 0;
     lightningTimerRef.current = 0;
     weatherMeteorTimerRef.current = 0;
     lightningWarningRef.current = null;
@@ -697,7 +701,6 @@ export default function CombatArena({
     weatherRef.current = 'Sunny';
     normalWeatherCursorRef.current = 'Sunny';
     weatherTimerRef.current = 1200;
-    rainTickRef.current = 0;
     lightningTimerRef.current = 0;
     weatherMeteorTimerRef.current = 0;
     lightningWarningRef.current = null;
@@ -2944,19 +2947,6 @@ export default function CombatArena({
         advanceCombatWeather();
       }
 
-      // Apply Rain wetting ticks
-      if (weatherRef.current === 'Rain') {
-        rainTickRef.current += 1 * combatSpeed;
-        if (rainTickRef.current >= 120) {
-          rainTickRef.current = 0;
-          enemiesRef.current.forEach(enemy => {
-            if (enemy.hp > 0 && !enemy.activeElements.includes('Hydro')) {
-              spawnTextRef.current(enemy.x, enemy.y - 20, 'RAIN', '#3b82f6', 10);
-            }
-          });
-        }
-      }
-
       // Apply Thunderstorm lightning strikes
       if (weatherRef.current === 'Thunderstorm') {
         if (lightningStrikeVisualRef.current) {
@@ -4634,7 +4624,7 @@ export default function CombatArena({
           </div>
         )}
         {comboCount >= 2 && (
-          <div className="absolute top-3 md:top-5 left-1/2 -translate-x-1/2 z-30 pointer-events-none select-none">
+          <div className="absolute bottom-24 left-3 md:bottom-5 md:left-5 z-30 pointer-events-none select-none">
             <div
               className={`rounded-full border bg-black/55 backdrop-blur-md px-3 py-1.5 text-center shadow-xl ${
                 comboPulse ? 'combo-pulse-badge' : ''

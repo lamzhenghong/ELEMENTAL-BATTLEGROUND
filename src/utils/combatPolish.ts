@@ -72,7 +72,7 @@ export const RARE_WEATHER_DEFINITIONS: readonly WeatherDefinition[] = [
 
 const NORMAL_WEATHER_COPY: Record<NormalWeather, { title: string; subtitle: string; color: string }> = {
   Sunny: { title: 'SUNNY', subtitle: 'Pyro Damage +10%', color: '#fb923c' },
-  Rain: { title: 'RAIN', subtitle: 'Visual rainfall only', color: '#38bdf8' },
+  Rain: { title: 'RAIN', subtitle: 'Hydro Damage +10%', color: '#38bdf8' },
   Thunderstorm: { title: 'THUNDERSTORM', subtitle: 'Lightning hazards active', color: '#a855f7' },
   Snow: { title: 'SNOW', subtitle: 'Rapid stamina drain', color: '#67e8f9' }
 };
@@ -139,6 +139,7 @@ export const getWeatherDamageMultiplier = (
   element?: ElementType
 ) => {
   if (weather === 'Sunny' && element === 'Pyro') return 1.1;
+  if (weather === 'Rain' && element === 'Hydro') return 1.1;
   if (weather === 'Eclipse' && source === 'ultimate') return 1.2;
   return 1;
 };
