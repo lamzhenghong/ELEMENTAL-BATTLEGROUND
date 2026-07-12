@@ -1,9 +1,11 @@
-import { getStageSpec as getLegacyStageSpec } from '../storyStages';
+import { getLegacyStageSpec } from '../storyStages';
 import { CHAPTER_4_PACK } from './campaign/chapter4';
 import { CHAPTER_5_PACK } from './campaign/chapter5';
 import { CHAPTER_6_PACK } from './campaign/chapter6';
 import { CHAPTER_7_PACK } from './campaign/chapter7';
 import { CHAPTER_8_PACK } from './campaign/chapter8';
+import { CHAPTER_9_PACK } from './campaign/chapter9';
+import { CHAPTER_10_PACK } from './campaign/chapter10';
 import { STORY_MODIFIERS } from './modifiers';
 import type {
   AuthoredStoryStage,
@@ -24,6 +26,8 @@ export { CHAPTER_5_PACK } from './campaign/chapter5';
 export { CHAPTER_6_PACK } from './campaign/chapter6';
 export { CHAPTER_7_PACK } from './campaign/chapter7';
 export { CHAPTER_8_PACK } from './campaign/chapter8';
+export { CHAPTER_9_PACK } from './campaign/chapter9';
+export { CHAPTER_10_PACK } from './campaign/chapter10';
 export { STORY_MODIFIERS } from './modifiers';
 export type * from './types';
 
@@ -33,6 +37,8 @@ const CHAPTER_PACKS: readonly StoryChapterPack[] = [
   CHAPTER_6_PACK,
   CHAPTER_7_PACK,
   CHAPTER_8_PACK,
+  CHAPTER_9_PACK,
+  CHAPTER_10_PACK,
 ];
 const CHARACTER_PACKS: readonly StoryCharacterPack[] = [];
 

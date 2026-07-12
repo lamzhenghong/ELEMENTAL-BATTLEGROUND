@@ -1,9 +1,12 @@
 import { ElementType } from '../types';
 import { PLAYABLE_CHARACTERS } from './characters';
+import { getStageSpec as getResolvedStageSpec, getStoryScene } from './story';
+import { getCampaignReward } from './story/balance';
+import { generateFutureBoss } from './story/bossRegistry';
 import type { StoryDialogueLine, StoryEnemySpec, StoryStageReward, StoryStageSpec } from './story/types';
 
 export type { StoryDialogueLine, StoryEnemySpec, StoryStageReward, StoryStageSpec } from './story/types';
-export { getMemoryUnlockIds, getStoryChoice, getStoryModifier, getStoryScene } from './story';
+export { getMemoryUnlockIds, getStageSpec, getStoryChoice, getStoryModifier, getStoryScene } from './story';
 
 export interface StoryCutsceneSpec {
   background: string; // Tailwind bg-gradient details or theme
@@ -209,88 +212,46 @@ const getCharacterStoryStageSpec = (charId: string, act: number): StoryStageSpec
   };
 };
 
-// Procedural generation helper for chapters 4 to 10
-export const getStageSpec = (stageId: string): StoryStageSpec => {
+const FUTURE_ELEMENTS: ElementType[] = ['Pyro', 'Hydro', 'Cryo', 'Electro', 'Anemo', 'Geo', 'Dendro'];
+
+const getFutureStageSpec = (stageId: string, chapter: number, stage: number): StoryStageSpec => {
+  const recommendedLevel = 35 + (chapter - 3) * 10 + (stage - 1) * 2;
+  const difficulty = stage === 5 ? 'Boss' : 'Normal';
+  const baseElement = FUTURE_ELEMENTS[(chapter + stage) % FUTURE_ELEMENTS.length];
+  const secondElement = FUTURE_ELEMENTS[(chapter * 2 + stage) % FUTURE_ELEMENTS.length];
+  const enemies: StoryEnemySpec[] = difficulty === 'Boss'
+    ? [generateFutureBoss(stageId)]
+    : [
+        { name: `Future ${baseElement} Vanguard`, type: stage >= 3 ? 'Elite' : 'Normal', element: baseElement, level: recommendedLevel },
+        { name: `Future ${secondElement} Scout`, type: 'Normal', element: secondElement, level: recommendedLevel },
+      ];
+
+  return {
+    id: stageId,
+    chapter,
+    name: `Future Stage ${stageId}`,
+    recommendedLevel,
+    difficulty,
+    desc: `Explore an uncharted future campaign at stage ${stageId}.`,
+    enemies,
+    firstClearRewards: getCampaignReward(chapter, stage),
+  };
+};
+
+export const getLegacyStageSpec = (stageId: string): StoryStageSpec => {
   const charStoryMatch = stageId.match(/^char-(.+)-([123])$/);
   if (charStoryMatch) {
     return getCharacterStoryStageSpec(charStoryMatch[1], parseInt(charStoryMatch[2], 10));
   }
 
   if (STORY_STAGES[stageId]) return STORY_STAGES[stageId];
-  
-  // Parse stageId like "4-3"
-  const [chapStr, stageStr] = stageId.split('-');
-  const chapter = parseInt(chapStr) || 1;
-  const stage = parseInt(stageStr) || 1;
 
-  const chapMeta = STORY_CHAPTERS.find(c => c.id === chapter);
-  const chapTitle = chapMeta ? chapMeta.title : `Chapter ${chapter}`;
-
-  const recommendedLevel = 35 + (chapter - 3) * 10 + (stage - 1) * 2;
-  const difficulty = stage === 5 ? 'Boss' : 'Normal';
-
-  // Procedural names
-  const stageNames: Record<number, string[]> = {
-    4: ['Shadow Outpost', 'Wailing Ruins', 'Gate of Whispers', 'Obsidian Altar', 'Void Overlord Boss'],
-    5: ['Starlight Gate', 'Astral Nexus', 'Aura Chambers', 'Cosmic Pillar', 'Eternity Knight Boss'],
-    6: ['Sulfur Grotto', 'Ice-Fire Stream', 'Ashen Spires', 'Steam Vaults', 'Frostfire Wyrm Boss'],
-    7: ['Wind Spire', 'Skyroad Bridges', 'Gale Sanctuary', 'Zephyr Pillars', 'Skyward Avian Boss'],
-    8: ['Magma Chambers', 'Volcano Roots', 'Obsidian Forge', 'Crucible Gates', 'Molten Overlord Boss'],
-    9: ['Rift Boundary', 'Glitch Nexus', 'Paradox Fields', 'Unstable Reactor', 'Chronos Monarch Boss'],
-    10: ['Reforged Bastion', 'Trial of Pyro', 'Trial of Cryo', 'Ascendant Pillar', 'Eldric Core Prime Boss']
-  };
-
-  const name = (stageNames[chapter] && stageNames[chapter][stage - 1]) || `Stage ${stageId}`;
-
-  // Procedural rewards
-  const firstClearRewards: StoryStageReward = difficulty === 'Boss' 
-    ? { 
-        gems: 100 + chapter * 50, 
-        mora: 10000 + chapter * 3000, 
-        charXp: 5 + Math.floor(chapter / 2),
-        ascensionMaterialCount: 3 + Math.floor(chapter / 3),
-        specialItem: `Aetheric Essence Cap ${chapter}`
-      }
-    : { 
-        gems: 50 + chapter * 10, 
-        mora: 3000 + chapter * 1000 + stage * 200, 
-        charXp: 2 + Math.floor(chapter / 4)
-      };
-
-  // Procedural enemies
-  const elements: ElementType[] = ['Pyro', 'Hydro', 'Cryo', 'Electro', 'Anemo', 'Geo', 'Dendro'];
-  const baseElement = elements[(chapter + stage) % elements.length];
-  const secondElement = elements[(chapter * 2 + stage) % elements.length];
-
-  const enemies: StoryEnemySpec[] = [];
-  if (difficulty === 'Boss') {
-    const bossTypes: ('fire_dragon' | 'ice_golem' | 'thunderbird')[] = ['fire_dragon', 'ice_golem', 'thunderbird'];
-    const bType = bossTypes[chapter % bossTypes.length];
-    enemies.push({
-      name: `Colossus of ${baseElement}`,
-      type: 'Boss',
-      element: baseElement,
-      level: recommendedLevel,
-      bossType: bType
-    });
-  } else {
-    enemies.push({ name: `${baseElement} Spore Slime`, type: 'Normal', element: baseElement, level: recommendedLevel });
-    enemies.push({ name: `${secondElement} Shock Slime`, type: 'Normal', element: secondElement, level: recommendedLevel });
-    if (stage >= 3) {
-      enemies.push({ name: `Vanguard Elite ${stageId}`, type: 'Elite', element: baseElement, level: recommendedLevel });
-    }
+  const campaignMatch = /^(\d+)-(\d+)$/.exec(stageId);
+  if (!campaignMatch || Number(campaignMatch[1]) <= 10) {
+    throw new Error(`No authored story stage is registered for ${stageId}.`);
   }
 
-  return {
-    id: stageId,
-    chapter,
-    name,
-    recommendedLevel,
-    difficulty,
-    desc: `Enter the challenges of ${chapTitle} in stage ${stageId}. Stabilize the surrounding elemental forces.`,
-    enemies,
-    firstClearRewards
-  };
+  return getFutureStageSpec(stageId, Number(campaignMatch[1]), Number(campaignMatch[2]));
 };
 
 // Visual Novel Script Dialogues Database
@@ -642,113 +603,22 @@ export const STORY_DIALOGUES: Record<string, { before?: StoryDialogueLine[], aft
 
 // Dialogue generator for other stages
 export const getStageDialogue = (stageId: string): { before?: StoryDialogueLine[], after?: StoryDialogueLine[] } => {
+  const before = getStoryScene(stageId, 'before').slides;
+  const after = getStoryScene(stageId, 'after').slides;
+  if (before.length || after.length) return { before, after };
+
   if (STORY_DIALOGUES[stageId]) return STORY_DIALOGUES[stageId];
 
-  const spec = getStageSpec(stageId);
-  const [chapStr, stageStr] = stageId.split('-');
-  const chapter = parseInt(chapStr);
-  const stage = parseInt(stageStr);
-
-  const chapterLoreContext: Record<number, { before: string[], after: string[], element: ElementType }> = {
-    4: {
-      before: [
-        `The shadows here in the Abyss are active. Watch your step.`,
-        `The dark energy is consuming the elemental particles. Let's purify this area!`
-      ],
-      after: [
-        `The abyssal shadow has dispersed.`,
-        `We are uncovering more secrets of the ancient kings.`
-      ],
-      element: 'Geo'
-    },
-    5: {
-      before: [
-        `The stars are aligning over the stardust sanctuary.`,
-        `I feel the presence of ancient reflections. Let's prove our strength!`
-      ],
-      after: [
-        `The reflection fades back into stardust.`,
-        `The temple gates are welcoming us deeper.`
-      ],
-      element: 'Anemo'
-    },
-    6: {
-      before: [
-        `The steam is blinding! Lava and ice are colliding in this chasm.`,
-        `Be careful of thermal shock reactions. Let's stabilize the temperature!`
-      ],
-      after: [
-        `The steam is clearing.`,
-        `The pressure valves of the chasm are returning to normal.`
-      ],
-      element: 'Pyro'
-    },
-    7: {
-      before: [
-        `We are climbing above the clouds. The wind is fierce!`,
-        `Avian guardians are nesting here. Let's fly past them!`
-      ],
-      after: [
-        `The skies are clear again.`,
-        `The pathway to the summit is open.`
-      ],
-      element: 'Anemo'
-    },
-    8: {
-      before: [
-        `The heat is unbearable near the core of Mount Eldruin.`,
-        `Molten creatures are rising from the magma. Keep them away!`
-      ],
-      after: [
-        `The lava flow is receding.`,
-        `We must reach the crucible before the volcanic eruption occurs.`
-      ],
-      element: 'Pyro'
-    },
-    9: {
-      before: [
-        `The fabric of space is tearing apart! Dimensions are colliding.`,
-        `We are seeing multiple elements combined. Watch out for rapid reactions!`
-      ],
-      after: [
-        `The rift has stabilized temporarily.`,
-        `Keep moving before the space-time loop resets.`
-      ],
-      element: 'Electro'
-    },
-    10: {
-      before: [
-        `This is the final trial of the core. The creators themselves are watching.`,
-        `Let's put everything we've learned to the test. For Aetheria!`
-      ],
-      after: [
-        `The core has been stabilized.`,
-        `The matrix is saved. Aetheria is reforged!`
-      ],
-      element: 'Hydro'
-    }
-  };
-
-  const context = chapterLoreContext[chapter] || {
-    before: [
-      `We've arrived at ${spec.name}. The energy signature here is strong.`,
-      `Let's secure this position.`
-    ],
-    after: [
-      `Area cleared and stabilized.`,
-      `Let's move forward.`
-    ],
-    element: 'Anemo'
-  };
+  const spec = getResolvedStageSpec(stageId);
 
   return {
     before: [
-      { speaker: 'Eldric Thorne', element: 'Anemo', text: context.before[0] },
-      { speaker: 'Marina', element: context.element, text: context.before[1] }
+      { speaker: 'Eldric Thorne', element: 'Anemo', text: `We've arrived at ${spec.name}. The energy signature here is strong.` },
+      { speaker: 'Marina', element: 'Anemo', text: `Let's secure this position.` }
     ],
     after: [
-      { speaker: 'Marina', element: context.element, text: context.after[0] },
-      { speaker: 'Eldric Thorne', element: 'Anemo', text: context.after[1] }
+      { speaker: 'Marina', element: 'Anemo', text: `Area cleared and stabilized.` },
+      { speaker: 'Eldric Thorne', element: 'Anemo', text: `Let's move forward.` }
     ]
   };
 };
