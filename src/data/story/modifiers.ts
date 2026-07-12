@@ -1,0 +1,26 @@
+import type { StoryBattleModifier } from './types';
+
+export const STORY_MODIFIERS: Record<string, StoryBattleModifier> = {
+  'surveyors-guidance': { id: 'surveyors-guidance', label: 'Surveyors Guidance', description: 'Enemies move 10% slower.', enemyHpMultiplier: 1, enemySpeedMultiplier: 0.9 },
+  'whisper-sealed': { id: 'whisper-sealed', label: 'Whisper Seal', description: 'Enemies have 10% less HP.', enemyHpMultiplier: 0.9, enemySpeedMultiplier: 1 },
+  'trusted-reflection': { id: 'trusted-reflection', label: 'Reflected Insight', description: 'Enemies have 8% less HP.', enemyHpMultiplier: 0.92, enemySpeedMultiplier: 1 },
+  'broken-mirror': { id: 'broken-mirror', label: 'Shattered Tempo', description: 'Enemies move 8% slower.', enemyHpMultiplier: 1, enemySpeedMultiplier: 0.92 },
+  'magma-vented': { id: 'magma-vented', label: 'Pressure Released', description: 'Enemies have 12% less HP.', enemyHpMultiplier: 0.88, enemySpeedMultiplier: 1 },
+  'glacier-thawed': { id: 'glacier-thawed', label: 'Clear Footing', description: 'Enemies move 12% slower.', enemyHpMultiplier: 1, enemySpeedMultiplier: 0.88 },
+  'civilians-evacuated': { id: 'civilians-evacuated', label: 'Local Guides', description: 'Enemies move 10% slower.', enemyHpMultiplier: 1, enemySpeedMultiplier: 0.9 },
+  'anchors-stabilized': { id: 'anchors-stabilized', label: 'Stable Skyroad', description: 'Enemies have 10% less HP.', enemyHpMultiplier: 0.9, enemySpeedMultiplier: 1 },
+  'forge-disabled': { id: 'forge-disabled', label: 'Cooling Crucible', description: 'Enemies move 10% slower.', enemyHpMultiplier: 1, enemySpeedMultiplier: 0.9 },
+  'key-reforged': { id: 'key-reforged', label: 'Reforged Access', description: 'Enemies have 10% less HP.', enemyHpMultiplier: 0.9, enemySpeedMultiplier: 1 },
+  'present-anchored': { id: 'present-anchored', label: 'Stable Present', description: 'Enemies move 10% slower.', enemyHpMultiplier: 1, enemySpeedMultiplier: 0.9 },
+  'future-record': { id: 'future-record', label: 'Future Tactics', description: 'Enemies have 10% less HP.', enemyHpMultiplier: 0.9, enemySpeedMultiplier: 1 },
+  'divine-protocol': { id: 'divine-protocol', label: 'Ordered Protocol', description: 'Enemies move 8% slower.', enemyHpMultiplier: 1, enemySpeedMultiplier: 0.92 },
+  'mortal-stewardship': { id: 'mortal-stewardship', label: 'Shared Resolve', description: 'Enemies have 8% less HP.', enemyHpMultiplier: 0.92, enemySpeedMultiplier: 1 },
+  'protected-workers': { id: 'protected-workers', label: 'Forge Support', description: 'Enemies move 10% slower.', enemyHpMultiplier: 1, enemySpeedMultiplier: 0.9 },
+  'obeyed-command': { id: 'obeyed-command', label: 'Court Intelligence', description: 'Enemies have 10% less HP.', enemyHpMultiplier: 0.9, enemySpeedMultiplier: 1 },
+  'rescued-crew': { id: 'rescued-crew', label: 'Crew Support', description: 'Enemies move 10% slower.', enemyHpMultiplier: 1, enemySpeedMultiplier: 0.9 },
+  'held-harbor': { id: 'held-harbor', label: 'Fortified Harbor', description: 'Enemies have 10% less HP.', enemyHpMultiplier: 0.9, enemySpeedMultiplier: 1 },
+  'preserved-memory': { id: 'preserved-memory', label: 'Remembered Paths', description: 'Enemies move 10% slower.', enemyHpMultiplier: 1, enemySpeedMultiplier: 0.9 },
+  'pruned-memory': { id: 'pruned-memory', label: 'Clean Roots', description: 'Enemies have 10% less HP.', enemyHpMultiplier: 0.9, enemySpeedMultiplier: 1 },
+  'repaired-engine': { id: 'repaired-engine', label: 'Stable Forecast', description: 'Enemies move 10% slower.', enemyHpMultiplier: 1, enemySpeedMultiplier: 0.9 },
+  'pursued-signal': { id: 'pursued-signal', label: 'Signal Readings', description: 'Enemies have 10% less HP.', enemyHpMultiplier: 0.9, enemySpeedMultiplier: 1 },
+};

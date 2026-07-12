@@ -3,6 +3,7 @@ import { PLAYABLE_CHARACTERS } from './characters';
 import type { StoryDialogueLine, StoryEnemySpec, StoryStageReward, StoryStageSpec } from './story/types';
 
 export type { StoryDialogueLine, StoryEnemySpec, StoryStageReward, StoryStageSpec } from './story/types';
+export { getMemoryUnlockIds, getStoryChoice, getStoryModifier, getStoryScene } from './story';
 
 export interface StoryCutsceneSpec {
   background: string; // Tailwind bg-gradient details or theme
