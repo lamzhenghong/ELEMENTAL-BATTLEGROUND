@@ -6,6 +6,10 @@ import { CHAPTER_7_PACK } from './campaign/chapter7';
 import { CHAPTER_8_PACK } from './campaign/chapter8';
 import { CHAPTER_9_PACK } from './campaign/chapter9';
 import { CHAPTER_10_PACK } from './campaign/chapter10';
+import { AURELIA_STORY_PACK } from './characters/aurelia';
+import { KAELEN_STORY_PACK } from './characters/kaelen';
+import { MAELIS_STORY_PACK } from './characters/maelis';
+import { VEYRA_STORY_PACK } from './characters/veyra';
 import { STORY_MODIFIERS } from './modifiers';
 import type {
   AuthoredStoryStage,
@@ -28,6 +32,10 @@ export { CHAPTER_7_PACK } from './campaign/chapter7';
 export { CHAPTER_8_PACK } from './campaign/chapter8';
 export { CHAPTER_9_PACK } from './campaign/chapter9';
 export { CHAPTER_10_PACK } from './campaign/chapter10';
+export { AURELIA_STORY_PACK } from './characters/aurelia';
+export { KAELEN_STORY_PACK } from './characters/kaelen';
+export { MAELIS_STORY_PACK } from './characters/maelis';
+export { VEYRA_STORY_PACK } from './characters/veyra';
 export { STORY_MODIFIERS } from './modifiers';
 export type * from './types';
 
@@ -40,7 +48,12 @@ const CHAPTER_PACKS: readonly StoryChapterPack[] = [
   CHAPTER_9_PACK,
   CHAPTER_10_PACK,
 ];
-const CHARACTER_PACKS: readonly StoryCharacterPack[] = [];
+const CHARACTER_PACKS: readonly StoryCharacterPack[] = [
+  AURELIA_STORY_PACK,
+  KAELEN_STORY_PACK,
+  MAELIS_STORY_PACK,
+  VEYRA_STORY_PACK,
+];
 
 const getAuthoredStage = (stageId: string): AuthoredStoryStage | undefined => {
   for (const pack of CHAPTER_PACKS) {

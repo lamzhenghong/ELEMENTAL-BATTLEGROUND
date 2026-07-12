@@ -657,6 +657,11 @@ export const CHARACTER_STORIES_SCRIPTS: Record<string, Record<string, { before: 
 };
 
 export const getCharacterStoryScript = (charId: string, act: number): { before: StoryDialogueLine[], after: StoryDialogueLine[] } => {
+  const stageId = `char-${charId}-${act}`;
+  const before = getStoryScene(stageId, 'before').slides;
+  const after = getStoryScene(stageId, 'after').slides;
+  if (before.length || after.length) return { before, after };
+
   if (CHARACTER_STORIES_SCRIPTS[charId] && CHARACTER_STORIES_SCRIPTS[charId][act.toString()]) {
     return CHARACTER_STORIES_SCRIPTS[charId][act.toString()];
   }
