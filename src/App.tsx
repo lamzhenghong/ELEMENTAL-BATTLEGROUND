@@ -30,7 +30,8 @@ import { assignUniqueWeaponOwner, normalizeUniqueEquippedWeapons } from './utils
 import mainMenuBg from '../assets/main_menu_bg.jpg';
 import gameLogoImg from '../assets/game_logo_256.png';
 import StoryCutscene from './components/StoryCutscene';
-import { getStageSpec, getStageDialogue, getCharacterStoryScript } from './data/storyStages';
+import { getStageSpec, getStageDialogue, getCharacterStoryScript, getStoryScene } from './data/storyStages';
+import type { StoryChoiceSelections, StoryScene } from './data/story';
 import { createDefaultStoryProgress, normalizeStoryProgress } from './data/story/progress';
 
 const GDDViewer = React.lazy(() => import('./components/GDDViewer'));
@@ -285,10 +286,11 @@ export default function App() {
     stageId: string;
     isHardMode: boolean;
     isCharStory: boolean;
+    choiceSelections: StoryChoiceSelections;
     charId?: string;
     act?: number;
-  }>({ stageId: '1-1', isHardMode: false, isCharStory: false });
-  const [activeCutsceneSlides, setActiveCutsceneSlides] = useState<any[] | null>(null);
+  }>({ stageId: '1-1', isHardMode: false, isCharStory: false, choiceSelections: {} });
+  const [activeCutsceneScene, setActiveCutsceneScene] = useState<StoryScene | null>(null);
   const [pullHistory, setPullHistory] = useState<{ name: string; rarity: number; time: string }[]>([]);
   
   const [bgmVolume, setBgmVolume] = useState<number>(100);
@@ -1464,7 +1466,7 @@ export default function App() {
     };
   };
 
-  const handleStartStoryBattle = (config: { stageId: string; isHardMode: boolean; isCharStory: boolean; charId?: string; act?: number }) => {
+  const handleStartStoryBattle = (config: { stageId: string; isHardMode: boolean; isCharStory: boolean; choiceSelections: StoryChoiceSelections; charId?: string; act?: number }) => {
     setStoryBattleConfig(config);
     setStoryBattleActive(true);
   };
@@ -1479,6 +1481,7 @@ export default function App() {
     const stageId = storyBattleConfig.stageId;
     const isHardMode = storyBattleConfig.isHardMode;
     const isCharStory = storyBattleConfig.isCharStory;
+    const choiceSelections = storyBattleConfig.choiceSelections;
 
     triggerSaveUpdate(prev => {
       const progress = normalizeStoryProgress(prev.storyProgress);
@@ -1504,7 +1507,7 @@ export default function App() {
         const act = storyBattleConfig.act!;
         const actPrev = nextCompletedCharacterStoryActs[charId] || 0;
         if (actPrev < act) {
-          const spec = getStageSpec(stageId);
+          const spec = getStageSpec(stageId, choiceSelections);
           nextGems += spec.firstClearRewards.gems;
           nextMora += spec.firstClearRewards.mora;
           nextCompletedCharacterStoryActs[charId] = act;
@@ -1518,7 +1521,7 @@ export default function App() {
         const chapterNum = parseInt(chapStr);
         const stageNum = parseInt(stageStr);
 
-        const spec = getStageSpec(stageId);
+        const spec = getStageSpec(stageId, choiceSelections);
         const isFirstClear = !progress.completedStages.includes(stageId);
         const isFirstHardClear = isHardMode && !progress.hardModeCompletedStages?.includes(stageId);
 
@@ -1595,11 +1598,15 @@ export default function App() {
     });
 
     if (isCharStory) {
-      const spec = getStageSpec(stageId);
+      const spec = getStageSpec(stageId, choiceSelections);
       if (storyBattleConfig.charId && storyBattleConfig.act) {
+        const authoredScene = getStoryScene(stageId, 'after', choiceSelections);
         const script = getCharacterStoryScript(storyBattleConfig.charId, storyBattleConfig.act);
-        if (script.after.length > 0) {
-          setActiveCutsceneSlides(script.after);
+        const scene = authoredScene.slides.length > 0
+          ? authoredScene
+          : { slides: script.after };
+        if (scene.slides.length > 0) {
+          setActiveCutsceneScene(scene);
         }
       }
       showInGameAlert(
@@ -1610,9 +1617,13 @@ export default function App() {
       return;
     }
 
+    const authoredScene = getStoryScene(stageId, 'after', choiceSelections);
     const dialogue = getStageDialogue(stageId);
-    if (dialogue && dialogue.after && dialogue.after.length > 0) {
-      setActiveCutsceneSlides(dialogue.after);
+    const scene = authoredScene.slides.length > 0
+      ? authoredScene
+      : { slides: dialogue?.after ?? [] };
+    if (scene.slides.length > 0) {
+      setActiveCutsceneScene(scene);
     } else {
       showInGameAlert("Victory!", "Story battle resolved successfully. First-clear drops added where available!", "success");
     }
@@ -4261,6 +4272,7 @@ export default function App() {
               language={language}
               storyMode={true}
               storyStageId={storyBattleConfig.stageId}
+              storyChoiceSelections={storyBattleConfig.choiceSelections}
               isHardMode={storyBattleConfig.isHardMode}
               saveState={saveState}
               onStoryBattleEnd={handleStoryBattleEnd}
@@ -4276,11 +4288,11 @@ export default function App() {
 
       {/* STORY POST-BATTLE DIALOGUE & CUTSCENE OVERLAY */}
       <AnimatePresence>
-        {activeCutsceneSlides && (
+        {activeCutsceneScene && (
           <StoryCutscene
-            slides={activeCutsceneSlides}
+            scene={activeCutsceneScene}
             onComplete={() => {
-              setActiveCutsceneSlides(null);
+              setActiveCutsceneScene(null);
               showInGameAlert("Victory!", "Story battle resolved successfully. Spent drops added to inventory!", "success");
             }}
           />

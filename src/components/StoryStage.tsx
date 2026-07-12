@@ -1,18 +1,22 @@
 import React from 'react';
-import { StoryStageSpec, getStageSpec } from '../data/storyStages';
+import { getStageSpec, getStoryModifier } from '../data/storyStages';
+import type { StoryChoiceSelections } from '../data/story';
 import { Star, X, ShieldAlert, Award, Swords, Sparkles, Coins } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface StoryStageProps {
   stageId: string;
+  storyChoices: StoryChoiceSelections;
   previousStars: number;
   onDeploy: (stageId: string, isHardMode: boolean) => void;
   onClose: () => void;
   isHardMode: boolean;
 }
 
-export default function StoryStage({ stageId, previousStars, onDeploy, onClose, isHardMode }: StoryStageProps) {
-  const spec = getStageSpec(stageId);
+export default function StoryStage({ stageId, storyChoices, previousStars, onDeploy, onClose, isHardMode }: StoryStageProps) {
+  const spec = getStageSpec(stageId, storyChoices);
+  const location = 'location' in spec && typeof spec.location === 'string' ? spec.location : undefined;
+  const modifier = spec.difficulty === 'Boss' ? undefined : getStoryModifier(stageId, storyChoices);
 
   // Hard mode adjustments
   const recommendedLvl = isHardMode ? spec.recommendedLevel + 20 : spec.recommendedLevel;
@@ -21,12 +25,12 @@ export default function StoryStage({ stageId, previousStars, onDeploy, onClose, 
   const charXpReward = isHardMode ? spec.firstClearRewards.charXp * 2 : spec.firstClearRewards.charXp;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 select-none">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-slate-950/80 p-2 backdrop-blur-md select-none sm:p-4">
       <motion.div 
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="bg-slate-900 border border-white/10 rounded-2xl p-5 md:p-6 max-w-md w-full shadow-[0_0_50px_rgba(99,102,241,0.2)] flex flex-col max-h-[90vh] relative overflow-hidden"
+        className="relative flex max-h-[calc(100dvh-1rem)] w-full max-w-md flex-col overflow-hidden rounded-lg border border-white/10 bg-slate-900 p-4 shadow-[0_0_50px_rgba(99,102,241,0.2)] sm:max-h-[calc(100dvh-2rem)] sm:p-5 md:p-6"
       >
         {/* Glow corner decorations */}
         <div className="absolute -top-12 -right-12 w-28 h-28 bg-indigo-600/20 rounded-full blur-2xl pointer-events-none" />
@@ -35,13 +39,14 @@ export default function StoryStage({ stageId, previousStars, onDeploy, onClose, 
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1.5 bg-white/5 border border-white/10 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer z-10"
+          className="absolute right-3 top-3 z-10 flex min-h-12 min-w-12 touch-manipulation items-center justify-center rounded-lg border border-white/10 bg-white/5 text-slate-400 transition-all hover:border-white/20 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 sm:right-4 sm:top-4"
+          aria-label="Close stage details"
         >
           <X className="w-4 h-4" />
         </button>
 
         {/* Scrollable contents area */}
-        <div className="flex-1 overflow-y-auto space-y-4 md:space-y-6 pr-1 scrollbar-thin mb-4">
+        <div className="mb-3 min-h-0 flex-1 space-y-4 overflow-y-auto pr-1 scrollbar-thin md:mb-4 md:space-y-6">
           {/* Header */}
           <div className="space-y-1.5 pr-8 text-left">
             <div className="flex items-center gap-2">
@@ -61,10 +66,25 @@ export default function StoryStage({ stageId, previousStars, onDeploy, onClose, 
             <h3 className="text-2xl font-black text-white font-display uppercase tracking-wide">
               {stageId} {spec.name}
             </h3>
+            {location && (
+              <p className="text-[10px] font-bold uppercase tracking-wider text-amber-400">
+                Location: {location}
+              </p>
+            )}
             <p className="text-[11px] text-slate-400 font-medium leading-relaxed bg-black/20 p-2.5 rounded-lg border border-white/5">
               {spec.desc}
             </p>
           </div>
+
+          {modifier && (
+            <div className="border-l-2 border-sky-400 bg-sky-950/25 px-3 py-2.5 text-left">
+              <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-sky-300">
+                <ShieldAlert className="h-4 w-4 shrink-0" />
+                <span>{modifier.label}</span>
+              </div>
+              <p className="mt-1 text-[11px] leading-relaxed text-slate-300">{modifier.description}</p>
+            </div>
+          )}
 
           {/* Stats Summary Section */}
           <div className="grid grid-cols-2 gap-3.5 bg-black/40 border border-white/5 p-3 rounded-xl text-xs font-mono text-left">
@@ -150,7 +170,7 @@ export default function StoryStage({ stageId, previousStars, onDeploy, onClose, 
         {/* Deploy Action */}
         <button
           onClick={() => onDeploy(stageId, isHardMode)}
-          className="w-full p-4 bg-indigo-600 hover:bg-indigo-550 active:scale-98 text-white font-black text-xs uppercase tracking-widest rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-950/50 flex items-center justify-center gap-2 shrink-0"
+          className="flex min-h-12 w-full shrink-0 touch-manipulation items-center justify-center gap-2 rounded-lg bg-indigo-600 p-3 text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-indigo-950/50 transition-all hover:bg-indigo-550 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 active:scale-98 sm:p-4"
         >
           <Swords className="w-4 h-4 text-white" />
           <span>START STORY BATTLE</span>

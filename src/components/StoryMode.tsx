@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { STORY_CHAPTERS, STORY_STAGES, getStageSpec, getStageDialogue, getCharacterStoryScript } from '../data/storyStages';
+import { STORY_CHAPTERS, STORY_STAGES, getStageSpec, getStageDialogue, getCharacterStoryScript, getStoryChoice, getStoryScene } from '../data/storyStages';
+import type { StoryChoiceDefinition, StoryChoiceSelections, StoryScene } from '../data/story';
 import { PLAYABLE_CHARACTERS } from '../data/characters';
 import { ElementType, SaveState } from '../types';
 import { Star, ShieldAlert, Award, Swords, Sparkles, BookOpen, User, Flame, ArrowRight, Lock } from 'lucide-react';
@@ -15,7 +16,7 @@ interface StoryModeProps {
   onModifyCurrencies: (gems: number, mora: number, exp: number) => void;
   onAddItems: (itemType: 'char_xp' | 'ascension', amount: number) => void;
   onUpdateSaveState: (updater: (prev: SaveState) => SaveState) => void;
-  onStartStoryBattle: (config: { stageId: string; isHardMode: boolean; isCharStory: boolean; charId?: string; act?: number }) => void;
+  onStartStoryBattle: (config: { stageId: string; isHardMode: boolean; isCharStory: boolean; choiceSelections: StoryChoiceSelections; charId?: string; act?: number }) => void;
   devCheatsEnabled: boolean;
   onShowAlert: (msg: string, sol: string, typ: 'error' | 'success' | 'info') => void;
 }
@@ -41,8 +42,9 @@ export default function StoryMode({
   const [storyElementFilter, setStoryElementFilter] = useState<'All' | ElementType>('All');
 
   // Visual Novel Cutscene overlay states
-  const [activeCutsceneSlides, setActiveCutsceneSlides] = useState<any[] | null>(null);
-  const [cutsceneCallback, setCutsceneCallback] = useState<(() => void) | null>(null);
+  const [activeCutsceneScene, setActiveCutsceneScene] = useState<StoryScene | null>(null);
+  const [activeCutsceneChoice, setActiveCutsceneChoice] = useState<StoryChoiceDefinition | null>(null);
+  const [cutsceneCallback, setCutsceneCallback] = useState<((choiceSelections: StoryChoiceSelections) => void) | null>(null);
 
   const storyProgress = normalizeStoryProgress(saveState.storyProgress);
 
@@ -83,17 +85,29 @@ export default function StoryMode({
     setSelectedStageId(null);
     AetheriaAudioEngine.playClick();
 
-    // Check dialogue triggers
+    const choiceSelections = { ...storyProgress.storyChoices };
+    const authoredScene = getStoryScene(stageId, 'before', choiceSelections);
     const dialogue = getStageDialogue(stageId);
-    if (dialogue && dialogue.before && dialogue.before.length > 0) {
-      // Trigger VN cutscene
-      setActiveCutsceneSlides(dialogue.before);
-      setCutsceneCallback(() => () => {
-        // Start battle
-        onStartStoryBattle({ stageId, isHardMode: hardModeActive, isCharStory: false });
+    const scene = authoredScene.slides.length > 0
+      ? authoredScene
+      : { slides: dialogue?.before ?? [] };
+    const choice = getStoryChoice(stageId);
+    const startBattle = (nextChoices: StoryChoiceSelections) => {
+      onStartStoryBattle({
+        stageId,
+        isHardMode: hardModeActive,
+        isCharStory: false,
+        choiceSelections: nextChoices,
       });
+    };
+
+    if (scene.slides.length > 0) {
+      // Trigger VN cutscene
+      setActiveCutsceneScene(scene);
+      setActiveCutsceneChoice(choice ?? null);
+      setCutsceneCallback(() => startBattle);
     } else {
-      onStartStoryBattle({ stageId, isHardMode: hardModeActive, isCharStory: false });
+      startBattle(choiceSelections);
     }
   };
 
@@ -110,16 +124,55 @@ export default function StoryMode({
       return;
     }
 
+    const stageId = `char-${charId}-${act}`;
+    const choiceSelections = { ...storyProgress.storyChoices };
+    const authoredScene = getStoryScene(stageId, 'before', choiceSelections);
     const script = getCharacterStoryScript(charId, act);
-    
-    // Set VN slides
-    setActiveCutsceneSlides(script.before);
-    setCutsceneCallback(() => () => {
-      // Trigger Battle with character story settings
-      // We will fight a custom boss / elite battle based on character act
-      const stageId = `char-${charId}-${act}`;
-      onStartStoryBattle({ stageId, isHardMode: false, isCharStory: true, charId, act });
-    });
+    const scene = authoredScene.slides.length > 0
+      ? authoredScene
+      : { slides: script.before };
+    const choice = getStoryChoice(stageId);
+    const startBattle = (nextChoices: StoryChoiceSelections) => {
+      onStartStoryBattle({
+        stageId,
+        isHardMode: false,
+        isCharStory: true,
+        choiceSelections: nextChoices,
+        charId,
+        act,
+      });
+    };
+
+    if (scene.slides.length > 0) {
+      setActiveCutsceneScene(scene);
+      setActiveCutsceneChoice(choice ?? null);
+      setCutsceneCallback(() => startBattle);
+    } else {
+      startBattle(choiceSelections);
+    }
+  };
+
+  const handleCutsceneChoice = (decisionId: string, optionId: string) => {
+    const decision = activeCutsceneChoice;
+    if (!decision || decision.id !== decisionId) return;
+
+    const nextChoices = {
+      ...storyProgress.storyChoices,
+      [decision.id]: optionId,
+    };
+    onUpdateSaveState(prev => ({
+      ...prev,
+      storyProgress: {
+        ...normalizeStoryProgress(prev.storyProgress),
+        storyChoices: nextChoices,
+      },
+    }));
+
+    const cb = cutsceneCallback;
+    setActiveCutsceneScene(null);
+    setActiveCutsceneChoice(null);
+    setCutsceneCallback(null);
+    if (cb) cb(nextChoices);
   };
 
   const ownedCharacters = [...PLAYABLE_CHARACTERS]
@@ -141,14 +194,18 @@ export default function StoryMode({
     <div className="space-y-6 select-none relative">
       {/* Cutscene overlay */}
       <AnimatePresence>
-        {activeCutsceneSlides && (
+        {activeCutsceneScene && (
           <StoryCutscene
-            slides={activeCutsceneSlides}
+            scene={activeCutsceneScene}
+            choice={activeCutsceneChoice ?? undefined}
+            onChoice={handleCutsceneChoice}
             onComplete={() => {
               const cb = cutsceneCallback;
-              setActiveCutsceneSlides(null);
+              const choiceSelections = { ...storyProgress.storyChoices };
+              setActiveCutsceneScene(null);
+              setActiveCutsceneChoice(null);
               setCutsceneCallback(null);
-              if (cb) cb();
+              if (cb) cb(choiceSelections);
             }}
           />
         )}
@@ -511,6 +568,7 @@ export default function StoryMode({
         {selectedStageId && (
           <StoryStage
             stageId={selectedStageId}
+            storyChoices={storyProgress.storyChoices}
             previousStars={storyProgress.starRatings[selectedStageId] || 0}
             onDeploy={handleDeployStage}
             onClose={() => setSelectedStageId(null)}

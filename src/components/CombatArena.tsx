@@ -25,7 +25,8 @@ import {
 } from '../utils/specialUltimates';
 import MobileJoystick from './MobileJoystick';
 import MobileControls from './MobileControls';
-import { getStageSpec } from '../data/storyStages';
+import { getStageSpec, getStoryModifier } from '../data/storyStages';
+import type { StoryChoiceSelections } from '../data/story';
 import StoryRewards from './StoryRewards';
 import {
   getReactionDamageOutcome,
@@ -61,6 +62,7 @@ import {
 const WORLD_WIDTH = 2000;
 const WORLD_HEIGHT = 2000;
 const IS_MOBILE_DEVICE = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+const EMPTY_STORY_CHOICE_SELECTIONS: StoryChoiceSelections = {};
 
 interface CombatArenaProps {
   onEarnRewards: (gems: number, mora: number, exp: number) => void;
@@ -97,6 +99,7 @@ interface CombatArenaProps {
   // Story Mode props
   storyMode?: boolean;
   storyStageId?: string;
+  storyChoiceSelections?: StoryChoiceSelections;
   isHardMode?: boolean;
   onStoryBattleEnd?: (victory: boolean, stats: { stars: number; hp: Record<string, number>; ult: Record<string, number>; duration: number; deaths: number }) => void;
   saveState?: any;
@@ -371,6 +374,7 @@ export default function CombatArena({
   onAddItems,
   storyMode = false,
   storyStageId = '',
+  storyChoiceSelections = EMPTY_STORY_CHOICE_SELECTIONS,
   isHardMode = false,
   onStoryBattleEnd,
   saveState,
@@ -1386,12 +1390,15 @@ export default function CombatArena({
     };
 
     if (storyMode && storyStageId) {
-      const spec = getStageSpec(storyStageId);
+      const spec = getStageSpec(storyStageId, storyChoiceSelections);
+      const modifier = getStoryModifier(storyStageId, storyChoiceSelections);
       const recommendedLvl = isHardMode ? spec.recommendedLevel + 20 : spec.recommendedLevel;
       const scaleMultiplier = 1 + (recommendedLvl - 1) * 0.12;
 
       spec.enemies.forEach((enemySpec, idx) => {
         const enemyId = `story_${storyStageId}_${idx}_${Date.now()}`;
+        const hpMultiplier = enemySpec.type === 'Boss' ? 1 : modifier?.enemyHpMultiplier ?? 1;
+        const speedMultiplier = enemySpec.type === 'Boss' ? 1 : modifier?.enemySpeedMultiplier ?? 1;
         if (enemySpec.type === 'Boss') {
           setSpawnerPreset('boss');
           const bossTpl = BOSS_TEMPLATES.find(b => b.bossType === enemySpec.bossType) || BOSS_TEMPLATES[0];
@@ -1430,7 +1437,7 @@ export default function CombatArena({
           ];
           const neutralName = sanitizeEnemyName(enemySpec.name);
           const tpl = eliteTypes.find(e => e.name === neutralName) || eliteTypes[0];
-          const hp = Math.round(tpl.baseHp * scaleMultiplier);
+          const hp = Math.round(tpl.baseHp * scaleMultiplier * hpMultiplier);
           list.push({
             id: enemyId,
             name: neutralName || tpl.name,
@@ -1441,7 +1448,7 @@ export default function CombatArena({
             radius: tpl.radius,
             hp,
             maxHp: hp,
-            speed: tpl.speed,
+            speed: tpl.speed * speedMultiplier,
             activeElements: [] as ElementType[],
             telegraphTimer: 0,
             telegraphType: tpl.telegraphType,
@@ -1451,8 +1458,8 @@ export default function CombatArena({
         } else {
           const tpl = getRandomEnemyVisualVariant(ENEMY_VISUAL_VARIANTS.slice(0, 7));
           const baseHp = 500 + Math.random() * 200;
-          const hp = Math.round(baseHp * scaleMultiplier);
-          const speed = 1.2 + Math.random() * 0.4;
+          const hp = Math.round(baseHp * scaleMultiplier * hpMultiplier);
+          const speed = (1.2 + Math.random() * 0.4) * speedMultiplier;
           list.push({
             id: enemyId,
             name: sanitizeEnemyName(enemySpec.name) || tpl.name,
@@ -1568,7 +1575,7 @@ export default function CombatArena({
   useEffect(() => {
     if (!battleStarted) return;
     triggerSpawnWave(1);
-  }, [battleStarted, dungeonMode, dungeonRoomType, storyMode, storyStageId]);
+  }, [battleStarted, dungeonMode, dungeonRoomType, storyMode, storyStageId, storyChoiceSelections]);
 
   const swapPartyIndex = (idx: number) => {
     const { combatParty: currentParty, activePartyIndex: currentPartyIndex } = loopStateRef.current;
