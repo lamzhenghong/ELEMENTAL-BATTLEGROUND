@@ -61,9 +61,9 @@ export default function StoryCutscene({ scene, choice, onChoice, onComplete, bac
     }
   };
 
-  const handleChoice = (optionId: string) => {
-    if (choice && onChoice) {
-      onChoice(choice.id, optionId);
+  const handleChoice = (decisionId: string, optionId: string) => {
+    if (onChoice) {
+      onChoice(decisionId, optionId);
       return;
     }
     onComplete();
@@ -120,7 +120,7 @@ export default function StoryCutscene({ scene, choice, onChoice, onComplete, bac
 
       {/* Dialogue Bottom Box overlay */}
       {isChoosing && choice ? (
-        <StoryChoicePrompt choice={choice} onSelect={handleChoice} />
+        <StoryChoicePrompt choice={choice} onChoice={handleChoice} />
       ) : (
         <StoryDialogue
           key={currentIndex}

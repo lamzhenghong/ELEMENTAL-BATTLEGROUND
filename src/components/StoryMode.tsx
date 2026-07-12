@@ -10,6 +10,7 @@ import StoryStage from './StoryStage';
 import StoryCutscene from './StoryCutscene';
 import { AetheriaAudioEngine } from '../utils/audio';
 import { normalizeStoryProgress } from '../data/story/progress';
+import { applyStoryChoice } from '../storyChoiceRules';
 
 interface StoryModeProps {
   saveState: SaveState;
@@ -156,10 +157,7 @@ export default function StoryMode({
     const decision = activeCutsceneChoice;
     if (!decision || decision.id !== decisionId) return;
 
-    const nextChoices = {
-      ...storyProgress.storyChoices,
-      [decision.id]: optionId,
-    };
+    const nextChoices = applyStoryChoice(storyProgress.storyChoices, decision.id, optionId);
     onUpdateSaveState(prev => ({
       ...prev,
       storyProgress: {
