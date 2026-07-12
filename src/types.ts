@@ -141,6 +141,7 @@ export interface StoryProgress {
   completedCharacterStoryActs: Record<string, number>; // characterId -> completed acts (1, 2, or 3)
   hardModeUnlockedChapters: number[]; // chapters with hard mode unlocked
   hardModeCompletedStages: string[]; // completed hard stages
+  storyChoices: Record<string, string>;
 }
 
 export interface SaveState {

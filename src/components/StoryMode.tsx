@@ -8,6 +8,7 @@ import StoryMap from './StoryMap';
 import StoryStage from './StoryStage';
 import StoryCutscene from './StoryCutscene';
 import { AetheriaAudioEngine } from '../utils/audio';
+import { normalizeStoryProgress } from '../data/story/progress';
 
 interface StoryModeProps {
   saveState: SaveState;
@@ -43,16 +44,7 @@ export default function StoryMode({
   const [activeCutsceneSlides, setActiveCutsceneSlides] = useState<any[] | null>(null);
   const [cutsceneCallback, setCutsceneCallback] = useState<(() => void) | null>(null);
 
-  const storyProgress = saveState.storyProgress || {
-    currentChapter: 1,
-    currentStage: '1-1',
-    completedStages: [],
-    starRatings: {},
-    unlockedLoreEntries: [],
-    completedCharacterStoryActs: {},
-    hardModeUnlockedChapters: [],
-    hardModeCompletedStages: []
-  };
+  const storyProgress = normalizeStoryProgress(saveState.storyProgress);
 
   // Helper: completion percentage of a chapter
   const getChapterCompletionPct = (chapId: number) => {

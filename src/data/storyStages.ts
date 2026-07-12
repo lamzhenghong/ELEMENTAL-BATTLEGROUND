@@ -1,40 +1,8 @@
 import { ElementType } from '../types';
 import { PLAYABLE_CHARACTERS } from './characters';
+import type { StoryDialogueLine, StoryEnemySpec, StoryStageReward, StoryStageSpec } from './story/types';
 
-export interface StoryStageReward {
-  gems: number;
-  mora: number;
-  charXp: number; // count of Hero's Wit
-  ascensionMaterialCount?: number;
-  specialItem?: string;
-}
-
-export interface StoryEnemySpec {
-  name: string;
-  type: 'Normal' | 'Elite' | 'Boss';
-  element: ElementType;
-  level: number;
-  bossType?: 'fire_dragon' | 'ice_golem' | 'thunderbird';
-}
-
-export interface StoryStageSpec {
-  id: string; // e.g. "1-1"
-  chapter: number;
-  name: string;
-  recommendedLevel: number;
-  difficulty: 'Normal' | 'Hard' | 'Boss';
-  desc: string;
-  enemies: StoryEnemySpec[];
-  firstClearRewards: StoryStageReward;
-}
-
-export interface StoryDialogueLine {
-  speaker: string;
-  text: string;
-  element?: ElementType;
-  portraitSide?: 'left' | 'right';
-  effect?: 'fade-in' | 'shake' | 'flash';
-}
+export type { StoryDialogueLine, StoryEnemySpec, StoryStageReward, StoryStageSpec } from './story/types';
 
 export interface StoryCutsceneSpec {
   background: string; // Tailwind bg-gradient details or theme

@@ -31,6 +31,7 @@ import mainMenuBg from '../assets/main_menu_bg.jpg';
 import gameLogoImg from '../assets/game_logo_256.png';
 import StoryCutscene from './components/StoryCutscene';
 import { getStageSpec, getStageDialogue, getCharacterStoryScript } from './data/storyStages';
+import { createDefaultStoryProgress, normalizeStoryProgress } from './data/story/progress';
 
 const GDDViewer = React.lazy(() => import('./components/GDDViewer'));
 const GachaSimulator = React.lazy(() => import('./components/GachaSimulator'));
@@ -154,16 +155,7 @@ const INITIAL_SAVE_STATE: SaveState = {
     longestLoginStreak: 1,
     currentLoginStreak: 1
   },
-  storyProgress: {
-    currentChapter: 1,
-    currentStage: '1-1',
-    completedStages: [],
-    starRatings: {},
-    unlockedLoreEntries: [],
-    completedCharacterStoryActs: {},
-    hardModeUnlockedChapters: [],
-    hardModeCompletedStages: []
-  }
+  storyProgress: createDefaultStoryProgress()
 };
 
 const getInitialSaveState = (): SaveState => JSON.parse(JSON.stringify(INITIAL_SAVE_STATE));
@@ -671,10 +663,7 @@ export default function App() {
           },
           inventoryArtifacts: parsed.inventoryArtifacts || [],
           characterEquippedArtifacts: parsed.characterEquippedArtifacts || {},
-          storyProgress: {
-            ...defaultState.storyProgress,
-            ...(parsed.storyProgress || {})
-          }
+          storyProgress: normalizeStoryProgress(parsed.storyProgress)
         };
 
         merged.inventoryItems = (merged.inventoryItems || []).map(item => {
@@ -1492,16 +1481,7 @@ export default function App() {
     const isCharStory = storyBattleConfig.isCharStory;
 
     triggerSaveUpdate(prev => {
-      const progress = prev.storyProgress || {
-        currentChapter: 1,
-        currentStage: '1-1',
-        completedStages: [],
-        starRatings: {},
-        unlockedLoreEntries: [],
-        completedCharacterStoryActs: {},
-        hardModeUnlockedChapters: [],
-        hardModeCompletedStages: []
-      };
+      const progress = normalizeStoryProgress(prev.storyProgress);
 
       let nextCompletedStages = [...progress.completedStages];
       let nextHardCompletedStages = [...(progress.hardModeCompletedStages || [])];
