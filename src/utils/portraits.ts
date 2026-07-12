@@ -41,6 +41,22 @@ export const CHARACTER_PORTRAIT_BUFFS: Record<string, PortraitBuffValues[]> = {
     { critRate: 0.08, critDmg: 0.15 },
     { atk: 0.22, critRate: 0.12 },
   ],
+  maelis: [
+    { hp: 0.2 },
+    { def: 0.2 },
+    { atk: 0.15 },
+    { hp: 0.15, def: 0.15 },
+    { critRate: 0.1 },
+    { hp: 0.25, def: 0.2, atk: 0.22 },
+  ],
+  veyra: [
+    { critRate: 0.12 },
+    { critDmg: 0.22 },
+    { atk: 0.16 },
+    { critRate: 0.1 },
+    { critDmg: 0.24 },
+    { atk: 0.24, critRate: 0.14, critDmg: 0.28 },
+  ],
   marina: [
     { hp: 0.15 },
     { critRate: 0.1 },
@@ -305,6 +321,26 @@ export function getPortraitInfoList(element: string, charId: string): PortraitIn
         { name: 'Naval Tactical Focus', desc: 'Increases Attack Force (ATK) by +18%. Unlocks ancient potential.' },
         { name: 'Pearl Salvo Detonation', desc: 'Increases Critical Rate by +8% (flat) and Critical Damage by +15% (flat). Pearl Fleet Salvo strikes deal heavy damage.' },
         { name: 'Grand Admiral Sovereignty', desc: 'Increases Attack Force (ATK) by +22% and Critical Rate by +12% (flat). Max HP, DEF, and ATK receive an additional +20% boost.' },
+      ];
+
+    case 'maelis':
+      return [
+        { name: 'Deepwood Vitality', desc: 'Increases Max HP by +20%. Rootbound endurance strengthens Maelis against sustained attacks.' },
+        { name: 'Heartwood Aegis', desc: 'Increases Defense (DEF) by +20%. Living bark hardens around every guarded stance.' },
+        { name: 'Verdant Cleave Force', desc: 'Increases Attack Force (ATK) by +15%. Root sigils amplify each claymore impact.' },
+        { name: 'Canopy Bastion', desc: 'Increases Max HP by +15% and Defense (DEF) by +15%. The forest reinforces its chosen sentinel.' },
+        { name: 'Sovereign Bloom Focus', desc: 'Increases Critical Rate by +10% (flat). Canopy blooms expose enemy weak points.' },
+        { name: 'Rootbound Prince Dominion', desc: 'Increases Max HP by +25%, Defense (DEF) by +20%, and Attack Force (ATK) by +22%. Max HP, DEF, and ATK receive an additional +20% boost.' },
+      ];
+
+    case 'veyra':
+      return [
+        { name: 'Stormglass Precision', desc: 'Increases Critical Rate by +12% (flat). Prism sighting aligns arrows with electrical weak points.' },
+        { name: 'Nocturne Refraction', desc: 'Increases Critical Damage by +22% (flat). Stormglass facets multiply each lightning fracture.' },
+        { name: 'Prism Bolt Force', desc: 'Increases Attack Force (ATK) by +16%. Charged crystal arrows strike with greater kinetic force.' },
+        { name: 'Thunder Spire Focus', desc: 'Increases Critical Rate by +10% (flat). High-altitude training sharpens Veyra\'s aim.' },
+        { name: 'Nocturne Thunderfall', desc: 'Increases Critical Damage by +24% (flat). Each falling bolt detonates through fractured glass.' },
+        { name: 'Stormglass Archer Dominion', desc: 'Increases Attack Force (ATK) by +24%, Critical Rate by +14% (flat), and Critical Damage by +28% (flat). Max HP, DEF, and ATK receive an additional +20% boost.' },
       ];
 
     case 'marina':

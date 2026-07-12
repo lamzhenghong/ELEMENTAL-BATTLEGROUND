@@ -4,11 +4,6 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import GDDViewer from './components/GDDViewer';
-import GachaSimulator from './components/GachaSimulator';
-import CombatArena from './components/CombatArena';
-import InventoryManager from './components/InventoryManager';
-import RogueDungeon from './components/RogueDungeon';
 import GemsShop, { DAMAGE_SKINS } from './components/GemsShop';
 import { SaveState, Weapon, Artifact, InventoryItem, Quest, ElementType, ArtifactSlot, UiThemeId } from './types';
 import { t, LanguageType } from './utils/i18n';
@@ -32,11 +27,26 @@ import { UI_THEMES, UI_THEME_UNLOCK_LEVEL, getUiTheme, isUiThemeUnlocked, normal
 import { getStandardFiveStarCharacters } from './utils/limitedBanners';
 import { SPECIAL_ULTIMATE_UNLOCK_LEVEL } from './utils/specialUltimates';
 import { assignUniqueWeaponOwner, normalizeUniqueEquippedWeapons } from './utils/equipmentRules';
-import mainMenuBg from '../assets/main_menu_bg.png';
-import gameLogoImg from '../assets/game_logo.png';
-import StoryMode from './components/StoryMode';
+import mainMenuBg from '../assets/main_menu_bg.jpg';
+import gameLogoImg from '../assets/game_logo_256.png';
 import StoryCutscene from './components/StoryCutscene';
 import { getStageSpec, getStageDialogue, getCharacterStoryScript } from './data/storyStages';
+
+const GDDViewer = React.lazy(() => import('./components/GDDViewer'));
+const GachaSimulator = React.lazy(() => import('./components/GachaSimulator'));
+const CombatArena = React.lazy(() => import('./components/CombatArena'));
+const InventoryManager = React.lazy(() => import('./components/InventoryManager'));
+const RogueDungeon = React.lazy(() => import('./components/RogueDungeon'));
+const StoryMode = React.lazy(() => import('./components/StoryMode'));
+
+const ScreenLoadingFallback = () => (
+  <div className="flex min-h-[240px] w-full items-center justify-center rounded-xl border border-white/10 bg-slate-950/70">
+    <div className="flex items-center gap-3 font-mono text-[10px] font-black uppercase tracking-[0.24em] text-indigo-300">
+      <span className="h-2 w-2 animate-pulse rounded-full bg-indigo-400 shadow-[0_0_12px_rgba(129,140,248,0.8)]" />
+      Loading game module
+    </div>
+  </div>
+);
 
 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
@@ -2940,7 +2950,8 @@ export default function App() {
 
           {/* Actual screens swap frame */}
           <div className="flex-1 justify-between flex flex-col">
-            <AnimatePresence mode="wait">
+            <React.Suspense fallback={<ScreenLoadingFallback />}>
+              <AnimatePresence mode="wait">
               {activeScreen === 'shop' && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.98 }}
@@ -3691,7 +3702,8 @@ export default function App() {
                   />
                 </motion.div>
               )}
-            </AnimatePresence>
+              </AnimatePresence>
+            </React.Suspense>
           </div>
         </div>
 
@@ -4243,41 +4255,43 @@ export default function App() {
 
       {/* STORY MODE BATTLE ARENA OVERLAY */}
       {storyBattleActive && (
-        <motion.div
-          className="fixed inset-0 z-50 w-screen h-screen bg-slate-950 overflow-hidden flex flex-col min-h-0"
-          key="story_battle_arena"
-        >
-          <CombatArena
-            partyIds={saveState.partyIds}
-            onChangeParty={(partyIds) => triggerSaveUpdate(p => ({ ...p, partyIds }))}
-            onEarnRewards={(gems, mora, exp) => handleModifyCurrencies(gems, mora, exp)}
-            onIncrementStat={(pk) => handleIncrementStat(pk)}
-            ownedCharacterIds={saveState.unlockedCharacterIds || []}
-            characterLevels={saveState.characterLevels}
-            characterEquippedWeapon={saveState.characterEquippedWeapon}
-            inventoryWeapons={saveState.inventoryWeapons}
-            characterPortraits={saveState.characterPortraits || {}}
-            onBackToMenu={() => setStoryBattleActive(false)}
-            onExitToWiki={() => setStoryBattleActive(false)}
-            onAddItems={handleAddItems}
-            devCheatsEnabled={devCheatsEnabled}
-            playerLevel={saveState.playerLevel || 1}
-            screenShakeEnabled={screenShakeEnabled}
-            combatSpeed={combatSpeed}
-            fpsLimit={fpsLimit}
-            language={language}
-            storyMode={true}
-            storyStageId={storyBattleConfig.stageId}
-            isHardMode={storyBattleConfig.isHardMode}
-            saveState={saveState}
-            onStoryBattleEnd={handleStoryBattleEnd}
-            inventoryArtifacts={saveState.inventoryArtifacts || []}
-            characterEquippedArtifacts={saveState.characterEquippedArtifacts || {}}
-            onAwardArtifact={handleAwardArtifact}
-            activeDamageSkin={saveState.activeDamageSkin || 'Default'}
-            disableGameplayCutscenes={saveState.disableGameplayCutscenes || false}
-          />
-        </motion.div>
+        <React.Suspense fallback={<div className="fixed inset-0 z-50 bg-slate-950"><ScreenLoadingFallback /></div>}>
+          <motion.div
+            className="fixed inset-0 z-50 w-screen h-screen bg-slate-950 overflow-hidden flex flex-col min-h-0"
+            key="story_battle_arena"
+          >
+            <CombatArena
+              partyIds={saveState.partyIds}
+              onChangeParty={(partyIds) => triggerSaveUpdate(p => ({ ...p, partyIds }))}
+              onEarnRewards={(gems, mora, exp) => handleModifyCurrencies(gems, mora, exp)}
+              onIncrementStat={(pk) => handleIncrementStat(pk)}
+              ownedCharacterIds={saveState.unlockedCharacterIds || []}
+              characterLevels={saveState.characterLevels}
+              characterEquippedWeapon={saveState.characterEquippedWeapon}
+              inventoryWeapons={saveState.inventoryWeapons}
+              characterPortraits={saveState.characterPortraits || {}}
+              onBackToMenu={() => setStoryBattleActive(false)}
+              onExitToWiki={() => setStoryBattleActive(false)}
+              onAddItems={handleAddItems}
+              devCheatsEnabled={devCheatsEnabled}
+              playerLevel={saveState.playerLevel || 1}
+              screenShakeEnabled={screenShakeEnabled}
+              combatSpeed={combatSpeed}
+              fpsLimit={fpsLimit}
+              language={language}
+              storyMode={true}
+              storyStageId={storyBattleConfig.stageId}
+              isHardMode={storyBattleConfig.isHardMode}
+              saveState={saveState}
+              onStoryBattleEnd={handleStoryBattleEnd}
+              inventoryArtifacts={saveState.inventoryArtifacts || []}
+              characterEquippedArtifacts={saveState.characterEquippedArtifacts || {}}
+              onAwardArtifact={handleAwardArtifact}
+              activeDamageSkin={saveState.activeDamageSkin || 'Default'}
+              disableGameplayCutscenes={saveState.disableGameplayCutscenes || false}
+            />
+          </motion.div>
+        </React.Suspense>
       )}
 
       {/* STORY POST-BATTLE DIALOGUE & CUTSCENE OVERLAY */}

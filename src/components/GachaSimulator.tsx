@@ -19,12 +19,12 @@ import {
   isFiveStarRoll,
   isFourStarRoll
 } from '../utils/gachaEconomy';
-import aureliaBanner from '../../assets/aurelia_banner.png';
-import kaelenBanner from '../../assets/kaelen_banner.png';
-import maelisBanner from '../../assets/maelis_banner.png';
-import veyraBanner from '../../assets/veyra_banner.png';
-import weaponBanner from '../../assets/weapon_banner.png';
-import standardBanner from '../../assets/standard_banner.png';
+import aureliaBanner from '../../assets/aurelia_banner.jpg';
+import kaelenBanner from '../../assets/kaelen_banner.jpg';
+import maelisBanner from '../../assets/maelis_banner.jpg';
+import veyraBanner from '../../assets/veyra_banner.jpg';
+import weaponBanner from '../../assets/weapon_banner.jpg';
+import standardBanner from '../../assets/standard_banner.jpg';
 
 const getBannerImage = (featured5StarId: string, type: 'character' | 'weapon') => {
   if (type === 'weapon') return weaponBanner;

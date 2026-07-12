@@ -1,4 +1,5 @@
 import { ElementType } from '../types';
+import { getElementalReactionById } from '../data/elementalReactions';
 
 export interface ReactionDamageOutcome {
   reactionName: string;
@@ -31,39 +32,49 @@ export const getReactionDamageOutcome = (
 ): ReactionDamageOutcome | null => {
   const has = (element: ElementType) => activeElements.includes(element);
   const base = Math.max(0, statScaledDamage);
+  const outcome = (id: string, reactionName: string, damageColor: string): ReactionDamageOutcome => {
+    const reaction = getElementalReactionById(id);
+    const multiplier = reaction?.damageMultiplier ?? 1;
+    return {
+      reactionName,
+      finalDamage: Math.round(base * multiplier),
+      damageColor,
+      consumesElements: true
+    };
+  };
 
   if ((has('Hydro') && incomingElement === 'Pyro') || (has('Pyro') && incomingElement === 'Hydro')) {
-    return { reactionName: 'VAPORIZE (2x!)', finalDamage: Math.round(base * 2), damageColor: '#f97316', consumesElements: true };
+    return outcome('vaporize', 'VAPORIZE (2x!)', '#f97316');
   }
   if ((has('Hydro') && incomingElement === 'Cryo') || (has('Cryo') && incomingElement === 'Hydro')) {
-    return { reactionName: 'FROZEN!', finalDamage: Math.round(base * 1.1), damageColor: '#38bdf8', consumesElements: true };
+    return outcome('frozen', 'FROZEN!', '#38bdf8');
   }
   if ((has('Dendro') && incomingElement === 'Hydro') || (has('Hydro') && incomingElement === 'Dendro')) {
-    return { reactionName: 'BLOOM ERUPTION!', finalDamage: Math.round(base * 1.75), damageColor: '#22c55e', consumesElements: true };
+    return outcome('bloom-eruption', 'BLOOM ERUPTION!', '#22c55e');
   }
   if ((has('Dendro') && incomingElement === 'Electro') || (has('Electro') && incomingElement === 'Dendro')) {
-    return { reactionName: 'HYPERBLOOM QUASAR!', finalDamage: Math.round(base * 2.3), damageColor: '#10b981', consumesElements: true };
+    return outcome('hyperbloom-quasar', 'HYPERBLOOM QUASAR!', '#10b981');
   }
   if ((has('Pyro') && incomingElement === 'Electro') || (has('Electro') && incomingElement === 'Pyro')) {
-    return { reactionName: 'OVERLOADED!', finalDamage: Math.round(base * 1.65), damageColor: '#ec4899', consumesElements: true };
+    return outcome('overloaded', 'OVERLOADED!', '#ec4899');
   }
   if ((has('Cryo') && incomingElement === 'Pyro') || (has('Pyro') && incomingElement === 'Cryo')) {
-    return { reactionName: 'MELT (2x!)', finalDamage: Math.round(base * 2), damageColor: '#f59e0b', consumesElements: true };
+    return outcome('melt', 'MELT (2x!)', '#f59e0b');
   }
   if ((has('Hydro') && incomingElement === 'Electro') || (has('Electro') && incomingElement === 'Hydro')) {
-    return { reactionName: 'ELECTRO-CHARGED!', finalDamage: Math.round(base * 1.55), damageColor: '#a855f7', consumesElements: true };
+    return outcome('electro-charged', 'ELECTRO-CHARGED!', '#a855f7');
   }
   if ((has('Cryo') && incomingElement === 'Electro') || (has('Electro') && incomingElement === 'Cryo')) {
-    return { reactionName: 'SUPERCONDUCT (DEF SHRED)!', finalDamage: Math.round(base * 1.45), damageColor: '#c084fc', consumesElements: true };
+    return outcome('superconduct', 'SUPERCONDUCT (DEF SHRED)!', '#c084fc');
   }
   if ((has('Dendro') && incomingElement === 'Pyro') || (has('Pyro') && incomingElement === 'Dendro')) {
-    return { reactionName: 'BURNING!', finalDamage: Math.round(base * 1.25), damageColor: '#e11d48', consumesElements: true };
+    return outcome('burning', 'BURNING!', '#e11d48');
   }
   if (incomingElement === 'Geo') {
-    return { reactionName: 'CRYSTALLIZE SHARD DROPPED!', finalDamage: Math.round(base * 1.15), damageColor: '#eab308', consumesElements: true };
+    return outcome('crystallize', 'CRYSTALLIZE SHARD DROPPED!', '#eab308');
   }
   if (incomingElement === 'Anemo') {
-    return { reactionName: 'SWIRL SPLASH!', finalDamage: Math.round(base * 1.25), damageColor: '#34d399', consumesElements: true };
+    return outcome('swirl-splash', 'SWIRL SPLASH!', '#34d399');
   }
 
   return null;

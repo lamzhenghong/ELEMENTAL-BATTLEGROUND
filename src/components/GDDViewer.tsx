@@ -16,25 +16,25 @@ import { ARTIFACT_SETS, ARTIFACT_NAMES, getArtifactMainStat } from '../data/arti
 import { LanguageType, t } from '../utils/i18n';
 import { ELEMENTAL_REACTIONS } from '../data/elementalReactions';
 
-import aureliaBanner from '../../assets/aurelia_banner.png';
-import kaelenBanner from '../../assets/kaelen_banner.png';
-import maelisBanner from '../../assets/maelis_banner.png';
-import veyraBanner from '../../assets/veyra_banner.png';
-import weaponBanner from '../../assets/weapon_banner.png';
+import aureliaBanner from '../../assets/aurelia_banner.jpg';
+import kaelenBanner from '../../assets/kaelen_banner.jpg';
+import maelisBanner from '../../assets/maelis_banner.jpg';
+import veyraBanner from '../../assets/veyra_banner.jpg';
+import weaponBanner from '../../assets/weapon_banner.jpg';
 
-import pyroBg from '../../assets/pyro_bg.png';
-import hydroBg from '../../assets/hydro_bg.png';
-import cryoBg from '../../assets/cryo_bg.png';
-import electroBg from '../../assets/electro_bg.png';
-import anemoBg from '../../assets/anemo_bg.png';
-import geoBg from '../../assets/geo_bg.png';
-import dendroBg from '../../assets/dendro_bg.png';
+import pyroBg from '../../assets/pyro_bg.jpg';
+import hydroBg from '../../assets/hydro_bg.jpg';
+import cryoBg from '../../assets/cryo_bg.jpg';
+import electroBg from '../../assets/electro_bg.jpg';
+import anemoBg from '../../assets/anemo_bg.jpg';
+import geoBg from '../../assets/geo_bg.jpg';
+import dendroBg from '../../assets/dendro_bg.jpg';
 
-import swordBg from '../../assets/sword_bg.png';
-import claymoreBg from '../../assets/claymore_bg.png';
-import bowBg from '../../assets/bow_bg.png';
-import catalystBg from '../../assets/catalyst_bg.png';
-import polearmBg from '../../assets/polearm_bg.png';
+import swordBg from '../../assets/sword_bg.jpg';
+import claymoreBg from '../../assets/claymore_bg.jpg';
+import bowBg from '../../assets/bow_bg.jpg';
+import catalystBg from '../../assets/catalyst_bg.jpg';
+import polearmBg from '../../assets/polearm_bg.jpg';
 
 const getCharacterBg = (charId: string, element: ElementType) => {
   if (charId === 'aurelia') return aureliaBanner;
