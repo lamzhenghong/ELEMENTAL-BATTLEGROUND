@@ -1,6 +1,9 @@
 import { getStageSpec as getLegacyStageSpec } from '../storyStages';
 import { CHAPTER_4_PACK } from './campaign/chapter4';
 import { CHAPTER_5_PACK } from './campaign/chapter5';
+import { CHAPTER_6_PACK } from './campaign/chapter6';
+import { CHAPTER_7_PACK } from './campaign/chapter7';
+import { CHAPTER_8_PACK } from './campaign/chapter8';
 import { STORY_MODIFIERS } from './modifiers';
 import type {
   AuthoredStoryStage,
@@ -18,10 +21,19 @@ import type {
 export { getCampaignReward } from './balance';
 export { CHAPTER_4_PACK } from './campaign/chapter4';
 export { CHAPTER_5_PACK } from './campaign/chapter5';
+export { CHAPTER_6_PACK } from './campaign/chapter6';
+export { CHAPTER_7_PACK } from './campaign/chapter7';
+export { CHAPTER_8_PACK } from './campaign/chapter8';
 export { STORY_MODIFIERS } from './modifiers';
 export type * from './types';
 
-const CHAPTER_PACKS: readonly StoryChapterPack[] = [CHAPTER_4_PACK, CHAPTER_5_PACK];
+const CHAPTER_PACKS: readonly StoryChapterPack[] = [
+  CHAPTER_4_PACK,
+  CHAPTER_5_PACK,
+  CHAPTER_6_PACK,
+  CHAPTER_7_PACK,
+  CHAPTER_8_PACK,
+];
 const CHARACTER_PACKS: readonly StoryCharacterPack[] = [];
 
 const getAuthoredStage = (stageId: string): AuthoredStoryStage | undefined => {
