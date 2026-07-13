@@ -26,8 +26,9 @@ assert.match(storyModeSource, /disabled=\{!unlocked\}/);
 assert.match(storyModeSource, /String\(chap\.id\)\.padStart\(2, '0'\)/);
 assert.match(
   storyModeSource,
-  /scrollIntoView\(\{\s*behavior:\s*'smooth',\s*block:\s*'nearest',\s*inline:\s*'center'\s*\}\)/,
+  /chapterStrip\.scrollTo\(\{\s*left:\s*targetLeft,\s*behavior:\s*'smooth'\s*\}\)/,
 );
+assert.doesNotMatch(storyModeSource, /scrollIntoView\(/);
 
 const wheelHandlerStart = storyModeSource.indexOf('const handleChapterStripWheel');
 assert.notEqual(wheelHandlerStart, -1);

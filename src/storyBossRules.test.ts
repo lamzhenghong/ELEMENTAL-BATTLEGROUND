@@ -19,7 +19,12 @@ for (const [stageId, [name, bossType]] of Object.entries(currentBosses)) {
   assert.equal(boss.bossType, bossType);
 }
 
-const first = generateFutureBoss('11-5');
-assert.deepEqual(generateFutureBoss('11-5'), first);
-assert.notEqual(generateFutureBoss('12-5').name.length, 0);
+const first = generateFutureBoss('11-5', 123);
+assert.deepEqual(generateFutureBoss('11-5', 123), first);
+assert.notEqual(generateFutureBoss('12-5', 133).name.length, 0);
+
+for (const stageId of ['11-5', '12-5', '20-5']) {
+  const spec = getStageSpec(stageId);
+  assert.equal(spec.enemies[0].level, spec.recommendedLevel);
+}
 console.log('story boss rules ok');

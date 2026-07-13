@@ -13,13 +13,13 @@ const hashStageId = (value: string) => {
   return hash >>> 0;
 };
 
-export const generateFutureBoss = (stageId: string): StoryEnemySpec => {
+export const generateFutureBoss = (stageId: string, level: number): StoryEnemySpec => {
   const hash = hashStageId(stageId);
   return {
     name: `${TITLES[hash % TITLES.length]} ${SUBJECTS[(hash >>> 4) % SUBJECTS.length]}`,
     type: 'Boss',
     element: 'Anemo',
-    level: 120,
+    level,
     bossType: TEMPLATES[(hash >>> 8) % TEMPLATES.length],
   };
 };

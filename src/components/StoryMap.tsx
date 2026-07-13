@@ -82,6 +82,9 @@ export default function StoryMap({
       {/* Nodes mapping */}
       {stages.map((stageId, idx) => {
         const pos = nodePositions[idx];
+        const nodeLeft = idx === 0 ? 'max(12%, 78px)'
+          : idx === 4 ? 'min(88%, calc(100% - 62px))'
+          : pos.left;
         const unlocked = isStageUnlocked(stageId, idx);
         const spec = getStageSpec(stageId);
         const isBoss = spec.difficulty === 'Boss';
@@ -118,7 +121,7 @@ export default function StoryMap({
           <div
             key={stageId}
             className="absolute z-10 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1.5"
-            style={{ left: pos.left, top: pos.top }}
+            style={{ left: nodeLeft, top: pos.top }}
           >
             {/* Stage title label above the node */}
             <span className={`text-[8.5px] md:text-[9.5px] font-mono tracking-wider uppercase font-black px-2 py-0.5 rounded shadow backdrop-blur-sm ${

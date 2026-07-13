@@ -220,7 +220,7 @@ const getFutureStageSpec = (stageId: string, chapter: number, stage: number): St
   const baseElement = FUTURE_ELEMENTS[(chapter + stage) % FUTURE_ELEMENTS.length];
   const secondElement = FUTURE_ELEMENTS[(chapter * 2 + stage) % FUTURE_ELEMENTS.length];
   const enemies: StoryEnemySpec[] = difficulty === 'Boss'
-    ? [generateFutureBoss(stageId)]
+    ? [generateFutureBoss(stageId, recommendedLevel)]
     : [
         { name: `Future ${baseElement} Vanguard`, type: stage >= 3 ? 'Elite' : 'Normal', element: baseElement, level: recommendedLevel },
         { name: `Future ${secondElement} Scout`, type: 'Normal', element: secondElement, level: recommendedLevel },

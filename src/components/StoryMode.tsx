@@ -55,10 +55,24 @@ export default function StoryMode({
 
   useEffect(() => {
     if (activeTab !== 'campaign') return;
-    chapterCardRefs.current.get(selectedChapter)?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'nearest',
-      inline: 'center'
+    const chapterStrip = chapterStripRef.current;
+    const selectedCard = chapterCardRefs.current.get(selectedChapter);
+    if (!chapterStrip || !selectedCard) return;
+
+    const stripRect = chapterStrip.getBoundingClientRect();
+    const cardRect = selectedCard.getBoundingClientRect();
+    const unclampedLeft = chapterStrip.scrollLeft
+      + cardRect.left
+      - stripRect.left
+      - (chapterStrip.clientWidth - cardRect.width) / 2;
+    const targetLeft = Math.max(
+      0,
+      Math.min(unclampedLeft, chapterStrip.scrollWidth - chapterStrip.clientWidth)
+    );
+
+    chapterStrip.scrollTo({
+      left: targetLeft,
+      behavior: 'smooth'
     });
   }, [activeTab, selectedChapter]);
 
