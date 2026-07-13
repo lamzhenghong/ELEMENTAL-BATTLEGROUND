@@ -3,6 +3,8 @@ import StoryDialogue from './StoryDialogue';
 import { motion, AnimatePresence } from 'motion/react';
 import type { StoryChoiceDefinition, StoryScene } from '../data/story';
 import StoryChoicePrompt from './StoryChoicePrompt';
+import { getStoryArtwork } from '../data/story/artwork';
+import type { StoryBackgroundId } from '../data/story';
 
 interface StoryCutsceneProps {
   scene: StoryScene;
@@ -17,9 +19,12 @@ export default function StoryCutscene({ scene, choice, onChoice, onComplete, bac
   const [isShaking, setIsShaking] = useState(false);
   const [isFlashing, setIsFlashing] = useState(false);
   const [isChoosing, setIsChoosing] = useState(false);
+  const [failedArtworkId, setFailedArtworkId] = useState<StoryBackgroundId | null>(null);
 
   const slides = scene.slides;
   const currentLine = slides[currentIndex];
+  const artwork = scene.backgroundId ? getStoryArtwork(scene.backgroundId) : undefined;
+  const hasArtwork = Boolean(artwork && failedArtworkId !== scene.backgroundId);
 
   // Handle slide effects (shake, flash)
   useEffect(() => {
@@ -73,11 +78,38 @@ export default function StoryCutscene({ scene, choice, onChoice, onComplete, bac
 
   return (
     <div className={`fixed inset-0 z-[60] flex max-h-[100dvh] items-center justify-center overflow-hidden bg-slate-950 select-none ${isShaking ? 'animate-shake' : ''}`}>
-      {/* Background with glowing nebulas */}
+      {/* Gradient remains mounted as a fast fallback while artwork loads. */}
       <div className={`absolute inset-0 bg-gradient-to-tr ${defaultBg}`}>
-        <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-indigo-500/10 rounded-full blur-[140px] animate-pulse pointer-events-none" />
-        <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-violet-600/10 rounded-full blur-[120px] pointer-events-none" />
+        {!hasArtwork && (
+          <>
+            <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-indigo-500/10 rounded-full blur-[140px] animate-pulse pointer-events-none" />
+            <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-violet-600/10 rounded-full blur-[120px] pointer-events-none" />
+          </>
+        )}
       </div>
+
+      {hasArtwork && artwork && (
+        <>
+          <img
+            src={artwork.src}
+            alt=""
+            aria-hidden="true"
+            loading="eager"
+            decoding="async"
+            onError={() => setFailedArtworkId(scene.backgroundId ?? null)}
+            className="absolute inset-0 h-full w-full object-cover [object-position:var(--story-mobile-position)] md:[object-position:var(--story-desktop-position)]"
+            style={{
+              objectPosition: artwork.mobilePosition,
+              '--story-mobile-position': artwork.mobilePosition,
+              '--story-desktop-position': artwork.desktopPosition,
+            } as React.CSSProperties}
+          />
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(2,6,23,0.18)_0%,rgba(2,6,23,0.34)_52%,rgba(2,6,23,0.88)_100%)]"
+          />
+        </>
+      )}
 
       {/* Screen flash overlay */}
       <AnimatePresence>

@@ -75,16 +75,21 @@ for (const component of ['GDDViewer', 'GachaSimulator', 'CombatArena', 'Inventor
 assert.match(viteConfigSource, /manualChunks/, 'third-party libraries should be split from the main application chunk');
 
 const importedAssetPattern = /from\s+['"]([^'"]+\.(?:png|jpe?g|webp))['"]/g;
+const assetUrlPattern = /new URL\(['"]([^'"]+\.(?:png|jpe?g|webp))['"],\s*import\.meta\.url\)/g;
 const importedAssets = new Set<string>();
 for (const file of collectTextFiles(srcDir).filter(file => ['.ts', '.tsx'].includes(extname(file)))) {
   const source = readFileSync(file, 'utf8');
-  for (const match of source.matchAll(importedAssetPattern)) {
+  for (const match of [...source.matchAll(importedAssetPattern), ...source.matchAll(assetUrlPattern)]) {
     const assetPath = resolve(dirname(file), match[1]);
     if (existsSync(assetPath)) importedAssets.add(assetPath);
   }
 }
 
 const importedAssetBytes = [...importedAssets].reduce((sum, file) => sum + statSync(file).size, 0);
-assert.ok(importedAssetBytes < 8 * 1024 * 1024, `imported image assets should stay below 8 MB, got ${Math.round(importedAssetBytes / 1024 / 1024 * 100) / 100} MB`);
+const storyArtworkFiles = [...importedAssets].filter(file => dirname(file).endsWith(join('assets', 'story')));
+const storyArtworkBytes = storyArtworkFiles.reduce((sum, file) => sum + statSync(file).size, 0);
+assert.equal(storyArtworkFiles.length, 11, 'all eleven story backgrounds must be statically imported');
+assert.ok(storyArtworkBytes <= 2.75 * 1024 * 1024, 'story backgrounds must stay within their mobile payload budget');
+assert.ok(importedAssetBytes < 11 * 1024 * 1024, `imported image assets should stay below 11 MB including story art, got ${Math.round(importedAssetBytes / 1024 / 1024 * 100) / 100} MB`);
 
 console.log('foundation integrity rules ok');
