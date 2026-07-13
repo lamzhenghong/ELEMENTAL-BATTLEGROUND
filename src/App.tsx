@@ -1603,7 +1603,7 @@ export default function App() {
         const script = getCharacterStoryScript(storyBattleConfig.charId, storyBattleConfig.act);
         const scene = authoredScene.slides.length > 0
           ? authoredScene
-          : { slides: script.after };
+          : { slides: script.after, backgroundId: authoredScene.backgroundId };
         if (scene.slides.length > 0) {
           setActiveCutsceneScene(scene);
         }
@@ -1620,7 +1620,7 @@ export default function App() {
     const dialogue = getStageDialogue(stageId);
     const scene = authoredScene.slides.length > 0
       ? authoredScene
-      : { slides: dialogue?.after ?? [] };
+      : { slides: dialogue?.after ?? [], backgroundId: authoredScene.backgroundId };
     if (scene.slides.length > 0) {
       setActiveCutsceneScene(scene);
     } else {

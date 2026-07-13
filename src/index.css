@@ -324,6 +324,16 @@ canvas {
   text-shadow: 0 0 6px #eab308;
 }
 
+.story-cutscene-artwork {
+  object-position: var(--story-mobile-position);
+}
+
+@media (min-width: 768px) and (hover: hover) and (pointer: fine) {
+  .story-cutscene-artwork {
+    object-position: var(--story-desktop-position);
+  }
+}
+
 /* Hide every scrollbar while preserving scroll behavior. */
 * {
   scrollbar-width: none !important;

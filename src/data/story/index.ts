@@ -14,6 +14,7 @@ import { STORY_MODIFIERS } from './modifiers';
 import type {
   AuthoredStoryStage,
   StoryBattleModifier,
+  StoryBackgroundId,
   StoryChapterPack,
   StoryCharacterPack,
   StoryChoiceDefinition,
@@ -61,6 +62,19 @@ const CHARACTER_PACKS: readonly StoryCharacterPack[] = [
   MAELIS_STORY_PACK,
   VEYRA_STORY_PACK,
 ];
+
+const LEGACY_CAMPAIGN_BACKGROUNDS = {
+  1: 'chapter-1',
+  2: 'chapter-2',
+  3: 'chapter-3',
+} as const satisfies Record<number, StoryBackgroundId>;
+
+const getLegacyCampaignBackgroundId = (stageId: string): StoryBackgroundId | undefined => {
+  const match = /^([1-3])-[1-5]$/.exec(stageId);
+  return match
+    ? LEGACY_CAMPAIGN_BACKGROUNDS[Number(match[1]) as keyof typeof LEGACY_CAMPAIGN_BACKGROUNDS]
+    : undefined;
+};
 
 const getAuthoredStage = (stageId: string): AuthoredStoryStage | undefined => {
   for (const pack of CHAPTER_PACKS) {
@@ -113,7 +127,12 @@ export const getStoryScene = (
   choices?: StoryChoiceSelections,
 ): StoryScene => {
   const stage = getAuthoredStage(stageId);
-  if (!stage) return { slides: [] };
+  if (!stage) {
+    return {
+      slides: [],
+      backgroundId: getLegacyCampaignBackgroundId(stageId),
+    };
+  }
 
   const variant = getEncounterVariant(stage, choices);
   return {

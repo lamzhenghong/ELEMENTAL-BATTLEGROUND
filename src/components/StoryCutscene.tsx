@@ -97,9 +97,8 @@ export default function StoryCutscene({ scene, choice, onChoice, onComplete, bac
             loading="eager"
             decoding="async"
             onError={() => setFailedArtworkId(scene.backgroundId ?? null)}
-            className="absolute inset-0 h-full w-full object-cover [object-position:var(--story-mobile-position)] md:[object-position:var(--story-desktop-position)]"
+            className="story-cutscene-artwork absolute inset-0 h-full w-full object-cover"
             style={{
-              objectPosition: artwork.mobilePosition,
               '--story-mobile-position': artwork.mobilePosition,
               '--story-desktop-position': artwork.desktopPosition,
             } as React.CSSProperties}

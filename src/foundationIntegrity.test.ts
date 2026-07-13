@@ -88,8 +88,8 @@ for (const file of collectTextFiles(srcDir).filter(file => ['.ts', '.tsx'].inclu
 const importedAssetBytes = [...importedAssets].reduce((sum, file) => sum + statSync(file).size, 0);
 const storyArtworkFiles = [...importedAssets].filter(file => dirname(file).endsWith(join('assets', 'story')));
 const storyArtworkBytes = storyArtworkFiles.reduce((sum, file) => sum + statSync(file).size, 0);
-assert.equal(storyArtworkFiles.length, 11, 'all eleven story backgrounds must be statically imported');
-assert.ok(storyArtworkBytes <= 2.75 * 1024 * 1024, 'story backgrounds must stay within their mobile payload budget');
+assert.equal(storyArtworkFiles.length, 14, 'all fourteen story backgrounds must be statically imported');
+assert.ok(storyArtworkBytes <= 3.5 * 1024 * 1024, 'story backgrounds must stay within their mobile payload budget');
 assert.ok(importedAssetBytes < 11 * 1024 * 1024, `imported image assets should stay below 11 MB including story art, got ${Math.round(importedAssetBytes / 1024 / 1024 * 100) / 100} MB`);
 
 console.log('foundation integrity rules ok');

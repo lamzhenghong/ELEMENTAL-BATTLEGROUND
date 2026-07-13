@@ -118,7 +118,7 @@ export default function StoryMode({
     const dialogue = getStageDialogue(stageId);
     const scene = authoredScene.slides.length > 0
       ? authoredScene
-      : { slides: dialogue?.before ?? [] };
+      : { slides: dialogue?.before ?? [], backgroundId: authoredScene.backgroundId };
     const choice = getStoryChoice(stageId);
     const startBattle = (nextChoices: StoryChoiceSelections) => {
       onStartStoryBattle({
@@ -158,7 +158,7 @@ export default function StoryMode({
     const script = getCharacterStoryScript(charId, act);
     const scene = authoredScene.slides.length > 0
       ? authoredScene
-      : { slides: script.before };
+      : { slides: script.before, backgroundId: authoredScene.backgroundId };
     const choice = getStoryChoice(stageId);
     const startBattle = (nextChoices: StoryChoiceSelections) => {
       onStartStoryBattle({

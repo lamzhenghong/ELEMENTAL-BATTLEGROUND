@@ -38,7 +38,7 @@ export interface StoryDialogueLine {
 export type StoryPhase = 'before' | 'after';
 export type StoryChoiceSelections = Record<string, string>;
 export type StoryBackgroundId =
-  | 'chapter-4' | 'chapter-5' | 'chapter-6' | 'chapter-7' | 'chapter-8' | 'chapter-9' | 'chapter-10'
+  | 'chapter-1' | 'chapter-2' | 'chapter-3' | 'chapter-4' | 'chapter-5' | 'chapter-6' | 'chapter-7' | 'chapter-8' | 'chapter-9' | 'chapter-10'
   | 'aurelia-memory' | 'kaelen-memory' | 'maelis-memory' | 'veyra-memory';
 
 export interface StoryChoiceOption {
