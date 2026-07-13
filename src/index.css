@@ -328,9 +328,19 @@ canvas {
   object-position: var(--story-mobile-position);
 }
 
+.gacha-banner-art {
+  background-position: var(--banner-position-mobile, 50% 20%);
+}
+
 @media (min-width: 768px) and (hover: hover) and (pointer: fine) {
   .story-cutscene-artwork {
     object-position: var(--story-desktop-position);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .gacha-banner-art {
+    background-position: var(--banner-position-desktop, 50% 30%);
   }
 }
 

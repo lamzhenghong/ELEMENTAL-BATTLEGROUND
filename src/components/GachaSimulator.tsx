@@ -36,6 +36,28 @@ const getBannerImage = (featured5StarId: string, type: 'character' | 'weapon') =
   return aureliaBanner;
 };
 
+interface BannerArtworkLayout {
+  desktopPosition: string;
+  mobilePosition: string;
+}
+
+const BANNER_ARTWORK_LAYOUTS: Record<string, BannerArtworkLayout> = {
+  aurelia: { desktopPosition: 'center 26%', mobilePosition: '66% 16%' },
+  kaelen: { desktopPosition: 'center 26%', mobilePosition: '66% 16%' },
+  maelis: { desktopPosition: 'center 24%', mobilePosition: '66% 16%' },
+  veyra: { desktopPosition: 'center 28%', mobilePosition: '66% 14%' },
+  standard_banner: { desktopPosition: '58% 30%', mobilePosition: '68% 25%' },
+  weapon: { desktopPosition: '60% 40%', mobilePosition: '66% 38%' },
+};
+
+const getBannerArtworkLayout = (featured5StarId: string, type: 'character' | 'weapon'): BannerArtworkLayout => {
+  if (type === 'weapon') return BANNER_ARTWORK_LAYOUTS.weapon;
+  return BANNER_ARTWORK_LAYOUTS[featured5StarId] ?? {
+    desktopPosition: 'center 24%',
+    mobilePosition: '66% 18%',
+  };
+};
+
 const getBannerGradient = (featured5StarId: string, type: 'character' | 'weapon') => {
   if (type === 'weapon') {
     return 'linear-gradient(to right, rgba(15, 10, 15, 0.95) 0%, rgba(15, 10, 15, 0.7) 55%, rgba(15, 10, 15, 0.2) 100%)';
@@ -455,6 +477,7 @@ export default function GachaSimulator({
     tag: `5★ ${selectedWeaponName}`,
     details: `GUARANTEED target: 5★ ${selectedWeaponName}. No 50/50. Select your target below.`
   } : rawActiveBanner;
+  const artworkLayout = getBannerArtworkLayout(activeBanner.featured5StarId, activeBanner.type);
 
   const hours = Math.floor(msRemaining / 3600000);
   const minutes = Math.floor((msRemaining % 3600000) / 60000);
@@ -1097,12 +1120,14 @@ export default function GachaSimulator({
         
         {/* Active Selected Banner details view */}
         <div 
-          className={`lg:col-span-2 border rounded-xl p-5 relative overflow-hidden flex flex-col justify-between ${activeBanner.themeColor}`}
+          className={`gacha-banner-art lg:col-span-2 border rounded-xl p-5 relative overflow-hidden flex flex-col justify-between ${activeBanner.themeColor}`}
           style={{
             backgroundImage: `${getBannerGradient(activeBanner.featured5StarId, activeBanner.type)}, url(${getBannerImage(activeBanner.featured5StarId, activeBanner.type)})`,
             backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
+            backgroundRepeat: 'no-repeat',
+            '--banner-position-mobile': artworkLayout.mobilePosition,
+            '--banner-position-desktop': artworkLayout.desktopPosition,
+          } as React.CSSProperties}
         >
           
           <div className="space-y-4">
