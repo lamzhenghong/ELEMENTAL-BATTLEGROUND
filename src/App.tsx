@@ -32,6 +32,7 @@ import gameLogoImg from '../assets/game_logo_256.png';
 import StoryCutscene from './components/StoryCutscene';
 import { getStageSpec, getStageDialogue, getCharacterStoryScript, getStoryScene } from './data/storyStages';
 import type { StoryChoiceSelections, StoryScene } from './data/story';
+import { mergeUnlockedStoryMemories } from './data/story/memories';
 import { createDefaultStoryProgress, normalizeStoryProgress } from './data/story/progress';
 
 const GDDViewer = React.lazy(() => import('./components/GDDViewer'));
@@ -1511,10 +1512,7 @@ export default function App() {
           nextGems += spec.firstClearRewards.gems;
           nextMora += spec.firstClearRewards.mora;
           nextCompletedCharacterStoryActs[charId] = act;
-          const loreKey = `${charId}_act_${act}_clear`;
-          if (!nextUnlockedLoreEntries.includes(loreKey)) {
-            nextUnlockedLoreEntries.push(loreKey);
-          }
+          nextUnlockedLoreEntries = mergeUnlockedStoryMemories(nextUnlockedLoreEntries, stageId);
         }
       } else {
         const [chapStr, stageStr] = stageId.split('-');
@@ -1549,6 +1547,7 @@ export default function App() {
                   item.type === 'ascension' ? { ...item, count: item.count + spec.firstClearRewards.ascensionMaterialCount! } : item
                 );
               }
+              nextUnlockedLoreEntries = mergeUnlockedStoryMemories(nextUnlockedLoreEntries, stageId);
             }
           }
 

@@ -37,6 +37,13 @@ export { KAELEN_STORY_PACK } from './characters/kaelen';
 export { MAELIS_STORY_PACK } from './characters/maelis';
 export { VEYRA_STORY_PACK } from './characters/veyra';
 export { STORY_MODIFIERS } from './modifiers';
+export {
+  ALL_STORY_MEMORIES,
+  LEGACY_CAMPAIGN_CHRONICLES,
+  STORY_MEMORIES,
+  getMemoryUnlockIds,
+  mergeUnlockedStoryMemories,
+} from './memories';
 export type * from './types';
 
 const CHAPTER_PACKS: readonly StoryChapterPack[] = [
@@ -126,6 +133,3 @@ export const getStoryModifier = (
   const variant = stage && getEncounterVariant(stage, choices);
   return variant ? STORY_MODIFIERS[variant.modifierId] : undefined;
 };
-
-export const getMemoryUnlockIds = (stageId: string): string[] =>
-  [...(getAuthoredStage(stageId)?.memoryUnlockIds ?? [])];

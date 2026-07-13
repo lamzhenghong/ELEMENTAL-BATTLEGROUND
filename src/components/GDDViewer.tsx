@@ -15,6 +15,7 @@ import { ElementType, WeaponType, Weapon, Artifact, ArtifactSlot, ArtifactSet } 
 import { ARTIFACT_SETS, ARTIFACT_NAMES, getArtifactMainStat } from '../data/artifacts';
 import { LanguageType, t } from '../utils/i18n';
 import { ELEMENTAL_REACTIONS } from '../data/elementalReactions';
+import { ALL_STORY_MEMORIES } from '../data/story';
 
 import aureliaBanner from '../../assets/aurelia_banner.jpg';
 import kaelenBanner from '../../assets/kaelen_banner.jpg';
@@ -168,6 +169,9 @@ export default function GDDViewer({
 
   const selectedChar = PLAYABLE_CHARACTERS.find(c => c.id === selectedCharacterId) || PLAYABLE_CHARACTERS[0];
   const selectedNation = GDD_DATA.nations.find(n => n.name === selectedNationName) || GDD_DATA.nations[0];
+  const unlockedCampaignMemories = ALL_STORY_MEMORIES.filter(
+    (entry) => entry.category === 'campaign' && unlockedLoreEntries.includes(entry.id),
+  );
 
   return (
     <div className="bg-[#0b0f19]/85 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.6)] flex flex-col h-full min-h-[600px]" id="gdd_main_viewer">
@@ -262,37 +266,24 @@ export default function GDDViewer({
                   </div>
 
                   {/* Unlocked Campaign Lore Chronicles */}
-                  {unlockedLoreEntries && unlockedLoreEntries.length > 0 && (
+                  {unlockedCampaignMemories.length > 0 && (
                     <div className="p-5 bg-slate-950/60 border border-amber-500/25 rounded-xl space-y-4">
                       <h4 className="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
                         <span className="w-1.5 h-3 bg-amber-500 rounded-full"></span>
-                        📖 Unlocked Campaign Chronicles ({unlockedLoreEntries.length})
+                        Unlocked Campaign Chronicles ({unlockedCampaignMemories.length})
                       </h4>
                       <div className="grid grid-cols-1 gap-3">
-                        {unlockedLoreEntries.includes('chapter-1-clear') && (
-                          <div className="p-3.5 bg-slate-900/60 border border-slate-850 rounded-lg">
-                            <span className="font-extrabold text-amber-400 text-xs uppercase tracking-wider block">Chapter 1 Clear: Ruins Core stabilized</span>
-                            <p className="text-slate-400 text-xs mt-1.5 leading-relaxed">
-                              Defeating the Calamity Pyro Dragon stabilized the ancient ruins core. However, analysis of the core fragments reveals the anomalies were triggered intentionally by extra-dimensional core frequencies.
-                            </p>
+                        {unlockedCampaignMemories.map((memory) => (
+                          <div key={memory.id} className="p-3.5 bg-slate-900/60 border border-slate-850 rounded-lg">
+                            <span className="font-extrabold text-amber-400 text-xs uppercase tracking-wider block">
+                              {memory.title}
+                            </span>
+                            <span className="mt-1 block text-[9px] font-mono uppercase tracking-wider text-slate-500">
+                              {memory.sourceLabel} / {memory.location}
+                            </span>
+                            <p className="text-slate-400 text-xs mt-1.5 leading-relaxed">{memory.text}</p>
                           </div>
-                        )}
-                        {unlockedLoreEntries.includes('chapter-2-clear') && (
-                          <div className="p-3.5 bg-slate-900/60 border border-slate-850 rounded-lg">
-                            <span className="font-extrabold text-amber-400 text-xs uppercase tracking-wider block">Chapter 2 Clear: Overlord stabilized</span>
-                            <p className="text-slate-400 text-xs mt-1.5 leading-relaxed">
-                              With the defeat of the Glacial Frost Golem, the Frozen River shipping routes are clear. The Oracle confirms these tears act as calibrators, testing whether our party can channel elemental reactions.
-                            </p>
-                          </div>
-                        )}
-                        {unlockedLoreEntries.includes('chapter-3-clear') && (
-                          <div className="p-3.5 bg-slate-900/60 border border-slate-850 rounded-lg">
-                            <span className="font-extrabold text-emerald-400 text-xs uppercase tracking-wider block">Chapter 3 Clear: Gate Opened</span>
-                            <p className="text-slate-400 text-xs mt-1.5 leading-relaxed">
-                              Awakening and defeat of the Tempest Thunderbird dragon has restored flow to the Gates of Ancient Aetheria, unlocking access to advanced stardust summons and deep-dimensional vaults.
-                            </p>
-                          </div>
-                        )}
+                        ))}
                       </div>
                     </div>
                   )}

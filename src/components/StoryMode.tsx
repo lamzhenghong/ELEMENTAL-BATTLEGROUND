@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { STORY_CHAPTERS, STORY_STAGES, getStageSpec, getStageDialogue, getCharacterStoryScript, getStoryChoice, getStoryScene } from '../data/storyStages';
+import { STORY_MEMORIES } from '../data/story';
 import type { StoryChoiceDefinition, StoryChoiceSelections, StoryScene } from '../data/story';
 import { PLAYABLE_CHARACTERS } from '../data/characters';
 import { ElementType, SaveState } from '../types';
-import { Star, ShieldAlert, Award, Swords, Sparkles, BookOpen, User, Flame, ArrowRight, Lock } from 'lucide-react';
+import { Star, ShieldAlert, Award, Swords, Sparkles, BookOpen, User, Flame, ArrowRight, Lock, Archive } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import StoryMap from './StoryMap';
 import StoryStage from './StoryStage';
@@ -11,6 +12,7 @@ import StoryCutscene from './StoryCutscene';
 import { AetheriaAudioEngine } from '../utils/audio';
 import { normalizeStoryProgress } from '../data/story/progress';
 import { applyStoryChoice } from '../storyChoiceRules';
+import StoryMemoryArchive from './StoryMemoryArchive';
 
 interface StoryModeProps {
   saveState: SaveState;
@@ -31,7 +33,7 @@ export default function StoryMode({
   devCheatsEnabled,
   onShowAlert
 }: StoryModeProps) {
-  const [activeTab, setActiveTab] = useState<'campaign' | 'characters'>('campaign');
+  const [activeTab, setActiveTab] = useState<'campaign' | 'characters' | 'memories'>('campaign');
   const [selectedChapter, setSelectedChapter] = useState(1);
   const [isHardMode, setIsHardMode] = useState(false);
   const [selectedStageId, setSelectedStageId] = useState<string | null>(null);
@@ -210,35 +212,53 @@ export default function StoryMode({
       </AnimatePresence>
 
       {/* Primary campaign tabs */}
-      <div className="flex bg-[#0b0f19]/80 border border-white/10 p-1 rounded-xl w-full md:w-fit gap-1 shadow-lg backdrop-blur-md">
+      <div className="grid grid-cols-3 bg-[#0b0f19]/80 border border-white/10 p-1 rounded-xl w-full md:flex md:w-fit gap-1 shadow-lg backdrop-blur-md">
         <button
+          type="button"
           onClick={() => {
             setActiveTab('campaign');
             AetheriaAudioEngine.playClick();
           }}
-          className={`flex-1 md:flex-initial py-2.5 px-6 text-xs font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+          className={`min-h-12 flex-1 md:flex-initial py-2.5 px-2 sm:px-4 md:px-6 text-[9px] sm:text-xs font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
             activeTab === 'campaign'
               ? 'bg-indigo-650 text-white shadow-[0_0_15px_rgba(99,102,241,0.3)]'
               : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
           }`}
         >
           <BookOpen className="w-3.5 h-3.5 text-white" />
-          <span>📖 Story Campaign</span>
+          <span>Story Campaign</span>
         </button>
 
         <button
+          type="button"
           onClick={() => {
             setActiveTab('characters');
             AetheriaAudioEngine.playClick();
           }}
-          className={`flex-1 md:flex-initial py-2.5 px-6 text-xs font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+          className={`min-h-12 flex-1 md:flex-initial py-2.5 px-2 sm:px-4 md:px-6 text-[9px] sm:text-xs font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
             activeTab === 'characters'
               ? 'bg-indigo-650 text-white shadow-[0_0_15px_rgba(99,102,241,0.3)]'
               : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
           }`}
         >
           <User className="w-3.5 h-3.5 text-white" />
-          <span>🎭 Character Stories</span>
+          <span>Character Stories</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('memories');
+            AetheriaAudioEngine.playClick();
+          }}
+          className={`min-h-12 flex-1 md:flex-initial py-2.5 px-2 sm:px-4 md:px-6 text-[9px] sm:text-xs font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            activeTab === 'memories'
+              ? 'bg-indigo-650 text-white shadow-[0_0_15px_rgba(99,102,241,0.3)]'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+          }`}
+        >
+          <Archive className="w-3.5 h-3.5 text-white" />
+          <span>Memory Archive</span>
         </button>
       </div>
 
@@ -557,6 +577,20 @@ export default function StoryMode({
                 </div>
               )}
             </div>
+          </motion.div>
+        )}
+
+        {activeTab === 'memories' && (
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            key="memory_tab"
+          >
+            <StoryMemoryArchive
+              entries={STORY_MEMORIES}
+              unlockedLoreEntries={storyProgress.unlockedLoreEntries}
+            />
           </motion.div>
         )}
       </AnimatePresence>
