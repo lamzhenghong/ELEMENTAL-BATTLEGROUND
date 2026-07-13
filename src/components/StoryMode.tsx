@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { STORY_CHAPTERS, STORY_STAGES, getStageSpec, getStageDialogue, getCharacterStoryScript, getStoryChoice, getStoryScene } from '../data/storyStages';
 import { STORY_MEMORIES } from '../data/story';
 import type { StoryChoiceDefinition, StoryChoiceSelections, StoryScene } from '../data/story';
@@ -37,6 +37,8 @@ export default function StoryMode({
   const [selectedChapter, setSelectedChapter] = useState(1);
   const [isHardMode, setIsHardMode] = useState(false);
   const [selectedStageId, setSelectedStageId] = useState<string | null>(null);
+  const chapterStripRef = useRef<HTMLDivElement | null>(null);
+  const chapterCardRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
 
   // Character Stories Sub-state
   const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
@@ -50,6 +52,15 @@ export default function StoryMode({
   const [cutsceneCallback, setCutsceneCallback] = useState<((choiceSelections: StoryChoiceSelections) => void) | null>(null);
 
   const storyProgress = normalizeStoryProgress(saveState.storyProgress);
+
+  useEffect(() => {
+    if (activeTab !== 'campaign') return;
+    chapterCardRefs.current.get(selectedChapter)?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'nearest',
+      inline: 'center'
+    });
+  }, [activeTab, selectedChapter]);
 
   // Helper: completion percentage of a chapter
   const getChapterCompletionPct = (chapId: number) => {
@@ -190,6 +201,22 @@ export default function StoryMode({
     return matchesSearch && matchesRarity && matchesElement;
   });
 
+  const handleChapterStripWheel = (event: React.WheelEvent<HTMLDivElement>) => {
+    const strip = chapterStripRef.current;
+    if (!strip) return;
+
+    const usesHorizontalAxis = Math.abs(event.deltaX) > Math.abs(event.deltaY);
+    const delta = usesHorizontalAxis ? event.deltaX : event.shiftKey ? event.deltaY : 0;
+    if (delta === 0) return;
+
+    const maxScrollLeft = strip.scrollWidth - strip.clientWidth;
+    const canMove = delta < 0 ? strip.scrollLeft > 0 : strip.scrollLeft < maxScrollLeft;
+    if (!canMove) return;
+
+    event.preventDefault();
+    strip.scrollLeft += delta;
+  };
+
   return (
     <div className="space-y-6 select-none relative">
       {/* Cutscene overlay */}
@@ -276,7 +303,14 @@ export default function StoryMode({
               <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest block font-mono">
                 Select Campaign Chapter:
               </h4>
-              <div className="flex gap-4 overflow-x-auto pb-3 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
+              <div
+                ref={chapterStripRef}
+                role="region"
+                aria-label="Campaign chapters"
+                tabIndex={0}
+                onWheel={handleChapterStripWheel}
+                className="flex gap-4 overflow-x-auto overscroll-x-contain pb-3 scrollbar-none snap-x snap-mandatory"
+              >
                 {STORY_CHAPTERS.map((chap) => {
                   const unlocked = isChapterUnlocked(chap.id);
                   const active = selectedChapter === chap.id;
@@ -291,16 +325,26 @@ export default function StoryMode({
                   }
 
                   return (
-                    <div
+                    <button
                       key={chap.id}
-                      onClick={() => unlocked && setSelectedChapter(chap.id)}
-                      className={`shrink-0 w-[200px] p-4 rounded-xl border flex flex-col justify-between gap-3 transition-all select-none ${blockClass} ${
+                      ref={(node) => {
+                        if (node) chapterCardRefs.current.set(chap.id, node);
+                        else chapterCardRefs.current.delete(chap.id);
+                      }}
+                      type="button"
+                      aria-pressed={active}
+                      disabled={!unlocked}
+                      onClick={() => {
+                        setSelectedChapter(chap.id);
+                        AetheriaAudioEngine.playClick();
+                      }}
+                      className={`w-[250px] sm:w-[260px] shrink-0 snap-center p-4 rounded-xl border flex flex-col text-left justify-between gap-3 transition-all select-none ${blockClass} ${
                         unlocked ? 'cursor-pointer active:scale-95' : 'cursor-not-allowed opacity-50'
                       }`}
                     >
                       <div className="space-y-1">
                         <div className="flex justify-between items-center text-[9px] font-mono">
-                          <span>CHAPTER 0{chap.id}</span>
+                          <span>CHAPTER {String(chap.id).padStart(2, '0')}</span>
                           {!unlocked && <Lock className="w-3 h-3 text-red-500" />}
                         </div>
                         <h5 className="font-extrabold text-xs truncate uppercase font-display leading-tight">
@@ -323,7 +367,7 @@ export default function StoryMode({
                           </div>
                         </div>
                       )}
-                    </div>
+                    </button>
                   );
                 })}
               </div>
