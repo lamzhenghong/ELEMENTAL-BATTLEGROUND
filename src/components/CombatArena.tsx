@@ -122,6 +122,57 @@ interface FloatingDamageTextDOMProps {
 }
 
 function FloatingDamageTextDOM({ t }: FloatingDamageTextDOMProps) {
+  const keyframes = useMemo(() => {
+    // Generate random angle (-20 to 20 degrees) and initial speed for the burst
+    const angle = (Math.random() * 40 - 20) * (Math.PI / 180);
+    const speed = t.isCrit ? (150 + Math.random() * 70) : (100 + Math.random() * 60);
+    const dir = Math.random() > 0.5 ? 1 : -1;
+    
+    // vx is horizontal, vy is vertical (upward)
+    const vx = dir * speed * Math.sin(Math.abs(angle) + 0.18);
+    const vy = -speed * Math.cos(angle);
+    const gravity = t.isCrit ? 520 : 440;
+    const duration = 0.75; // 750ms total lifetime
+    
+    const xPath: number[] = [];
+    const yPath: number[] = [];
+    const opacityPath: number[] = [];
+    const scalePath: number[] = [];
+    
+    const steps = 10;
+    for (let i = 0; i <= steps; i++) {
+      const r = i / steps;
+      const time = r * duration;
+      
+      const dx = vx * time;
+      const dy = vy * time + 0.5 * gravity * time * time;
+      
+      xPath.push(dx);
+      yPath.push(dy);
+      
+      // Smooth fade-in on mount, rapid fade-out after 70% duration
+      if (r < 0.1) {
+        opacityPath.push(r / 0.1);
+      } else if (r > 0.7) {
+        opacityPath.push(Math.max(0, 1 - (r - 0.7) / 0.3));
+      } else {
+        opacityPath.push(1);
+      }
+      
+      // Pop scale on spawn, then slightly shrink
+      if (r < 0.12) {
+        const peakScale = t.isCrit ? 1.65 : 1.15;
+        scalePath.push(0.5 + (peakScale - 0.5) * (r / 0.12));
+      } else {
+        const peakScale = t.isCrit ? 1.65 : 1.15;
+        const endScale = t.isCrit ? 1.1 : 0.8;
+        scalePath.push(peakScale - (peakScale - endScale) * ((r - 0.12) / 0.88));
+      }
+    }
+    
+    return { x: xPath, y: yPath, opacity: opacityPath, scale: scalePath };
+  }, [t.id, t.isCrit]);
+
   let skinStyle: React.CSSProperties = {
     position: 'absolute',
     color: t.color,
@@ -164,10 +215,18 @@ function FloatingDamageTextDOM({ t }: FloatingDamageTextDOMProps) {
       }}
     >
       <motion.div
-        initial={{ opacity: 0, scale: 0.5, y: 0 }}
-        animate={{ opacity: 1, scale: t.isCrit ? 1.6 : 1.1, y: -65 }}
-        exit={{ opacity: 0, scale: 0.8, y: -95 }}
-        transition={{ type: 'spring', stiffness: 220, damping: t.isCrit ? 10 : 16 }}
+        animate={{
+          x: keyframes.x,
+          y: keyframes.y,
+          opacity: keyframes.opacity,
+          scale: keyframes.scale
+        }}
+        exit={{ opacity: 0 }}
+        transition={{
+          duration: 0.75,
+          ease: "linear",
+          times: Array.from({ length: 11 }, (_, i) => i / 10)
+        }}
         style={{
           pointerEvents: 'none',
         }}
