@@ -18,7 +18,7 @@ import SquadronQuestLedger from './components/SquadronQuestLedger';
 import { 
   Shield, Sparkles, Coins, HelpCircle, History, RefreshCw, Star, 
   BookOpen, Compass, Sword, Landmark, Hammer, Trophy, DollarSign, 
-  Info, Skull, LayoutGrid, CheckCircle2, Circle, Volume2, VolumeX, X, Play, LogOut, Award, Maximize2, Minimize2, Users, Lock
+  Info, Skull, LayoutGrid, CheckCircle2, Circle, Volume2, VolumeX, X, Play, LogOut, Award, Maximize2, Minimize2, Users, Lock, BarChart2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AetheriaAudioEngine } from './utils/audio';
@@ -449,6 +449,7 @@ export default function App() {
 
   // Custom HUD modals and shut downs
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showPlayerStatsOverlay, setShowPlayerStatsOverlay] = useState(false);
   const [showCreditsModal, setShowCreditsModal] = useState(false);
   const [showLoginRewardsModal, setShowLoginRewardsModal] = useState(false);
   const [showReactionsModal, setShowReactionsModal] = useState(false);
