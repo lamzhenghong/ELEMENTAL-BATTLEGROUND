@@ -52,6 +52,7 @@ export default defineConfig(() => {
       alias: {
         '@': path.resolve(__dirname, '.'),
       },
+      preserveSymlinks: true,
     },
     build: {
       rollupOptions: {
