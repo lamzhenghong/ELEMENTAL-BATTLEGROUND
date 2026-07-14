@@ -3819,64 +3819,6 @@ export default function App() {
             </p>
           </div>
 
-          {/* Combat Statistics Card (HUD Diagnostics format) */}
-          <div className="bg-[#0b0f19]/70 border border-white/10 p-5 rounded-xl shadow-[0_4px_30px_rgba(0,0,0,0.4)] backdrop-blur-md space-y-4 text-xs col-span-1">
-            <h4 className="font-extrabold text-slate-300 uppercase tracking-widest border-b border-white/5 pb-2 font-display flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-pulse"></div>
-              Player Telemetry & Stats
-            </h4>
-            <div className="space-y-2 text-slate-400 font-medium">
-              <div className="flex justify-between items-center border-b border-white/5 pb-1">
-                <span className="uppercase text-[9px] tracking-wider text-slate-500">Reactions Achieved</span>
-                <span className="font-black text-sky-400 font-mono text-xs">{saveState.stats.reactionsTriggered || 0}</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-white/5 pb-1">
-                <span className="uppercase text-[9px] tracking-wider text-slate-500">Highest Story Unlocked</span>
-                <span className="font-black text-indigo-400 font-mono text-xs">Stage {saveState.storyProgress?.currentStage || "1-1"}</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-white/5 pb-1">
-                <span className="uppercase text-[9px] tracking-wider text-slate-500">Summons Performed</span>
-                <span className="font-black text-amber-500 font-mono text-xs">{saveState.stats.totalPulls || 0}</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-white/5 pb-1">
-                <span className="uppercase text-[9px] tracking-wider text-slate-500">Characters Owned</span>
-                <span className="font-black text-emerald-400 font-mono text-xs">{(saveState.unlockedCharacterIds || []).length} / {PLAYABLE_CHARACTERS.length}</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-white/5 pb-1">
-                <span className="uppercase text-[9px] tracking-wider text-slate-500">Weapons Owned</span>
-                <span className="font-black text-pink-400 font-mono text-xs">{(saveState.inventoryWeapons || []).length}</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-white/5 pb-1">
-                <span className="uppercase text-[9px] tracking-wider text-slate-500">Play Time</span>
-                <span className="font-black text-slate-300 font-mono text-xs">{formatPlayTime(displayPlayTime)}</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-white/5 pb-1">
-                <span className="uppercase text-[9px] tracking-wider text-slate-500">Adventure Level</span>
-                <span className="font-black text-indigo-400 font-mono text-xs">LV.{saveState.playerLevel || 1}</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-white/5 pb-1">
-                <span className="uppercase text-[9px] tracking-wider text-slate-500">Total Mora Earned</span>
-                <span className="font-black text-yellow-500 font-mono text-xs">🪙 {(saveState.stats.totalMoraEarned || 0).toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-white/5 pb-1">
-                <span className="uppercase text-[9px] tracking-wider text-slate-500">Total Gems Earned</span>
-                <span className="font-black text-cyan-400 font-mono text-xs">💎 {(saveState.stats.totalGemsEarned || 0).toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-white/5 pb-1">
-                <span className="uppercase text-[9px] tracking-wider text-slate-500">Highest Wave Beaten</span>
-                <span className="font-black text-amber-500 font-mono text-xs">{saveState.stats.highScoreWave || 1}</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-white/5 pb-1">
-                <span className="uppercase text-[9px] tracking-wider text-slate-500">Highest Room Cleared</span>
-                <span className="font-black text-purple-400 font-mono text-xs">Room {saveState.stats.highScoreRogueRoom || 0}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="uppercase text-[9px] tracking-wider text-slate-500">Longest Login Streak</span>
-                <span className="font-black text-emerald-400 font-mono text-xs">{(saveState.stats.longestLoginStreak || 1)} Days</span>
-              </div>
-            </div>
-          </div>
-
         </div>
         )}
 
@@ -3922,6 +3864,22 @@ export default function App() {
               </div>
               {/* Scrollable body */}
               <div className="overflow-y-auto flex-1 px-6 py-4 space-y-5 font-sans">
+
+                {/* PLAYER TELEMETRY & STATS ACCESS */}
+                <div className="bg-slate-950 p-4 rounded-xl border border-white/5 space-y-3">
+                  <span className={`text-[9px] font-mono tracking-wider uppercase font-black block ${activeUiTheme.textClass}`}>Player Analytics</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      AetheriaAudioEngine.playClick();
+                      setShowPlayerStatsOverlay(true);
+                    }}
+                    className={`w-full py-3 rounded-lg text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] ${activeUiTheme.settingsButtonClass}`}
+                  >
+                    <BarChart2 className="w-4 h-4" />
+                    PLAYER STAT
+                  </button>
+                </div>
 
                 {/* GAME AUDIO CONTROLS */}
                 <div className="bg-slate-950 p-4 rounded-xl border border-white/5 space-y-4">
@@ -4217,6 +4175,88 @@ export default function App() {
                     ⚠️ ERASE ALL CACHED SAVE PROGRESS
                   </button>
                 </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* PLAYER TELEMETRY & STATS POPUP MODAL */}
+      <AnimatePresence>
+        {showPlayerStatsOverlay && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-950/95 z-[60] flex items-center justify-center p-4 backdrop-blur-md"
+            onClick={() => setShowPlayerStatsOverlay(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: -20 }}
+              className={`max-w-md w-full border rounded-2xl shadow-2xl relative flex flex-col ${activeUiTheme.panelClass}`}
+              style={{ maxHeight: '85vh' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Sticky header */}
+              <div className="flex justify-between items-center border-b border-white/10 px-6 py-4 shrink-0">
+                <h3 className="text-sm font-black text-slate-100 uppercase tracking-widest font-display flex items-center gap-2">
+                  <BarChart2 className={`w-4 h-4 ${activeUiTheme.iconClass}`} />
+                  PLAYER TELEMETRY & STATS
+                </h3>
+                <button 
+                  onClick={() => setShowPlayerStatsOverlay(false)}
+                  className="p-1 px-2 text-slate-400 hover:text-white bg-white/5 rounded hover:bg-white/10 transition-colors text-xs font-black cursor-pointer"
+                >
+                  CLOSE
+                </button>
+              </div>
+
+              {/* Scrollable body with all statistics */}
+              <div className="overflow-y-auto flex-1 px-6 py-5 space-y-4 font-mono text-xs text-slate-350">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {[
+                    { label: 'Reactions Achieved', value: saveState.stats.reactionsTriggered || 0, color: 'text-sky-450 text-sky-400' },
+                    { label: 'Highest Story Unlocked', value: `Stage ${saveState.storyProgress?.currentStage || "1-1"}`, color: 'text-indigo-400 font-extrabold' },
+                    { label: 'Summons Performed', value: saveState.stats.totalPulls || 0, color: 'text-amber-500 font-bold' },
+                    { label: 'Characters Owned', value: `${(saveState.unlockedCharacterIds || []).length} / ${PLAYABLE_CHARACTERS.length}`, color: 'text-emerald-450 text-emerald-450' },
+                    { label: 'Weapons Owned', value: (saveState.inventoryWeapons || []).length, color: 'text-pink-400' },
+                    { label: 'Play Time', value: formatPlayTime(displayPlayTime), color: 'text-slate-200' },
+                    { label: 'Adventure Level', value: `LV.${saveState.playerLevel || 1}`, color: 'text-indigo-400 font-black' },
+                    { label: 'Total Mora Earned', value: `🪙 ${(saveState.stats.totalMoraEarned || 0).toLocaleString()}`, color: 'text-yellow-500 font-extrabold' },
+                    { label: 'Total Gems Earned', value: `💎 ${(saveState.stats.totalGemsEarned || 0).toLocaleString()}`, color: 'text-cyan-400 font-bold' },
+                    { label: 'Highest Wave Beaten', value: saveState.stats.highScoreWave || 1, color: 'text-amber-400 font-extrabold' },
+                    { label: 'Highest Room Cleared', value: `Room ${saveState.stats.highScoreRogueRoom || 0}`, color: 'text-purple-400' },
+                    { label: 'Longest Login Streak', value: `${(saveState.stats.longestLoginStreak || 1)} Days`, color: 'text-emerald-400' },
+                    { label: 'Current Login Streak', value: `${(saveState.stats.currentLoginStreak || 1)} Days`, color: 'text-emerald-500' },
+                  ].map((stat, i) => (
+                    <div 
+                      key={i} 
+                      className="bg-slate-950/60 p-3 rounded-lg border border-white/5 flex flex-col justify-between gap-1 shadow-inner"
+                    >
+                      <span className="text-[9px] uppercase tracking-wider text-slate-500 font-bold block">
+                        {stat.label}
+                      </span>
+                      <span className={`text-xs font-black font-mono ${stat.color}`}>
+                        {stat.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-6 py-4 border-t border-white/10 flex justify-end shrink-0 bg-slate-950/40 rounded-b-2xl">
+                <button
+                  onClick={() => {
+                    AetheriaAudioEngine.playClick();
+                    setShowPlayerStatsOverlay(false);
+                  }}
+                  className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider cursor-pointer ${activeUiTheme.settingsButtonClass}`}
+                >
+                  OK
+                </button>
               </div>
             </motion.div>
           </motion.div>
