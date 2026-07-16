@@ -309,6 +309,8 @@ export default function App() {
   const [wikiInitialWeaponName, setWikiInitialWeaponName] = useState<string>('');
   const [showResonanceSheet, setShowResonanceSheet] = useState(false);
   const [showArtifactSheet, setShowArtifactSheet] = useState(false);
+  const [showPartyFilters, setShowPartyFilters] = useState(false);
+  const [showPartyLoadoutDetails, setShowPartyLoadoutDetails] = useState(false);
   const [partyElementFilter, setPartyElementFilter] = useState<'All' | ElementType>('All');
   const [partyWeaponFilter, setPartyWeaponFilter] = useState<'All' | 'Sword' | 'Claymore' | 'Polearm' | 'Bow' | 'Catalyst'>('All');
   const [partyRarityFilter, setPartyRarityFilter] = useState<'All' | 3 | 4 | 5>('All');
@@ -3234,8 +3236,25 @@ export default function App() {
 
                     </div>
 
-                    {/* Element, Weapon Class & Rarity Filter Panel */}
-                    <div className="flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-center bg-slate-950/40 border border-white/10 p-4 rounded-xl shadow-inner">
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        aria-label="Filters"
+                        aria-expanded={showPartyFilters}
+                        aria-controls="party-filter-panel"
+                        onClick={() => {
+                          AetheriaAudioEngine.playClick();
+                          setShowPartyFilters(!showPartyFilters);
+                        }}
+                        className="px-3 py-2 rounded-lg border border-white/10 bg-slate-950/40 text-[10px] font-black uppercase tracking-widest text-slate-300 hover:bg-slate-800 transition-all cursor-pointer"
+                      >
+                        Filters
+                      </button>
+                    </div>
+
+                    {showPartyFilters && (
+                    <div id="party-filter-panel" className="flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-center bg-slate-950/40 border border-white/10 p-4 rounded-xl shadow-inner">
+                      {/* Element, Weapon Class & Rarity Filter Panel */}
                       {/* Element Filters */}
                       <div className="space-y-2 w-full xl:w-auto">
                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block font-mono">Filter by Element:</span>
@@ -3328,9 +3347,38 @@ export default function App() {
                         </div>
                       </div>
                     </div>
+                    )}
 
-                    {/* Elemental Resonances (Team Bonuses) Section */}
-                    <div className="bg-slate-950/40 border border-white/10 p-4.5 rounded-xl space-y-4 shadow-inner">
+                    <div className="bg-slate-950/40 border border-white/10 p-4 rounded-xl space-y-3 shadow-inner">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest font-mono">Active Resonances</span>
+                          {partyResonances.length > 0 ? partyResonances.map(res => (
+                            <span key={res.key} className="rounded border border-emerald-500/25 bg-emerald-500/5 px-2 py-1 text-[9px] font-black uppercase tracking-wide text-emerald-400 font-mono">
+                              {res.name}
+                            </span>
+                          )) : (
+                            <span className="text-[9px] text-slate-500 font-mono uppercase">None active</span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          aria-label="Loadout Details"
+                          aria-expanded={showPartyLoadoutDetails}
+                          aria-controls="party-loadout-details-panel"
+                          onClick={() => {
+                            AetheriaAudioEngine.playClick();
+                            setShowPartyLoadoutDetails(!showPartyLoadoutDetails);
+                          }}
+                          className="shrink-0 px-3 py-2 rounded-lg border border-white/10 bg-slate-900/60 text-[10px] font-black uppercase tracking-widest text-slate-300 hover:bg-slate-800 transition-all cursor-pointer"
+                        >
+                          Loadout Details
+                        </button>
+                      </div>
+                    </div>
+
+                    {showPartyLoadoutDetails && (
+                    <div id="party-loadout-details-panel" className="bg-slate-950/40 border border-white/10 p-4.5 rounded-xl space-y-4 shadow-inner">
                       <div>
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block font-mono mb-2 flex items-center gap-1.5">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -3575,6 +3623,9 @@ export default function App() {
                         </div>
                       </div>
 
+                    </div>
+                    )}
+
                       {/* Search Bar */}
                       <div className="border-t border-white/5 pt-4">
                         <div className="relative w-full">
@@ -3613,7 +3664,6 @@ export default function App() {
                           Unequip All Heroes From Party
                         </button>
                       </div>
-                    </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-[50vh] sm:max-h-none overflow-y-auto p-1">
                       {(() => {

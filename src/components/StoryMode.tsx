@@ -557,9 +557,9 @@ export default function StoryMode({
                 const completedCount = storyProgress.completedCharacterStoryActs[char.id] || 0;
 
                 const acts = [
-                  { index: 1, title: 'Act I: Origin Mythos', desc: 'A normal NPC memory battle that introduces the character origin. Rewards Mora and Gems only.' },
-                  { index: 2, title: 'Act II: Memory Pressure', desc: 'An elite NPC memory battle that reveals a deeper personal conflict. Rewards Mora and Gems only.' },
-                  { index: 3, title: 'Act III: Final Memory', desc: 'A boss memory battle that concludes the side story. Rewards Mora and Gems only.' }
+                  { index: 1, title: 'Act I: Origin Mythos', encounterType: 'Normal' },
+                  { index: 2, title: 'Act II: Memory Pressure', encounterType: 'Elite' },
+                  { index: 3, title: 'Act III: Final Memory', encounterType: 'Boss' }
                 ];
 
                 return (
@@ -569,7 +569,7 @@ export default function StoryMode({
                         {char.name}'s Character Story Acts
                       </h3>
                       <p className="text-xs text-slate-400">
-                        Character Stories are optional side battles that let you learn more about characters and earn Mora and Gems only.
+                        Fight through a character's memories for Mora and Gems.
                       </p>
                     </div>
 
@@ -590,7 +590,7 @@ export default function StoryMode({
                             key={act.index}
                             className={`p-4 rounded-xl border flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition-colors ${cardClass}`}
                           >
-                            <div className="space-y-1">
+                            <div className="space-y-2">
                               <h4 className="font-extrabold text-sm flex items-center gap-2 font-display uppercase tracking-wide">
                                 <span>{act.title}</span>
                                 {isCompleted && (
@@ -599,9 +599,13 @@ export default function StoryMode({
                                   </span>
                                 )}
                               </h4>
-                              <p className="text-xs text-slate-400 leading-normal">
-                                {act.desc}
-                              </p>
+                              <div className="flex flex-wrap gap-1.5 text-[9px] font-black uppercase tracking-wide font-mono">
+                                <span className="rounded border border-indigo-500/25 bg-indigo-500/10 px-2 py-1 text-indigo-300">
+                                  {act.encounterType}
+                                </span>
+                                <span className="rounded border border-amber-500/25 bg-amber-500/10 px-2 py-1 text-amber-300">Mora</span>
+                                <span className="rounded border border-cyan-500/25 bg-cyan-500/10 px-2 py-1 text-cyan-300">Gems</span>
+                              </div>
                             </div>
 
                             {isUnlocked ? (
