@@ -563,6 +563,7 @@ export default function CombatArena({
   };
 
   const [showPartySelector, setShowPartySelector] = useState(false);
+  const [showDesktopControls, setShowDesktopControls] = useState(false);
   const [spawnerPreset, setSpawnerPreset] = useState<'slimes' | 'elites' | 'boss'>('slimes');
 
   // Combat status indicators
@@ -4883,7 +4884,20 @@ export default function CombatArena({
 
         {/* Keyboard controllers help tip sheet */}
         {!isMobile && (
-          <div className="absolute top-4 left-4 bg-black/80 border border-white/10 p-3 rounded-lg text-[9.5px] text-slate-350 space-y-1.5 backdrop-blur-md z-20 pointer-events-none hidden md:block">
+          <>
+          <button
+            type="button"
+            aria-label="Combat Controls"
+            aria-expanded={showDesktopControls}
+            aria-controls="combat-controls-panel"
+            onClick={() => setShowDesktopControls(current => !current)}
+            className="absolute top-4 left-4 z-20 hidden items-center gap-1 rounded-md border border-white/10 bg-black/80 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-amber-400 backdrop-blur-md pointer-events-auto md:flex"
+          >
+            <HelpCircle className="h-3 w-3" />
+            Combat Controls
+          </button>
+          {showDesktopControls && (
+          <div id="combat-controls-panel" className="absolute top-14 left-4 bg-black/80 border border-white/10 p-3 rounded-lg text-[9.5px] text-slate-350 space-y-1.5 backdrop-blur-md z-20 pointer-events-none hidden md:block">
           <div className="font-black text-amber-400 uppercase tracking-widest border-b border-white/10 pb-1 font-display">DIAGNOSTICS MATRIX</div>
           <div className="flex items-center gap-2 justify-between">
             <span>Movement Vector:</span>
@@ -4922,6 +4936,8 @@ export default function CombatArena({
             <span className="bg-white/10 px-1 py-0.2 rounded font-black text-slate-205 font-mono">1-4</span>
           </div>
         </div>
+          )}
+          </>
         )}
 
         {/* START BATTLE OVERLAY */}
