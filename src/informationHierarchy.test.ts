@@ -50,27 +50,29 @@ assert.ok(wikiButtonStart !== -1 && wikiButtonEnd !== -1, 'Wiki navigation id mu
 const wikiNavigation = appSource.slice(wikiButtonStart, wikiButtonEnd + '</button>'.length);
 assert.match(wikiNavigation, /onClick=\{[\s\S]*?setActiveScreen\('wiki'\)[\s\S]*?\}/, 'Wiki navigation must use the gameplay screen navigation path');
 
-const disclosureContracts: Record<string, { source: string; label: string }> = {
-  'Banner Details': { source: gachaSource, label: 'Banner Details' },
-  'Forge Filters': { source: inventorySource, label: 'Filters' },
-  'Party Filters': { source: appSource, label: 'Filters' },
-  'Loadout Details': { source: appSource, label: 'Loadout Details' },
-  'Forge Notes': { source: inventorySource, label: 'Forge Notes' },
-  'Combat Controls': { source: combatSource, label: 'Combat Controls' },
+const disclosureContracts: Record<string, { source: string; label: string; controls: string }> = {
+  'Banner Details': { source: gachaSource, label: 'Banner Details', controls: 'banner-details-panel' },
+  'Forge Filters': { source: inventorySource, label: 'Filters', controls: 'forge-filter-panel' },
+  'Party Filters': { source: appSource, label: 'Filters', controls: 'party-filter-panel' },
+  'Loadout Details': { source: appSource, label: 'Loadout Details', controls: 'party-loadout-details-panel' },
+  'Forge Notes': { source: inventorySource, label: 'Forge Notes', controls: 'forge-notes-panel' },
+  'Combat Controls': { source: combatSource, label: 'Combat Controls', controls: 'combat-controls-panel' },
 };
 
-for (const [name, { source, label }] of Object.entries(disclosureContracts)) {
+for (const [name, { source, label, controls }] of Object.entries(disclosureContracts)) {
+  assert.match(source, new RegExp(`id="${controls}"`), `${name} source must include its aria-controls target panel`);
+
   const disclosureButton = source
     .match(/<button\b[\s\S]*?<\/button>/g)
     ?.find(button => (
       /\baria-expanded\s*=/.test(button)
-      && /\baria-controls\s*=\s*"[^"]+"/.test(button)
+      && button.includes(`aria-controls="${controls}"`)
       && button.includes(`aria-label="${label}"`)
     ));
 
   assert.ok(
     disclosureButton,
-    `${name} must be a semantic button with aria-expanded, aria-controls, and aria-label="${label}" in its intended source`,
+    `${name} must be a semantic button with aria-expanded, aria-controls="${controls}", and aria-label="${label}" in its intended source`,
   );
 }
 
