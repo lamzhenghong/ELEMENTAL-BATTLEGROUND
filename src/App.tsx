@@ -2732,7 +2732,7 @@ export default function App() {
       {/* Primary Dashboard layout */}
       <main className="flex-1 max-w-[1500px] w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
         
-        {/* Left Side: Main screens container (takes 3 grid cells) */}
+        {/* Primary screen container; Home expands across the full desktop grid. */}
         <div className={`${activeScreen === 'home' ? 'lg:col-span-4' : 'lg:col-span-3'} space-y-6`}>
           
           {/* Main Action tab selectors */}
