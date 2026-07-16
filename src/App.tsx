@@ -15,6 +15,7 @@ import { WEAPONS_DATABASE } from './data/weapons';
 import LoginRewardModal from './components/LoginRewardModal';
 import ElementalReactionsModal from './components/ElementalReactionsModal';
 import SquadronQuestLedger from './components/SquadronQuestLedger';
+import GameHome from './components/GameHome';
 import { 
   Shield, Sparkles, Coins, HelpCircle, History, RefreshCw, Star, 
   BookOpen, Compass, Sword, Landmark, Hammer, Trophy, DollarSign, 
@@ -257,7 +258,7 @@ export default function App() {
     return basePlayTimeRef.current + Math.floor((Date.now() - sessionStartRef.current) / 1000);
   }, []);
   // Default to Main Menu as requested: 'menu'
-  const [activeScreen, setActiveScreen] = useState<'menu' | 'wiki' | 'arena' | 'wish' | 'inventory' | 'quest' | 'dungeon' | 'party' | 'story'>('menu');
+  const [activeScreen, setActiveScreen] = useState<'menu' | 'home' | 'wiki' | 'arena' | 'wish' | 'inventory' | 'quest' | 'dungeon' | 'party' | 'story' | 'shop'>('menu');
   const [mobileFullscreenGateOpen, setMobileFullscreenGateOpen] = useState<boolean>(isMobile);
   const [mobileFullscreenGateMessage, setMobileFullscreenGateMessage] = useState<string>('');
   const [isFirstLoad, setIsFirstLoad] = useState<boolean>(true);
@@ -1988,7 +1989,7 @@ export default function App() {
   const handleStartSimulation = () => {
     AetheriaAudioEngine.resume();
     AetheriaAudioEngine.playClick();
-    setActiveScreen('wiki');
+    setActiveScreen('home');
 
     const todayStr = new Date().toDateString();
     const today = new Date();
@@ -2050,6 +2051,32 @@ export default function App() {
         }
       };
     });
+  };
+
+  const handleNavigateToDungeon = () => {
+    AetheriaAudioEngine.playClick();
+    if (isDungeonLocked) {
+      showInGameAlert(
+        "Reach Player Level 10 to unlock Rogue Dungeon.",
+        `Progress: Level ${saveState.playerLevel || 1} / 10`,
+        "error"
+      );
+      return;
+    }
+    setActiveScreen('dungeon');
+  };
+
+  const handleNavigateToWish = () => {
+    AetheriaAudioEngine.playClick();
+    if (isWishLocked) {
+      showInGameAlert(
+        "Reach Player Level 5 to unlock Celestial Summons.",
+        `Progress: Level ${saveState.playerLevel || 1} / 5`,
+        "error"
+      );
+      return;
+    }
+    setActiveScreen('wish');
   };
 
   // Pity Counters updates per banner
@@ -2710,19 +2737,18 @@ export default function App() {
           <div className={`flex md:flex-wrap overflow-x-auto md:overflow-x-visible whitespace-nowrap md:whitespace-normal scrollbar-custom-tabs backdrop-blur-md border p-2 rounded-xl w-full gap-1 ${activeUiTheme.panelClass}`}>
             <button
               onClick={() => {
-                setActiveScreen('wiki');
+                setActiveScreen('home');
                 AetheriaAudioEngine.playClick();
               }}
               className={`p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 md:flex-initial cursor-pointer ${
-                activeScreen === 'wiki'
+                activeScreen === 'home'
                   ? activeUiTheme.activeNavClass
                   : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
               }`}
-              id="dash_screen_wiki"
+              id="dash_screen_home"
             >
-              <BookOpen className="w-3.5 h-3.5 shrink-0 text-slate-955 text-slate-950" />
-              <span className="hidden md:inline">{t('lore_wiki', language)}</span>
-              <span className="md:hidden">Wiki</span>
+              <Compass className="w-3.5 h-3.5 shrink-0 text-slate-955 text-slate-950" />
+              <span>Home</span>
             </button>
 
             <button
@@ -2762,14 +2788,7 @@ export default function App() {
             {isDungeonLocked ? (
               <button
                 type="button"
-                onClick={() => {
-                  AetheriaAudioEngine.playClick();
-                  showInGameAlert(
-                    "Reach Player Level 10 to unlock Rogue Dungeon.",
-                    `Progress: Level ${saveState.playerLevel || 1} / 10`,
-                    "error"
-                  );
-                }}
+                onClick={handleNavigateToDungeon}
                 className="relative p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all cursor-pointer bg-slate-900/30 border border-slate-800/80 text-slate-500 hover:bg-slate-900/40 hover:text-slate-450 flex flex-col md:flex-row items-center justify-center gap-1.5 shrink-0 md:flex-initial"
                 title={`Unlocks at Player Level 10 (Current: Level ${saveState.playerLevel || 1}/10)`}
               >
@@ -2785,10 +2804,7 @@ export default function App() {
               </button>
             ) : (
               <button
-                onClick={() => {
-                  setActiveScreen('dungeon');
-                  AetheriaAudioEngine.playClick();
-                }}
+                onClick={handleNavigateToDungeon}
                 className={`p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 md:flex-initial cursor-pointer ${
                   activeScreen === 'dungeon'
                     ? `${activeUiTheme.activeNavClass} font-black`
@@ -2805,14 +2821,7 @@ export default function App() {
             {isWishLocked ? (
               <button
                 type="button"
-                onClick={() => {
-                  AetheriaAudioEngine.playClick();
-                  showInGameAlert(
-                    "Reach Player Level 5 to unlock Celestial Summons.",
-                    `Progress: Level ${saveState.playerLevel || 1} / 5`,
-                    "error"
-                  );
-                }}
+                onClick={handleNavigateToWish}
                 className="relative p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all cursor-pointer bg-slate-900/30 border border-slate-800/80 text-slate-500 hover:bg-slate-900/40 hover:text-slate-450 flex flex-col md:flex-row items-center justify-center gap-1.5 shrink-0 md:flex-initial"
                 title={`Unlocks at Player Level 5 (Current: Level ${saveState.playerLevel || 1}/5)`}
               >
@@ -2828,10 +2837,7 @@ export default function App() {
               </button>
             ) : (
               <button
-                onClick={() => {
-                  setActiveScreen('wish');
-                  AetheriaAudioEngine.playClick();
-                }}
+                onClick={handleNavigateToWish}
                 className={`p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 md:flex-initial cursor-pointer ${
                   activeScreen === 'wish'
                     ? `${activeUiTheme.activeNavClass} font-black`
@@ -2937,12 +2943,51 @@ export default function App() {
                 <span className="md:hidden">Shop</span>
               </button>
             )}
+            <button
+              onClick={() => {
+                setActiveScreen('wiki');
+                AetheriaAudioEngine.playClick();
+              }}
+              className={`p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 md:flex-initial cursor-pointer ${
+                activeScreen === 'wiki'
+                  ? activeUiTheme.activeNavClass
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+              }`}
+              id="dash_screen_wiki"
+            >
+              <BookOpen className="w-3.5 h-3.5 shrink-0 text-slate-955 text-slate-950" />
+              <span className="hidden md:inline">{t('lore_wiki', language)}</span>
+              <span className="md:hidden">Wiki</span>
+            </button>
           </div>
 
           {/* Actual screens swap frame */}
           <div className="flex-1 justify-between flex flex-col">
             <React.Suspense fallback={<ScreenLoadingFallback />}>
               <AnimatePresence mode="wait">
+              {activeScreen === 'home' && (
+                <GameHome
+                  partyMembers={PLAYABLE_CHARACTERS
+                    .filter(character => saveState.partyIds.includes(character.id))
+                    .map(character => ({
+                      id: character.id,
+                      name: character.name,
+                      element: character.element,
+                      level: saveState.characterLevels[character.id] || 1,
+                      avatarPlaceholder: character.avatarPlaceholder,
+                    }))}
+                  completedQuestCount={(saveState.completedQuestIds || []).length}
+                  isDungeonLocked={isDungeonLocked}
+                  isWishLocked={isWishLocked}
+                  onStory={() => { setActiveScreen('story'); AetheriaAudioEngine.playClick(); }}
+                  onArena={() => { setActiveScreen('arena'); AetheriaAudioEngine.playClick(); }}
+                  onRogue={handleNavigateToDungeon}
+                  onParty={() => { setActiveScreen('party'); AetheriaAudioEngine.playClick(); }}
+                  onWish={handleNavigateToWish}
+                  onForge={() => { setActiveScreen('inventory'); AetheriaAudioEngine.playClick(); }}
+                  onQuest={() => { setActiveScreen('quest'); AetheriaAudioEngine.playClick(); }}
+                />
+              )}
               {activeScreen === 'shop' && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.98 }}
