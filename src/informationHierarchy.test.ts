@@ -9,6 +9,7 @@ const readSource = (relativePath: string) => readFileSync(join(srcDir, relativeP
 const appSource = readSource('App.tsx');
 const gachaSource = readSource('components/GachaSimulator.tsx');
 const inventorySource = readSource('components/InventoryManager.tsx');
+const storySource = readSource('components/StoryMode.tsx');
 const combatSource = readSource('components/CombatArena.tsx');
 
 const extractBracedBlock = (source: string, marker: string) => {
@@ -27,6 +28,31 @@ const extractBracedBlock = (source: string, marker: string) => {
   throw new Error(`${marker} has an unterminated braced block`);
 };
 
+const extractOpeningTag = (buttonBlock: string) => {
+  let braceDepth = 0;
+  let quote: '"' | "'" | '`' | null = null;
+
+  for (let index = 0; index < buttonBlock.length; index += 1) {
+    const character = buttonBlock[index];
+    const previousCharacter = buttonBlock[index - 1];
+
+    if (quote) {
+      if (character === quote && previousCharacter !== '\\') quote = null;
+      continue;
+    }
+
+    if (character === '"' || character === "'" || character === '`') {
+      quote = character;
+      continue;
+    }
+    if (character === '{') braceDepth += 1;
+    if (character === '}') braceDepth -= 1;
+    if (character === '>' && braceDepth === 0) return buttonBlock.slice(0, index + 1);
+  }
+
+  throw new Error('button block has an unterminated opening tag');
+};
+
 const activeScreenDeclaration = appSource.match(
   /const \[activeScreen, setActiveScreen\] = useState<([^>]+)>\('menu'\);/,
 );
@@ -41,6 +67,20 @@ assert.match(
   /\{activeScreen === 'home' && \(\s*<GameHome\b/,
   'the active home render branch must render GameHome',
 );
+
+const characterStoryActs = storySource.match(/const acts = \[([\s\S]*?)\n\s*\];/);
+assert.ok(characterStoryActs, 'Character Story acts configuration must be present');
+for (const encounterType of ['Normal', 'Elite', 'Boss']) {
+  assert.match(
+    characterStoryActs[1],
+    new RegExp(`encounterType\\s*:\\s*['"]${encounterType}['"]`),
+    `Character Story acts must define the ${encounterType} encounter type`,
+  );
+}
+const characterStoryActsBlock = extractBracedBlock(storySource, 'acts.map((act) => {');
+assert.match(characterStoryActsBlock, /\{act\.encounterType\}/, 'Character Story JSX must render act.encounterType');
+assert.match(characterStoryActsBlock, />[^<]*Mora[^<]*</, 'Character Story must show a compact visible Mora label or chip');
+assert.match(characterStoryActsBlock, />[^<]*Gems[^<]*</, 'Character Story must show a compact visible Gems label or chip');
 
 const wikiIdIndex = appSource.indexOf('id="dash_screen_wiki"');
 assert.notEqual(wikiIdIndex, -1, 'App must expose the Wiki navigation button');
@@ -64,10 +104,11 @@ for (const [name, { source, label, controls }] of Object.entries(disclosureContr
 
   const disclosureButton = source
     .match(/<button\b[\s\S]*?<\/button>/g)
-    ?.find(button => (
-      /\baria-expanded\s*=/.test(button)
-      && button.includes(`aria-controls="${controls}"`)
-      && button.includes(`aria-label="${label}"`)
+    ?.map(extractOpeningTag)
+    .find(openingTag => (
+      /\baria-expanded\s*=/.test(openingTag)
+      && openingTag.includes(`aria-controls="${controls}"`)
+      && openingTag.includes(`aria-label="${label}"`)
     ));
 
   assert.ok(
