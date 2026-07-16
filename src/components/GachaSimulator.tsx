@@ -447,6 +447,7 @@ export default function GachaSimulator({
   const [showHistory, setShowHistory] = useState(false);
   const [historyPage, setHistoryPage] = useState(1);
   const [showRatesInfo, setShowRatesInfo] = useState(false);
+  const [showBannerDetails, setShowBannerDetails] = useState(false);
   const [animationPhase, setAnimationPhase] = useState<'none' | 'meteor' | 'showcase'>('none');
   const [maxRarityInPull, setMaxRarityInPull] = useState(3);
   const [selectedWeaponName, setSelectedWeaponName] = useState<string>('Solar Searing Blade');
@@ -1150,10 +1151,23 @@ export default function GachaSimulator({
               {activeBanner.desc}
             </p>
 
-            <div className="text-[9.5px] bg-black/40 border border-white/5 p-3 rounded-lg text-slate-400 font-mono uppercase space-y-1 mt-4">
-              <b className="text-[#a855f7] block font-extrabold mb-1">PROBABILITY UP-RATES:</b>
-              <p>{activeBanner.details}</p>
-            </div>
+            <button
+              type="button"
+              aria-label="Banner Details"
+              aria-expanded={showBannerDetails}
+              aria-controls="banner-details-panel"
+              onClick={() => setShowBannerDetails((visible) => !visible)}
+              className="text-[9.5px] bg-black/40 border border-white/5 px-3 py-2 rounded-lg text-slate-300 font-mono uppercase font-black tracking-wider hover:border-white/15 transition-colors cursor-pointer"
+            >
+              Banner Details
+            </button>
+
+            {showBannerDetails && (
+              <div id="banner-details-panel" className="text-[9.5px] bg-black/40 border border-white/5 p-3 rounded-lg text-slate-400 font-mono uppercase space-y-1">
+                <b className="text-[#a855f7] block font-extrabold mb-1">PROBABILITY UP-RATES:</b>
+                <p>{activeBanner.details}</p>
+              </div>
+            )}
 
             {activeBanner.type === 'weapon' && (
               <div className="mt-4 space-y-2 border-t border-white/5 pt-4">
@@ -1401,8 +1415,8 @@ export default function GachaSimulator({
 
       {/* Probability Modal info */}
       {showRatesInfo && (
-        <div className="absolute inset-0 bg-slate-950/95 z-50 flex items-center justify-center p-4">
-          <div className="bg-[#0c0f1b] max-w-sm w-full border border-white/15 rounded-xl p-5 space-y-4 shadow-[0_0_50px_rgba(0,0,0,0.8)]">
+        <div className="fixed inset-0 bg-slate-950/95 z-50 flex items-center justify-center overflow-y-auto p-4">
+          <div className="bg-[#0c0f1b] max-w-sm w-full max-h-[calc(100vh-2rem)] overflow-y-auto border border-white/15 rounded-xl p-5 space-y-4 shadow-[0_0_50px_rgba(0,0,0,0.8)]">
             <div className="flex justify-between items-center border-b border-white/10 pb-2">
               <h3 className="text-xs font-black text-slate-100 uppercase tracking-widest font-display">Wishes Probabilities Grid</h3>
               <button onClick={() => setShowRatesInfo(false)} className="text-slate-400 hover:text-white cursor-pointer">
@@ -1453,8 +1467,8 @@ export default function GachaSimulator({
 
       {/* Wish History Log */}
       {showHistory && (
-        <div className="absolute inset-0 bg-slate-950/95 z-55 flex items-center justify-center p-4" onClick={() => setShowHistory(false)}>
-          <div className="bg-[#0c0f1b] max-w-md w-full border border-white/15 rounded-xl p-5 space-y-4 flex flex-col max-h-[500px] shadow-[0_0_50px_rgba(0,0,0,0.8)] animate-fade-in" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-slate-950/95 z-55 flex items-center justify-center overflow-y-auto p-4" onClick={() => setShowHistory(false)}>
+          <div className="bg-[#0c0f1b] max-w-md w-full border border-white/15 rounded-xl p-5 space-y-4 flex flex-col max-h-[calc(100vh-2rem)] shadow-[0_0_50px_rgba(0,0,0,0.8)] animate-fade-in" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center border-b border-white/10 pb-2">
               <h3 className="text-xs font-black text-slate-100 uppercase tracking-widest flex items-center gap-2 font-display">
                 <History className="w-4 h-4 text-emerald-400" />

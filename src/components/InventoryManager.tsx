@@ -146,6 +146,8 @@ export default function InventoryManager({
   }, []);
   const [rarityFilter, setRarityFilter] = useState<'all' | 5 | 4 | 3>('all');
   const [elementFilter, setElementFilter] = useState<'all' | ElementType>('all');
+  const [showInventoryFilters, setShowInventoryFilters] = useState(false);
+  const [showForgeNotes, setShowForgeNotes] = useState(false);
   
   // Artifact filter states
   const [artSlotFilter, setArtSlotFilter] = useState<'all' | ArtifactSlot>('all');
@@ -572,7 +574,18 @@ export default function InventoryManager({
               </button>
             </div>
 
-            {/* Artifact Filter Controls Row */}
+            <button
+              type="button"
+              aria-label="Filters"
+              aria-expanded={showInventoryFilters}
+              aria-controls="forge-filter-panel"
+              onClick={() => setShowInventoryFilters((visible) => !visible)}
+              className="w-full bg-black/35 border border-white/5 hover:border-white/15 text-slate-300 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors cursor-pointer"
+            >
+              Filters
+            </button>
+
+            {/* Artifact search and developer actions remain immediately available. */}
             {activeTab === 'artifacts' && (
               <div className="space-y-3 bg-black/35 p-3 rounded-lg border border-white/5">
                 {devCheatsEnabled && (
@@ -598,7 +611,14 @@ export default function InventoryManager({
                   />
                 </div>
 
-                {/* Slot Filter */}
+              </div>
+            )}
+
+            {showInventoryFilters && (
+              <div id="forge-filter-panel" className="space-y-3">
+                {activeTab === 'artifacts' && (
+                  <div className="space-y-3 bg-black/35 p-3 rounded-lg border border-white/5">
+                    {/* Slot Filter */}
                 <div className="flex flex-col gap-1">
                   <span className="text-[9px] font-black text-slate-450 uppercase tracking-widest pl-1">Slot:</span>
                   <div className="flex flex-wrap gap-1">
@@ -660,11 +680,11 @@ export default function InventoryManager({
                     ))}
                   </div>
                 </div>
-              </div>
-            )}
+                  </div>
+                )}
 
             {/* Premium Rarity Filter Controls Row */}
-            {(activeTab === 'characters' || activeTab === 'weapons') && (
+            {showInventoryFilters && (activeTab === 'characters' || activeTab === 'weapons') && (
               <div className="flex flex-col gap-2 bg-black/35 p-3 rounded-lg border border-white/5">
                 <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest pl-1">Rarity Rating:</span>
                 <div className="flex gap-1.5">
@@ -692,7 +712,7 @@ export default function InventoryManager({
             )}
 
             {/* Element Filter Controls Block */}
-            {(activeTab === 'characters') && (
+            {showInventoryFilters && (activeTab === 'characters') && (
               <div className="flex flex-col gap-2 bg-black/35 p-3 rounded-lg border border-white/5">
                 <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest pl-1">Element Attunement:</span>
                 <div className="grid grid-cols-2 gap-1.5">
@@ -723,6 +743,8 @@ export default function InventoryManager({
                     );
                   })}
                 </div>
+              </div>
+            )}
               </div>
             )}
 
@@ -1742,7 +1764,21 @@ export default function InventoryManager({
           )}
 
           <div className="text-[10px] text-slate-500 text-center mt-6 border-t border-white/5 pt-4 uppercase font-mono">
-            *Ultimate metrics scale with active Forge levels. Armaments and level-up milestones amplify weapon stats and passive potentials every 5 levels!
+            <button
+              type="button"
+              aria-label="Forge Notes"
+              aria-expanded={showForgeNotes}
+              aria-controls="forge-notes-panel"
+              onClick={() => setShowForgeNotes((visible) => !visible)}
+              className="font-black text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+            >
+              Forge Notes
+            </button>
+            {showForgeNotes && (
+              <p id="forge-notes-panel" className="mt-3">
+                *Ultimate metrics scale with active Forge levels. Armaments and level-up milestones amplify weapon stats and passive potentials every 5 levels!
+              </p>
+            )}
           </div>
 
         </div>
