@@ -156,6 +156,19 @@ export default function InventoryManager({
   const [artLockFilter, setArtLockFilter] = useState<'all' | 'locked' | 'unlocked'>('all');
   const [artSearchQuery, setArtSearchQuery] = useState('');
   const [selectedArtifactId, setSelectedArtifactId] = useState<string | null>(null);
+
+  const activeForgeFilterCount = (() => {
+    switch (activeTab) {
+      case 'artifacts':
+        return [artSlotFilter, artSetFilter, artRarityFilter].filter(filter => filter !== 'all').length;
+      case 'characters':
+        return [rarityFilter, elementFilter].filter(filter => filter !== 'all').length;
+      case 'weapons':
+        return rarityFilter === 'all' ? 0 : 1;
+      case 'items':
+        return 0;
+    }
+  })();
   
   // Equipping state on character detail page
   const [activeEquipSlot, setActiveEquipSlot] = useState<ArtifactSlot | null>(null);
@@ -574,16 +587,25 @@ export default function InventoryManager({
               </button>
             </div>
 
-            <button
-              type="button"
-              aria-label="Filters"
-              aria-expanded={showInventoryFilters}
-              aria-controls="forge-filter-panel"
-              onClick={() => setShowInventoryFilters((visible) => !visible)}
-              className="w-full bg-black/35 border border-white/5 hover:border-white/15 text-slate-300 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors cursor-pointer"
-            >
-              Filters
-            </button>
+            {activeTab !== 'items' && (
+              <>
+                <button
+                  type="button"
+                  aria-label="Filters"
+                  aria-expanded={showInventoryFilters}
+                  aria-controls="forge-filter-panel"
+                  aria-describedby="forge-filter-status"
+                  onClick={() => setShowInventoryFilters((visible) => !visible)}
+                  className="w-full bg-black/35 border border-white/5 hover:border-white/15 text-slate-300 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors cursor-pointer"
+                >
+                  <span>Filters</span>
+                  {activeForgeFilterCount > 0 && (
+                    <span className="ml-2 rounded-full bg-amber-400/15 px-1.5 py-0.5 text-amber-300">{activeForgeFilterCount}</span>
+                  )}
+                </button>
+                <span id="forge-filter-status" className="sr-only">
+                  {activeForgeFilterCount === 0 ? 'No active filters' : `${activeForgeFilterCount} active filters`}
+                </span>
 
             {/* Artifact search and developer actions remain immediately available. */}
             {activeTab === 'artifacts' && (
@@ -614,8 +636,8 @@ export default function InventoryManager({
               </div>
             )}
 
-            {showInventoryFilters && (
-              <div id="forge-filter-panel" className="space-y-3">
+                {showInventoryFilters && (
+                  <div id="forge-filter-panel" className="space-y-3">
                 {activeTab === 'artifacts' && (
                   <div className="space-y-3 bg-black/35 p-3 rounded-lg border border-white/5">
                     {/* Slot Filter */}
@@ -743,9 +765,11 @@ export default function InventoryManager({
                     );
                   })}
                 </div>
-              </div>
-            )}
-              </div>
+                  </div>
+                )}
+                  </div>
+                )}
+              </>
             )}
 
             {activeTab === 'characters' && (

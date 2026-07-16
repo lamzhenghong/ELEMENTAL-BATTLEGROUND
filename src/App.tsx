@@ -2978,7 +2978,7 @@ export default function App() {
                       level: saveState.characterLevels[character.id] || 1,
                       avatarPlaceholder: character.avatarPlaceholder,
                     }))}
-                  completedQuestCount={(saveState.completedQuestIds || []).length}
+                  readyQuestCount={saveState.activeQuests.filter(quest => quest.completed).length}
                   isDungeonLocked={isDungeonLocked}
                   isWishLocked={isWishLocked}
                   onStory={() => { setActiveScreen('story'); AetheriaAudioEngine.playClick(); }}

@@ -8,6 +8,7 @@ const readSource = (relativePath: string) => readFileSync(join(srcDir, relativeP
 
 const appSource = readSource('App.tsx');
 const gachaSource = readSource('components/GachaSimulator.tsx');
+const gameHomeSource = readSource('components/GameHome.tsx');
 const inventorySource = readSource('components/InventoryManager.tsx');
 const storySource = readSource('components/StoryMode.tsx');
 const combatSource = readSource('components/CombatArena.tsx');
@@ -70,6 +71,28 @@ assert.match(
 
 assert.match(
   appSource,
+  /<GameHome\b[\s\S]*?readyQuestCount=\{saveState\.activeQuests\.filter\(quest => quest\.completed\)\.length\}/,
+  'App must pass the number of reward-ready active quests to GameHome',
+);
+
+assert.match(
+  gameHomeSource,
+  /readyQuestCount:\s*number/,
+  'GameHome must name its reward-ready quest presentation prop readyQuestCount',
+);
+assert.doesNotMatch(
+  gameHomeSource,
+  /completedQuestCount/,
+  'GameHome must not describe reward-ready quests as completed quest history',
+);
+assert.match(
+  gameHomeSource,
+  /\{readyQuestCount\}\s+(?:rewards ready|ready to claim)/,
+  'GameHome must describe the badge as rewards ready to claim',
+);
+
+assert.match(
+  appSource,
   /activeScreen === 'home'\s*\?\s*'lg:col-span-4'\s*:\s*'lg:col-span-3'/,
   'the primary screen container must use four desktop columns on home and three on other screens',
 );
@@ -128,5 +151,41 @@ for (const [name, { source, label, controls }] of Object.entries(disclosureContr
     `${name} must be a semantic button with aria-expanded, aria-controls="${controls}", and aria-label="${label}" in its intended source`,
   );
 }
+
+assert.match(
+  inventorySource,
+  /const activeForgeFilterCount = \(\(\) => \{[\s\S]*?case 'artifacts':[\s\S]*?artSlotFilter[\s\S]*?artSetFilter[\s\S]*?artRarityFilter[\s\S]*?case 'characters':[\s\S]*?rarityFilter[\s\S]*?elementFilter[\s\S]*?case 'weapons':[\s\S]*?rarityFilter[\s\S]*?case 'items':[\s\S]*?return 0/,
+  'Forge must derive active filter counts from the hidden filters for each tab',
+);
+
+const forgeFiltersButton = inventorySource
+  .match(/<button\b[\s\S]*?<\/button>/g)
+  ?.map(extractOpeningTag)
+  .find(openingTag => (
+    openingTag.includes('aria-label="Filters"')
+    && openingTag.includes('aria-controls="forge-filter-panel"')
+  ));
+
+assert.ok(forgeFiltersButton, 'Forge must retain its semantic Filters button');
+assert.match(
+  forgeFiltersButton,
+  /aria-describedby="forge-filter-status"/,
+  'Forge Filters must describe the active hidden filter state',
+);
+assert.match(
+  inventorySource,
+  /id="forge-filter-status"[^>]*>[\s\S]*?activeForgeFilterCount === 0[\s\S]*?No active filters[\s\S]*?\$\{activeForgeFilterCount\} active filters/,
+  'Forge must expose a status description for zero and non-zero active filters',
+);
+assert.match(
+  inventorySource,
+  /\{activeForgeFilterCount > 0 && \([\s\S]*?\{activeForgeFilterCount\}/,
+  'Forge Filters must visibly show the active filter count when filters are collapsed',
+);
+assert.match(
+  inventorySource,
+  /\{activeTab !== 'items' && \([\s\S]*?aria-label="Filters"[\s\S]*?id="forge-filter-panel"/,
+  'Forge must hide the Filters button and filter panel on the Augments tab',
+);
 
 console.log('information hierarchy regression contract passed');

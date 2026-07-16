@@ -11,7 +11,7 @@ interface GameHomePartyMember {
 
 interface GameHomeProps {
   partyMembers: GameHomePartyMember[];
-  completedQuestCount: number;
+  readyQuestCount: number;
   isDungeonLocked: boolean;
   isWishLocked: boolean;
   onStory: () => void;
@@ -25,7 +25,7 @@ interface GameHomeProps {
 
 const GameHome = ({
   partyMembers,
-  completedQuestCount,
+  readyQuestCount,
   isDungeonLocked,
   isWishLocked,
   onStory,
@@ -101,7 +101,7 @@ const GameHome = ({
           </div>
           <div className="flex items-center rounded-lg border border-white/10 bg-slate-950/75 px-3 py-2 text-xs font-bold backdrop-blur-sm">
             <Trophy className="mr-2 h-4 w-4 text-amber-300" />
-            {completedQuestCount} completed quests
+            {readyQuestCount} rewards ready
           </div>
         </div>
       </div>
