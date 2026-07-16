@@ -68,6 +68,18 @@ assert.match(
   'the active home render branch must render GameHome',
 );
 
+assert.match(
+  appSource,
+  /activeScreen === 'home'\s*\?\s*'lg:col-span-4'\s*:\s*'lg:col-span-3'/,
+  'the primary screen container must use four desktop columns on home and three on other screens',
+);
+
+assert.match(
+  appSource,
+  /!isMobile\s*&&\s*activeScreen !== 'home'/,
+  'the desktop utility rail must be guarded off while home is active',
+);
+
 const characterStoryActs = storySource.match(/const acts = \[([\s\S]*?)\n\s*\];/);
 assert.ok(characterStoryActs, 'Character Story acts configuration must be present');
 for (const encounterType of ['Normal', 'Elite', 'Boss']) {

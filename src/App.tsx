@@ -2733,7 +2733,7 @@ export default function App() {
       <main className="flex-1 max-w-[1500px] w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
         
         {/* Left Side: Main screens container (takes 3 grid cells) */}
-        <div className="lg:col-span-3 space-y-6">
+        <div className={`${activeScreen === 'home' ? 'lg:col-span-4' : 'lg:col-span-3'} space-y-6`}>
           
           {/* Main Action tab selectors */}
           <div className={`flex md:flex-wrap overflow-x-auto md:overflow-x-visible whitespace-nowrap md:whitespace-normal scrollbar-custom-tabs backdrop-blur-md border p-2 rounded-xl w-full gap-1 ${activeUiTheme.panelClass}`}>
@@ -3794,7 +3794,7 @@ export default function App() {
         </div>
 
         {/* Right Side Column: Quest Tracker and stats summary (takes 1 cell) */}
-        {!isMobile && (
+        {!isMobile && activeScreen !== 'home' && (
           <div className="space-y-6">
           
           {/* Squadron Quest Ledger Sidebar Layout */}
