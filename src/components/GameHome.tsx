@@ -1,5 +1,5 @@
 import { Compass, Hammer, Landmark, Sparkles, Sword, Trophy, Users } from 'lucide-react';
-import mainMenuBg from '../../assets/main_menu_bg.jpg';
+import homeBg from '../../assets/home_bg.jpg';
 
 interface GameHomePartyMember {
   id: string;
@@ -52,7 +52,7 @@ const GameHome = ({
     >
       <div
         className="absolute inset-0 -z-20 bg-cover bg-center"
-        style={{ backgroundImage: `url(${mainMenuBg})` }}
+        style={{ backgroundImage: `url(${homeBg})` }}
       />
       <div className="absolute inset-0 -z-10 bg-slate-950/50" />
       <div className="absolute inset-x-0 bottom-0 top-1/3 -z-10 bg-gradient-to-t from-slate-950 via-slate-950/75 to-transparent" />
