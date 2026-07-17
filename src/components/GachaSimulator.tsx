@@ -670,7 +670,7 @@ function GachaCanvasAnimation({ pullResults, onComplete }: GachaCanvasAnimationP
   }, []);
 
   return (
-    <div className="absolute inset-0 bg-[#04060c] z-50 flex items-center justify-center overflow-hidden">
+    <div className="fixed inset-0 bg-[#04060c] z-55 flex items-center justify-center overflow-hidden">
       <button
         onClick={onComplete}
         className="absolute top-6 right-6 z-55 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-lg backdrop-blur-md text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 cursor-pointer flex items-center gap-1.5 shadow-md shadow-black/30 select-none"
@@ -1468,7 +1468,7 @@ export default function GachaSimulator({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-[#020308]/97 z-55 flex flex-col items-center justify-center p-4 md:p-8 overflow-y-auto select-none"
+            className="fixed inset-0 bg-[#020308]/97 z-55 flex flex-col items-center justify-start md:justify-center p-4 md:p-8 overflow-y-auto select-none py-8 md:py-16"
           >
             {/* Ambient Background Particles */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-40">
