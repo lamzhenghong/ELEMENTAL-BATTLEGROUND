@@ -7,7 +7,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { PLAYABLE_CHARACTERS } from '../data/characters';
 import { PlayableCharacter, Weapon, InventoryItem, ElementType, Artifact, ArtifactSlot, ArtifactSet } from '../types';
-import { Shield, Sparkles, Coins, Hammer, Star, StarOff, ArrowUpCircle, BookOpen, Smile, User, Flame, Droplet, Snowflake, Zap, Wind, Leaf, Search, Layers, Lock, Unlock, Trash2 } from 'lucide-react';
+import { Shield, Sparkles, Coins, Hammer, Star, StarOff, ArrowUpCircle, BookOpen, Smile, User, Flame, Droplet, Snowflake, Zap, Wind, Leaf, Search, Layers, Lock, Unlock, Trash2, Heart, Clock, Sword } from 'lucide-react';
 import { AetheriaAudioEngine } from '../utils/audio';
 import { WEAPONS_DATABASE } from '../data/weapons';
 import { getAccumulatedPortraitBuffs } from '../utils/portraits';
@@ -1425,16 +1425,19 @@ export default function InventoryManager({
                   <h4 id="forge-stats-title" className="text-sm font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2"><Sparkles className="w-5 h-5 text-indigo-400" />Stats</h4>
                   <div className="grid grid-cols-1 gap-2 mt-4">
                     {[
-                      ['ATK', finalAtk],
-                      ['HP', finalHp],
-                      ['DEF', finalDef],
-                      ['CRIT', `${finalCritRate.toFixed(1)}%`],
-                      ['CRIT DMG', `${finalCritDmg.toFixed(1)}%`],
-                      ['Cooldown', `-${finalCdReduction.toFixed(0)}%`],
-                    ].map(([label, value]) => (
-                      <div key={label} className="bg-black/35 border border-white/20 rounded-lg px-4 py-2.5 flex items-center justify-between hover:border-indigo-500/40 hover:bg-slate-900/40 transition-all shadow-sm">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{label}</span>
-                        <strong className="font-mono text-sm sm:text-base text-slate-100">{value}</strong>
+                      ['ATK', finalAtk, Sword, 'text-rose-400', 'hover:border-rose-500/40'],
+                      ['HP', finalHp, Heart, 'text-emerald-400', 'hover:border-emerald-500/40'],
+                      ['DEF', finalDef, Shield, 'text-blue-400', 'hover:border-blue-500/40'],
+                      ['CRIT', `${finalCritRate.toFixed(1)}%`, Zap, 'text-amber-400', 'hover:border-amber-500/40'],
+                      ['CRIT DMG', `${finalCritDmg.toFixed(1)}%`, Sparkles, 'text-purple-400', 'hover:border-purple-500/40'],
+                      ['Cooldown', `-${finalCdReduction.toFixed(0)}%`, Clock, 'text-cyan-400', 'hover:border-cyan-500/40'],
+                    ].map(([label, value, Icon, colorClass, hoverClass]) => (
+                      <div key={label as string} className={`bg-black/35 border border-white/20 rounded-lg px-4 py-2.5 flex items-center justify-between hover:bg-slate-900/40 transition-all shadow-sm ${hoverClass}`}>
+                        <div className="flex items-center gap-2">
+                          <Icon className={`w-4 h-4 shrink-0 ${colorClass}`} />
+                          <span className={`text-[10px] font-black uppercase tracking-wider ${colorClass}`}>{label as string}</span>
+                        </div>
+                        <strong className="font-mono text-sm sm:text-base text-slate-100">{value as string | number}</strong>
                       </div>
                     ))}
                   </div>
