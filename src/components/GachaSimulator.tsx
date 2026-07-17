@@ -674,7 +674,7 @@ function GachaCanvasAnimation({ pullResults, onComplete }: GachaCanvasAnimationP
       <canvas ref={canvasRef} className="w-full h-full bg-transparent z-10" />
       <button
         onClick={onComplete}
-        className="absolute bottom-4 left-4 md:top-6 md:right-6 md:bottom-auto md:left-auto z-50 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-lg backdrop-blur-md text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 cursor-pointer flex items-center gap-1.5 shadow-md shadow-black/30 select-none"
+        className="absolute bottom-4 left-4 lg:top-6 lg:right-6 lg:bottom-auto lg:left-auto z-50 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-lg backdrop-blur-md text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 cursor-pointer flex items-center gap-1.5 shadow-md shadow-black/30 select-none"
       >
         Skip Sequence
       </button>
