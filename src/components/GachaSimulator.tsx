@@ -671,13 +671,13 @@ function GachaCanvasAnimation({ pullResults, onComplete }: GachaCanvasAnimationP
 
   return (
     <div className="fixed inset-0 bg-[#04060c] z-55 flex items-center justify-center overflow-hidden">
+      <canvas ref={canvasRef} className="w-full h-full bg-transparent z-10" />
       <button
         onClick={onComplete}
-        className="absolute top-6 right-6 z-55 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-lg backdrop-blur-md text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 cursor-pointer flex items-center gap-1.5 shadow-md shadow-black/30 select-none"
+        className="absolute top-4 right-4 md:top-6 md:right-6 z-50 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-lg backdrop-blur-md text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 cursor-pointer flex items-center gap-1.5 shadow-md shadow-black/30 select-none"
       >
         Skip Sequence
       </button>
-      <canvas ref={canvasRef} className="w-full h-full bg-transparent" />
     </div>
   );
 }
@@ -1068,6 +1068,13 @@ export default function GachaSimulator({
   const [devFeaturedOffset, setDevFeaturedOffset] = useState(0);
 
   const [msRemaining, setMsRemaining] = useState(DAY_MS - (Date.now() % DAY_MS));
+  const [windowHeight, setWindowHeight] = useState(typeof window !== 'undefined' ? window.innerHeight : 800);
+  
+  useEffect(() => {
+    const handleResize = () => setWindowHeight(window.innerHeight);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   useEffect(() => {
     const timer = setInterval(() => {
@@ -1490,7 +1497,13 @@ export default function GachaSimulator({
               ))}
             </div>
 
-            <div className="relative z-10 max-w-5xl w-full flex flex-col items-center space-y-3 sm:space-y-6 md:space-y-8">
+            <div 
+              className="relative z-10 max-w-5xl w-full flex flex-col items-center space-y-3 sm:space-y-6 md:space-y-8 origin-center"
+              style={{
+                transform: windowHeight < 620 ? `scale(${Math.max(0.68, windowHeight / 640)})` : 'none',
+                transformOrigin: 'center center'
+              }}
+            >
               <div className="text-center space-y-0.5 sm:space-y-1">
                 <motion.div
                   initial={{ scale: 0.8, opacity: 0 }}
