@@ -1423,7 +1423,7 @@ export default function InventoryManager({
                 <div className="absolute top-0 bottom-0 left-0 w-1.5 bg-indigo-500 shadow-[0_0_12px_rgba(99,102,241,0.7)]" />
                 <section aria-labelledby="forge-stats-title" className="rounded-xl border border-white/10 bg-black/40 p-4">
                   <h4 id="forge-stats-title" className="text-sm font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2"><Sparkles className="w-5 h-5 text-indigo-400" />Stats</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
+                  <div className="grid grid-cols-1 gap-2 mt-4">
                     {[
                       ['ATK', finalAtk],
                       ['HP', finalHp],
@@ -1432,7 +1432,7 @@ export default function InventoryManager({
                       ['CRIT DMG', `${finalCritDmg.toFixed(1)}%`],
                       ['Cooldown', `-${finalCdReduction.toFixed(0)}%`],
                     ].map(([label, value]) => (
-                      <div key={label} className="bg-black/35 border border-white/20 rounded-lg px-3 py-2.5 flex items-center justify-between hover:border-indigo-500/40 hover:bg-slate-900/40 transition-all shadow-sm">
+                      <div key={label} className="bg-black/35 border border-white/20 rounded-lg px-4 py-2.5 flex items-center justify-between hover:border-indigo-500/40 hover:bg-slate-900/40 transition-all shadow-sm">
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{label}</span>
                         <strong className="font-mono text-sm sm:text-base text-slate-100">{value}</strong>
                       </div>
