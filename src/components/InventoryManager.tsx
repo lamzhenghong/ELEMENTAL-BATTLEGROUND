@@ -1432,9 +1432,9 @@ export default function InventoryManager({
                       ['CRIT DMG', `${finalCritDmg.toFixed(1)}%`],
                       ['Cooldown', `-${finalCdReduction.toFixed(0)}%`],
                     ].map(([label, value]) => (
-                      <div key={label} className="bg-black/35 border border-white/5 rounded-lg px-3 py-2">
-                        <span className="block text-[10px] font-black text-slate-400 uppercase tracking-wider">{label}</span>
-                        <strong className="block mt-1 font-mono text-base text-slate-100">{value}</strong>
+                      <div key={label} className="bg-black/35 border border-white/20 rounded-lg px-3 py-2.5 flex items-center justify-between hover:border-indigo-500/40 hover:bg-slate-900/40 transition-all shadow-sm">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{label}</span>
+                        <strong className="font-mono text-sm sm:text-base text-slate-100">{value}</strong>
                       </div>
                     ))}
                   </div>
