@@ -674,7 +674,7 @@ function GachaCanvasAnimation({ pullResults, onComplete }: GachaCanvasAnimationP
       <canvas ref={canvasRef} className="w-full h-full bg-transparent z-10" />
       <button
         onClick={onComplete}
-        className="absolute top-4 right-4 md:top-6 md:right-6 z-50 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-lg backdrop-blur-md text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 cursor-pointer flex items-center gap-1.5 shadow-md shadow-black/30 select-none"
+        className="absolute bottom-4 left-4 md:top-6 md:right-6 md:bottom-auto md:left-auto z-50 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-lg backdrop-blur-md text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 cursor-pointer flex items-center gap-1.5 shadow-md shadow-black/30 select-none"
       >
         Skip Sequence
       </button>
@@ -1475,7 +1475,7 @@ export default function GachaSimulator({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-[#020308]/97 z-55 flex flex-col items-center justify-start md:justify-center p-4 md:p-8 overflow-y-auto select-none py-8 md:py-16"
+            className="fixed inset-0 bg-[#020308]/97 z-55 flex flex-col items-center justify-center p-4 md:p-8 overflow-y-auto select-none"
           >
             {/* Ambient Background Particles */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-40">
