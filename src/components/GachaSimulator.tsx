@@ -81,10 +81,11 @@ const getBannerGradient = (featured5StarId: string, type: 'character' | 'weapon'
 };
 
 interface GachaCanvasAnimationProps {
-  maxRarity: number;
+  pullResults: { rarity: number; isCharacter: boolean; name: string }[];
+  onComplete: () => void;
 }
 
-function GachaCanvasAnimation({ maxRarity }: GachaCanvasAnimationProps) {
+function GachaCanvasAnimation({ pullResults, onComplete }: GachaCanvasAnimationProps) {
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
 
   React.useEffect(() => {
@@ -93,39 +94,72 @@ function GachaCanvasAnimation({ maxRarity }: GachaCanvasAnimationProps) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Resize canvas to fill overlay
     canvas.width = canvas.parentElement?.clientWidth || window.innerWidth;
     canvas.height = canvas.parentElement?.clientHeight || window.innerHeight;
 
     const width = canvas.width;
     const height = canvas.height;
 
-    // Determine colors based on rarity
-    let primaryColor = '#06b6d4'; // 3★ Cyan
-    let secondaryColor = '#38bdf8';
-    if (maxRarity === 5) {
-      primaryColor = '#f59e0b'; // 5★ Amber
-      secondaryColor = '#fbbf24';
-    } else if (maxRarity === 4) {
-      primaryColor = '#a855f7'; // 4★ Purple
-      secondaryColor = '#c084fc';
+    const maxRarity = Math.max(...pullResults.map(p => p.rarity), 3);
+    const sortedPulls = [...pullResults].map(p => p.rarity).sort((a, b) => b - a);
+
+    const targetX = width * 0.35;
+    const targetY = height * 0.65;
+    const angle = Math.atan2(targetY + 50, targetX - (width + 50));
+
+    const stars: Array<{
+      x: number;
+      y: number;
+      size: number;
+      speed: number;
+      vx: number;
+      vy: number;
+    }> = [];
+    for (let i = 0; i < 100; i++) {
+      stars.push({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        size: Math.random() * 1.5 + 0.5,
+        speed: Math.random() * 1.2 + 0.4,
+        vx: -(Math.random() * 0.8 + 0.2),
+        vy: Math.random() * 0.8 + 0.2
+      });
     }
 
-    // Meteor state
-    const meteor = {
-      startX: width + 50,
-      startY: -50,
-      endX: width * 0.35,
-      endY: height * 0.65,
-      x: width + 50,
-      y: -50,
-      radius: maxRarity === 5 ? 12 : maxRarity === 4 ? 9 : 6,
-      progress: 0,
-      speed: 0.018, // speed factor
-      angle: Math.atan2(height * 0.65 + 50, width * 0.35 - (width + 50))
-    };
+    const meteors = sortedPulls.map((r, index) => {
+      let pColor = '#06b6d4';
+      let sColor = '#38bdf8';
+      if (r === 5) {
+        pColor = '#f59e0b';
+        sColor = '#fbbf24';
+      } else if (r === 4) {
+        pColor = '#a855f7';
+        sColor = '#c084fc';
+      }
 
-    // Particle pool
+      const spreadOffset = sortedPulls.length === 1 ? 0 : (index - (sortedPulls.length - 1)/2) * 24;
+      const perpX = Math.cos(angle + Math.PI/2) * spreadOffset;
+      const perpY = Math.sin(angle + Math.PI/2) * spreadOffset;
+
+      return {
+        startX: width + 80 + perpX,
+        startY: -80 + perpY,
+        endX: targetX + perpX,
+        endY: targetY + perpY,
+        x: width + 80 + perpX,
+        y: -80 + perpY,
+        radius: r === 5 ? 12 : r === 4 ? 9 : 6,
+        progress: 0,
+        speed: 0.014 + Math.random() * 0.003,
+        angle,
+        delay: index * 4,
+        rarity: r,
+        primaryColor: pColor,
+        secondaryColor: sColor,
+        isExploded: false
+      };
+    });
+
     const particles: Array<{
       x: number;
       y: number;
@@ -137,27 +171,46 @@ function GachaCanvasAnimation({ maxRarity }: GachaCanvasAnimationProps) {
       maxLife: number;
     }> = [];
 
-    // Explosion particles pool
     const explosionParticles: Array<{
       x: number;
       y: number;
       vx: number;
       vy: number;
+      gravity: number;
       color: string;
       size: number;
       life: number;
       maxLife: number;
     }> = [];
 
-    let isExploded = false;
+    const shockwaves: Array<{
+      x: number;
+      y: number;
+      radius: number;
+      maxRadius: number;
+      speed: number;
+      color: string;
+      alpha: number;
+    }> = [];
+
+    const lensFlares: Array<{
+      x: number;
+      y: number;
+      width: number;
+      maxWidth: number;
+      height: number;
+      alpha: number;
+      color: string;
+    }> = [];
+
     let frameId: number;
+    let timeScale = 1.0;
     let flashFrameCount = 0;
     let shakeFrameCount = 0;
 
     const loop = () => {
       ctx.save();
 
-      // Screen shake translation
       if (shakeFrameCount > 0) {
         const shakeIntensity = (maxRarity === 5 ? 12 : maxRarity === 4 ? 7 : 3) * (shakeFrameCount / 15);
         const dx = (Math.random() - 0.5) * 2 * shakeIntensity;
@@ -167,90 +220,159 @@ function GachaCanvasAnimation({ maxRarity }: GachaCanvasAnimationProps) {
 
       ctx.clearRect(0, 0, width, height);
 
-      // Background fade
-      ctx.fillStyle = '#04060c';
+      ctx.fillStyle = '#03050c';
       ctx.fillRect(0, 0, width, height);
 
-      // Draw active background nebula glow
-      const radialGlow = ctx.createRadialGradient(
-        meteor.x, meteor.y, 10,
-        meteor.x, meteor.y, meteor.radius * 8
-      );
-      radialGlow.addColorStop(0, primaryColor + '44');
-      radialGlow.addColorStop(0.3, secondaryColor + '22');
-      radialGlow.addColorStop(1, 'transparent');
-      ctx.fillStyle = radialGlow;
-      ctx.beginPath();
-      ctx.arc(meteor.x, meteor.y, meteor.radius * 8, 0, Math.PI * 2);
-      ctx.fill();
+      stars.forEach(star => {
+        star.x += star.vx * star.speed * timeScale * (maxRarity === 5 ? 3 : 1);
+        star.y += star.vy * star.speed * timeScale * (maxRarity === 5 ? 3 : 1);
 
-      if (!isExploded) {
-        // Move meteor along path
-        meteor.progress += meteor.speed;
-        
-        // Easing out curve
-        const t = meteor.progress;
-        const easeT = 1 - Math.pow(1 - t, 3); // cubic ease out
-        
-        meteor.x = meteor.startX + (meteor.endX - meteor.startX) * easeT;
-        meteor.y = meteor.startY + (meteor.endY - meteor.startY) * easeT;
+        if (star.x < 0) { star.x = width; star.y = Math.random() * height; }
+        if (star.y > height) { star.y = 0; star.x = Math.random() * width; }
 
-        // Spawn trail particles
-        const spawnCount = maxRarity === 5 ? 8 : maxRarity === 4 ? 5 : 3;
-        for (let j = 0; j < spawnCount; j++) {
-          particles.push({
-            x: meteor.x + (Math.random() - 0.5) * meteor.radius,
-            y: meteor.y + (Math.random() - 0.5) * meteor.radius,
-            vx: -Math.cos(meteor.angle) * (1 + Math.random() * 3) + (Math.random() - 0.5) * 2,
-            vy: -Math.sin(meteor.angle) * (1 + Math.random() * 3) + (Math.random() - 0.5) * 2,
-            color: Math.random() < 0.3 ? '#ffffff' : Math.random() < 0.65 ? secondaryColor : primaryColor,
-            size: Math.random() * (meteor.radius * 0.6) + 1,
-            life: 0,
-            maxLife: 25 + Math.random() * 25
-          });
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+        if (maxRarity === 5) {
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+          ctx.lineWidth = star.size;
+          ctx.beginPath();
+          ctx.moveTo(star.x, star.y);
+          ctx.lineTo(star.x - star.vx * 15, star.y - star.vy * 15);
+          ctx.stroke();
+        } else {
+          ctx.beginPath();
+          ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+          ctx.fill();
         }
+      });
 
-        // Draw meteor head
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(meteor.x, meteor.y, meteor.radius, 0, Math.PI * 2);
-        ctx.fillStyle = '#ffffff';
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = secondaryColor;
-        ctx.fill();
-        ctx.restore();
+      let activeMeteorsLeft = false;
 
-        // Check if destination reached
-        if (meteor.progress >= 1.0) {
-          isExploded = true;
-          flashFrameCount = 15;
-          shakeFrameCount = 15;
-          AetheriaAudioEngine.playSummonExplosion(maxRarity);
-          // Spawn big explosion burst particles!
-          const burstCount = maxRarity === 5 ? 120 : maxRarity === 4 ? 75 : 40;
-          for (let k = 0; k < burstCount; k++) {
-            const angle = Math.random() * Math.PI * 2;
-            const speed = Math.random() * (maxRarity === 5 ? 8 : maxRarity === 4 ? 6 : 4) + 1;
-            explosionParticles.push({
-              x: meteor.x,
-              y: meteor.y,
-              vx: Math.cos(angle) * speed,
-              vy: Math.sin(angle) * speed,
-              color: Math.random() < 0.25 ? '#ffffff' : Math.random() < 0.6 ? secondaryColor : primaryColor,
-              size: Math.random() * (meteor.radius * 0.5) + 1.5,
-              life: 0,
-              maxLife: 40 + Math.random() * 40
-            });
-          }
+      if (maxRarity === 5) {
+        const mainMeteor = meteors[0];
+        if (mainMeteor && !mainMeteor.isExploded && mainMeteor.progress >= 0.72 && mainMeteor.progress < 0.94) {
+          timeScale = Math.max(0.12, timeScale - 0.08);
+        } else {
+          timeScale = Math.min(1.0, timeScale + 0.08);
         }
+      } else {
+        timeScale = 1.0;
       }
 
-      // Update and draw trail particles
+      meteors.forEach(m => {
+        if (m.delay > 0) {
+          m.delay -= timeScale;
+          activeMeteorsLeft = true;
+          return;
+        }
+
+        if (!m.isExploded) {
+          activeMeteorsLeft = true;
+          m.progress += m.speed * timeScale;
+
+          const t = m.progress;
+          const easeT = 1 - Math.pow(1 - t, 3);
+
+          m.x = m.startX + (m.endX - m.startX) * easeT;
+          m.y = m.startY + (m.endY - m.startY) * easeT;
+
+          const perpAngle = m.angle + Math.PI / 2;
+          const waveOffset = Math.sin(easeT * Math.PI * 2.5) * (m.rarity === 5 ? 18 : 12);
+          m.x += Math.cos(perpAngle) * waveOffset;
+          m.y += Math.sin(perpAngle) * waveOffset;
+
+          const spawnCount = m.rarity === 5 ? 6 : m.rarity === 4 ? 4 : 2;
+          for (let j = 0; j < spawnCount; j++) {
+            particles.push({
+              x: m.x + (Math.random() - 0.5) * m.radius,
+              y: m.y + (Math.random() - 0.5) * m.radius,
+              vx: -Math.cos(m.angle) * (1 + Math.random() * 3) + (Math.random() - 0.5) * 1.5,
+              vy: -Math.sin(m.angle) * (1 + Math.random() * 3) + (Math.random() - 0.5) * 1.5,
+              color: Math.random() < 0.3 ? '#ffffff' : Math.random() < 0.65 ? m.secondaryColor : m.primaryColor,
+              size: Math.random() * (m.radius * 0.55) + 1,
+              life: 0,
+              maxLife: 20 + Math.random() * 20
+            });
+          }
+
+          const radGlow = ctx.createRadialGradient(m.x, m.y, m.radius * 0.2, m.x, m.y, m.radius * 5);
+          radGlow.addColorStop(0, m.primaryColor + '66');
+          radGlow.addColorStop(1, 'transparent');
+          ctx.fillStyle = radGlow;
+          ctx.beginPath();
+          ctx.arc(m.x, m.y, m.radius * 5, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(m.x, m.y, m.radius, 0, Math.PI * 2);
+          ctx.fillStyle = '#ffffff';
+          ctx.shadowBlur = 18;
+          ctx.shadowColor = m.secondaryColor;
+          ctx.fill();
+          ctx.restore();
+
+          if (m.progress >= 1.0) {
+            m.isExploded = true;
+            m.x = m.endX;
+            m.y = m.endY;
+
+            shakeFrameCount = 15;
+            flashFrameCount = 12;
+            AetheriaAudioEngine.playSummonExplosion(m.rarity);
+
+            const ringColors = m.rarity === 5 ? ['#fbbf24', '#fb7185', '#ffffff'] : m.rarity === 4 ? ['#c084fc', '#818cf8', '#ffffff'] : ['#22d3ee', '#38bdf8'];
+            ringColors.forEach((color, idx) => {
+              shockwaves.push({
+                x: m.endX,
+                y: m.endY,
+                radius: 5,
+                maxRadius: 100 + idx * 40 + (m.rarity === 5 ? 60 : 20),
+                speed: 4 + idx * 2,
+                color,
+                alpha: 1.0
+              });
+            });
+
+            lensFlares.push({
+              x: m.endX,
+              y: m.endY,
+              width: 10,
+              maxWidth: width * 0.8,
+              height: m.rarity === 5 ? 8 : m.rarity === 4 ? 6 : 4,
+              alpha: 1.0,
+              color: m.secondaryColor
+            });
+
+            const burstCount = m.rarity === 5 ? 100 : m.rarity === 4 ? 60 : 30;
+            for (let k = 0; k < burstCount; k++) {
+              const angle = Math.random() * Math.PI * 2;
+              const speed = Math.random() * (m.rarity === 5 ? 7 : m.rarity === 4 ? 5 : 3.5) + 1;
+              explosionParticles.push({
+                x: m.endX,
+                y: m.endY,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                gravity: Math.random() * 0.08 + 0.03,
+                color: Math.random() < 0.25 ? '#ffffff' : Math.random() < 0.6 ? m.secondaryColor : m.primaryColor,
+                size: Math.random() * (m.radius * 0.5) + 1.2,
+                life: 0,
+                maxLife: 35 + Math.random() * 35
+              });
+            }
+          }
+        }
+      });
+
+      if (!activeMeteorsLeft && explosionParticles.length === 0 && shockwaves.length === 0 && lensFlares.length === 0) {
+        onComplete();
+        return;
+      }
+
       for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-        p.life++;
+        p.x += p.vx * timeScale;
+        p.y += p.vy * timeScale;
+        p.life += timeScale;
 
         if (p.life >= p.maxLife) {
           particles.splice(i, 1);
@@ -261,22 +383,21 @@ function GachaCanvasAnimation({ maxRarity }: GachaCanvasAnimationProps) {
           ctx.beginPath();
           ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
           ctx.fillStyle = p.color;
-          ctx.shadowBlur = 8;
+          ctx.shadowBlur = 6;
           ctx.shadowColor = p.color;
           ctx.fill();
           ctx.restore();
         }
       }
 
-      // Update and draw explosion particles
       for (let i = explosionParticles.length - 1; i >= 0; i--) {
         const ep = explosionParticles[i];
-        ep.x += ep.vx;
-        ep.y += ep.vy;
-        // apply air resistance
-        ep.vx *= 0.95;
-        ep.vy *= 0.95;
-        ep.life++;
+        ep.x += ep.vx * timeScale;
+        ep.y += ep.vy * timeScale;
+        ep.vy += ep.gravity * timeScale;
+        ep.vx *= 0.97;
+        ep.vy *= 0.97;
+        ep.life += timeScale;
 
         if (ep.life >= ep.maxLife) {
           explosionParticles.splice(i, 1);
@@ -287,38 +408,83 @@ function GachaCanvasAnimation({ maxRarity }: GachaCanvasAnimationProps) {
           ctx.beginPath();
           ctx.arc(ep.x, ep.y, ep.size, 0, Math.PI * 2);
           ctx.fillStyle = ep.color;
-          ctx.shadowBlur = 12;
+          ctx.shadowBlur = 10;
           ctx.shadowColor = ep.color;
           ctx.fill();
           ctx.restore();
         }
       }
 
-      // Text HUD status info
-      if (meteor.progress > 0.1) {
+      for (let i = shockwaves.length - 1; i >= 0; i--) {
+        const sw = shockwaves[i];
+        sw.radius += sw.speed * timeScale;
+        sw.alpha = 1 - sw.radius / sw.maxRadius;
+
+        if (sw.alpha <= 0) {
+          shockwaves.splice(i, 1);
+        } else {
+          ctx.save();
+          ctx.globalAlpha = sw.alpha;
+          ctx.beginPath();
+          ctx.arc(sw.x, sw.y, sw.radius, 0, Math.PI * 2);
+          ctx.strokeStyle = sw.color;
+          ctx.lineWidth = 3;
+          ctx.shadowBlur = 15;
+          ctx.shadowColor = sw.color;
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+
+      for (let i = lensFlares.length - 1; i >= 0; i--) {
+        const lf = lensFlares[i];
+        lf.width += (lf.maxWidth - lf.width) * 0.15 * timeScale;
+        lf.alpha -= 0.04 * timeScale;
+
+        if (lf.alpha <= 0) {
+          lensFlares.splice(i, 1);
+        } else {
+          ctx.save();
+          ctx.fillStyle = lf.color;
+          ctx.globalAlpha = lf.alpha;
+          ctx.shadowBlur = 20;
+          ctx.shadowColor = lf.color;
+          
+          ctx.beginPath();
+          ctx.moveTo(lf.x - lf.width, lf.y);
+          ctx.lineTo(lf.x, lf.y - lf.height);
+          ctx.lineTo(lf.x + lf.width, lf.y);
+          ctx.lineTo(lf.x, lf.y + lf.height);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      if (meteors.length > 0 && meteors[0].progress > 0.05 && meteors[0].progress < 0.98) {
         ctx.save();
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
         ctx.font = 'bold 12px "Space Grotesk", "JetBrains Mono", monospace';
         ctx.textAlign = 'center';
-        // Add spacing manually for compatibility
-        const label = maxRarity === 5 ? '★ D I V I N E   S I G N A L   A L I G N E D ★' : maxRarity === 4 ? '★ S T E L L A R   H A R M O N Y   D E T E C T E D ★' : '★ A L I G N I N G   C O S M O S ★';
+        const label = maxRarity === 5 
+          ? '★ D I V I N E   S I G N A L   A L I G N E D ★' 
+          : maxRarity === 4 
+            ? '★ S T E L L A R   H A R M O N Y   D E T E C T E D ★' 
+            : '★ A L I G N I N G   C O S M O S ★';
         ctx.fillText(label, width / 2, height * 0.85);
         ctx.restore();
       }
 
-      ctx.restore(); // Restore shake translation
+      ctx.restore();
 
-      // Draw white screen flash on top of translation
       if (flashFrameCount > 0) {
-        const opacity = flashFrameCount / 15;
+        const opacity = flashFrameCount / 12;
         ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
         ctx.fillRect(0, 0, width, height);
         flashFrameCount--;
       }
 
-      if (shakeFrameCount > 0) {
-        shakeFrameCount--;
-      }
+      if (shakeFrameCount > 0) shakeFrameCount--;
 
       frameId = requestAnimationFrame(loop);
     };
@@ -328,11 +494,17 @@ function GachaCanvasAnimation({ maxRarity }: GachaCanvasAnimationProps) {
     return () => {
       cancelAnimationFrame(frameId);
     };
-  }, [maxRarity]);
+  }, [pullResults, onComplete]);
 
   return (
     <div className="absolute inset-0 bg-[#04060c] z-50 flex items-center justify-center overflow-hidden">
-      <canvas ref={canvasRef} className="w-full h-full" />
+      <button
+        onClick={onComplete}
+        className="absolute top-6 right-6 z-55 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-lg backdrop-blur-md text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 cursor-pointer flex items-center gap-1.5 shadow-md shadow-black/30 select-none"
+      >
+        Skip Sequence
+      </button>
+      <canvas ref={canvasRef} className="w-full h-full bg-transparent" />
     </div>
   );
 }
@@ -730,22 +902,16 @@ export default function GachaSimulator({
     // Play the rising swoop audio sweep
     AetheriaAudioEngine.playSummonSwoop(maxRarity);
 
-    // Meteor delay triggers elegant gacha results showcase
-    setTimeout(() => {
-      setAnimationPhase('showcase');
-      if (maxRarity >= 4) {
-        AetheriaAudioEngine.playUltimate();
-      } else {
-        AetheriaAudioEngine.playWaveClear();
-      }
-      // Fullscreen splash modal disabled per request
-      // const sorted = [...results].sort((a, b) => b.rarity - a.rarity);
-      // const highTier = sorted.find(r => r.rarity >= 4);
-      // if (highTier) {
-      //   setShowSplashItem(highTier);
-      // }
-      setPulling(false);
-    }, 2200);
+  };
+
+  const handleAnimationComplete = () => {
+    setAnimationPhase('showcase');
+    if (maxRarityInPull >= 4) {
+      AetheriaAudioEngine.playUltimate();
+    } else {
+      AetheriaAudioEngine.playWaveClear();
+    }
+    setPulling(false);
   };
 
   const getMeteorImageColor = () => {
@@ -759,7 +925,10 @@ export default function GachaSimulator({
       
       {/* Absolute floating glowing overlay during wishing meteor */}
       {animationPhase === 'meteor' && (
-        <GachaCanvasAnimation maxRarity={maxRarityInPull} />
+        <GachaCanvasAnimation 
+          pullResults={currentPullResults} 
+          onComplete={handleAnimationComplete} 
+        />
       )}
 
       {/* Splash card popup for 4* or 5* characters/weapons */}
