@@ -178,6 +178,7 @@
     let nextPulls = [];
     let lockTimer = 0;
     let flashOpacity = 0;
+    let maxRarity = 3;
 
     // Twinkling stars in the background
     let stars = [];
@@ -225,7 +226,7 @@
 
       // Spawn specific targets representing our pull items on the radar grid
       targets = [];
-      const maxRarity = Math.max(...pulls);
+      maxRarity = Math.max(...pulls);
       
       pulls.forEach((rarity, index) => {
         // Distribute angles evenly or randomly
