@@ -1423,7 +1423,7 @@ export default function InventoryManager({
                 <div className="absolute top-0 bottom-0 left-0 w-1.5 bg-indigo-500 shadow-[0_0_12px_rgba(99,102,241,0.7)]" />
                 <section aria-labelledby="forge-stats-title" className="rounded-xl border border-white/10 bg-black/40 p-4">
                   <h4 id="forge-stats-title" className="text-sm font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2"><Sparkles className="w-5 h-5 text-indigo-400" />Stats</h4>
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 mt-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
                     {[
                       ['ATK', finalAtk],
                       ['HP', finalHp],
