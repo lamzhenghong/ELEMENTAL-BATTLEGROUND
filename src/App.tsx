@@ -28,7 +28,7 @@ import { UI_THEMES, UI_THEME_UNLOCK_LEVEL, getUiTheme, isUiThemeUnlocked, normal
 import { getStandardFiveStarCharacters } from './utils/limitedBanners';
 import { SPECIAL_ULTIMATE_UNLOCK_LEVEL } from './utils/specialUltimates';
 import { assignUniqueWeaponOwner, normalizeUniqueEquippedWeapons } from './utils/equipmentRules';
-import mainMenuBg from '../assets/main_menu_bg.jpg';
+import mainMenuVideo from '../assets/main_menu_bg.mp4';
 import gameLogoImg from '../assets/game_logo_256.png';
 import StoryCutscene from './components/StoryCutscene';
 import { getStageSpec, getStageDialogue, getCharacterStoryScript, getStoryScene } from './data/storyStages';
@@ -2239,11 +2239,17 @@ export default function App() {
   if (activeScreen === 'menu') {
     return (
       <div className="mobile-main-menu-scroll min-h-screen text-slate-100 flex flex-col font-sans relative antialiased leading-normal overflow-x-hidden justify-between">
-        {/* Full-bleed generated background image */}
-        <div 
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: `url(${mainMenuBg})` }}
-        />
+        {/* Full-bleed generated background video (with 3% zoom to crop watermark) */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <video
+            src={mainMenuVideo}
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover scale-[1.03] select-none pointer-events-none"
+          />
+        </div>
         {/* Dark vignette overlay for readability */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/80 pointer-events-none" />
         {/* Subtle animated radial glow pulses on top */}

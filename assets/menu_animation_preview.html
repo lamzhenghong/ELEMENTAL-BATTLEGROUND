@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Elemental Battleground - Main Menu Animation Preview</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #020617;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    /* Outer Wrapper to constrain the parallax */
+    .viewport {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    /* Background image container with Ken Burns and mouse shift */
+    .background-container {
+      position: absolute;
+      top: -5%;
+      left: -5%;
+      width: 110%;
+      height: 110%;
+      background-image: url('main_menu_bg.jpg');
+      background-size: cover;
+      background-position: center;
+      z-index: 1;
+      transform-style: preserve-3d;
+      will-change: transform;
+      animation: kenBurns 40s ease-in-out infinite;
+    }
+
+    /* Ken Burns slow camera panning and zooming */
+    @keyframes kenBurns {
+      0% {
+        transform: scale(1) translate(0, 0);
+      }
+      50% {
+        transform: scale(1.04) translate(-0.5%, 0.3%);
+      }
+      100% {
+        transform: scale(1) translate(0, 0);
+      }
+    }
+
+    /* Ambient Pulsing Glow Overlays */
+    .ambient-glows {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+      mix-blend-mode: screen;
+    }
+
+    /* Left Magma Fire Pulse */
+    .glow-lava {
+      position: absolute;
+      bottom: -10%;
+      left: -10%;
+      width: 60%;
+      height: 70%;
+      background: radial-gradient(circle, rgba(239, 68, 68, 0.25) 0%, rgba(249, 115, 22, 0.08) 50%, transparent 100%);
+      animation: pulseLava 7s ease-in-out infinite;
+    }
+
+    /* Right Glacier Ice Pulse */
+    .glow-glacier {
+      position: absolute;
+      bottom: -10%;
+      right: -10%;
+      width: 60%;
+      height: 70%;
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.2) 0%, rgba(14, 165, 233, 0.06) 50%, transparent 100%);
+      animation: pulseGlacier 9s ease-in-out infinite;
+    }
+
+    @keyframes pulseLava {
+      0%, 100% { opacity: 0.7; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.08); }
+    }
+
+    @keyframes pulseGlacier {
+      0%, 100% { opacity: 0.8; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.05); }
+    }
+
+    /* Distant Lightning Flash Overlay */
+    .lightning-flash {
+      position: absolute;
+      inset: 0;
+      background-color: rgba(168, 85, 247, 0);
+      z-index: 3;
+      pointer-events: none;
+      mix-blend-mode: color-dodge;
+    }
+
+    /* Centered Portal Swirl Canvas Container */
+    .portal-container {
+      position: absolute;
+      top: 48.5%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 25.5vh;
+      height: 25.5vh;
+      border-radius: 50%;
+      overflow: hidden;
+      z-index: 2;
+      pointer-events: none;
+      mix-blend-mode: screen;
+      /* Add slight inner shadow to blend with the stone ring */
+      box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+    }
+
+    .portal-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Embers Canvas overlaying the left side */
+    .embers-canvas {
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      pointer-events: none;
+      mix-blend-mode: screen;
+    }
+
+    /* UI placeholder for mock checking */
+    .preview-info {
+      position: absolute;
+      top: 24px;
+      left: 24px;
+      z-index: 10;
+      color: white;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      padding: 18px 24px;
+      max-width: 380px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(8px);
+    }
+
+    .preview-info h1 {
+      font-size: 18px;
+      font-weight: 800;
+      color: #818cf8;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 8px;
+    }
+
+    .preview-info p {
+      font-size: 13px;
+      color: #94a3b8;
+      line-height: 1.5;
+      margin-bottom: 12px;
+    }
+
+    .feature-tag {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      background: rgba(99, 102, 241, 0.2);
+      border: 1px solid rgba(99, 102, 241, 0.4);
+      color: #a5b4fc;
+      padding: 3px 8px;
+      border-radius: 6px;
+      margin: 2px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="viewport" id="viewport">
+    <!-- Animated background wrapper -->
+    <div class="background-container" id="bg"></div>
+
+    <!-- Swirling portal core positioned over the stone ring -->
+    <div class="portal-container">
+      <canvas id="portalCanvas" class="portal-canvas"></canvas>
+    </div>
+
+    <!-- Color glows pulsing -->
+    <div class="ambient-glows">
+      <div class="glow-lava"></div>
+      <div class="glow-glacier"></div>
+    </div>
+
+    <!-- Random Lightning Flash Overlay -->
+    <div class="lightning-flash" id="lightning"></div>
+
+    <!-- Rising Volcanic Embers (Left-Side Canvas) -->
+    <canvas id="embersCanvas" class="embers-canvas"></canvas>
+
+    <!-- Info Overlay -->
+    <div class="preview-info">
+      <h1>Menu Animation Preview</h1>
+      <p>This is a standalone simulation of the dynamic menu animations. None of your source files have been changed.</p>
+      <div>
+        <span class="feature-tag">Ken Burns Zoom</span>
+        <span class="feature-tag">Mouse Parallax</span>
+        <span class="feature-tag">Swirling Portal Core</span>
+        <span class="feature-tag">Magma & Ice Ambient Glows</span>
+        <span class="feature-tag">Rising Magma Embers</span>
+        <span class="feature-tag">Distant Lightning Flashes</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // -------------------------------------------------------------
+    // Mouse Parallax Effect
+    // -------------------------------------------------------------
+    const bg = document.getElementById('bg');
+    const viewport = document.getElementById('viewport');
+    let targetX = 0, targetY = 0;
+    let currentX = 0, currentY = 0;
+
+    window.addEventListener('mousemove', (e) => {
+      // Calculate cursor offset relative to center of screen (-0.5 to 0.5)
+      const x = (e.clientX / window.innerWidth) - 0.5;
+      const y = (e.clientY / window.innerHeight) - 0.5;
+      
+      // Target shifting amount in pixels
+      targetX = x * -25;
+      targetY = y * -20;
+    });
+
+    // Smooth lerp function for transition ease
+    function updateParallax() {
+      currentX += (targetX - currentX) * 0.05;
+      currentY += (targetY - currentY) * 0.05;
+      
+      // We combine the parallax translate with the CSS Ken Burns animation
+      bg.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+      requestAnimationFrame(updateParallax);
+    }
+    updateParallax();
+
+    // -------------------------------------------------------------
+    // Swirling Portal Core (Canvas)
+    // -------------------------------------------------------------
+    const portalCanvas = document.getElementById('portalCanvas');
+    const pCtx = portalCanvas.getContext('2d');
+    let pWidth = portalCanvas.width = 300;
+    let pHeight = portalCanvas.height = 300;
+
+    // Handle resizing of portal canvas resolution
+    function resizePortal() {
+      const rect = portalCanvas.getBoundingClientRect();
+      pWidth = portalCanvas.width = rect.width * window.devicePixelRatio;
+      pHeight = portalCanvas.height = rect.height * window.devicePixelRatio;
+    }
+    window.addEventListener('resize', resizePortal);
+    resizePortal();
+
+    let rotationAngle = 0;
+    
+    function drawPortal() {
+      const cx = pWidth / 2;
+      const cy = pHeight / 2;
+      const radius = Math.min(cx, cy);
+
+      pCtx.clearRect(0, 0, pWidth, pHeight);
+
+      // Draw swirling energy spirals
+      pCtx.save();
+      pCtx.translate(cx, cy);
+      pCtx.rotate(rotationAngle);
+
+      // Layer 1: Core Glow
+      const coreGlow = pCtx.createRadialGradient(0, 0, 0, 0, 0, radius);
+      coreGlow.addColorStop(0, '#ffffff');
+      coreGlow.addColorStop(0.2, '#c084fc'); // Light purple
+      coreGlow.addColorStop(0.5, '#2563eb'); // Deep blue
+      coreGlow.addColorStop(0.8, '#06b6d4'); // Cyan
+      coreGlow.addColorStop(1, 'transparent');
+      pCtx.fillStyle = coreGlow;
+      pCtx.beginPath();
+      pCtx.arc(0, 0, radius, 0, Math.PI * 2);
+      pCtx.fill();
+
+      // Layer 2: Swirling Spikes/Arms
+      const arms = 12;
+      for (let i = 0; i < arms; i++) {
+        pCtx.rotate((Math.PI * 2) / arms);
+        
+        pCtx.beginPath();
+        pCtx.moveTo(0, 0);
+        // Draw Bezier curves to simulate rotating swirl arms
+        pCtx.bezierCurveTo(
+          radius * 0.4, -radius * 0.2,
+          radius * 0.7, -radius * 0.4,
+          radius * 0.9, 0
+        );
+        pCtx.bezierCurveTo(
+          radius * 0.6, -radius * 0.1,
+          radius * 0.3, -radius * 0.05,
+          0, 0
+        );
+
+        const armGlow = pCtx.createLinearGradient(0, 0, radius, 0);
+        armGlow.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+        armGlow.addColorStop(0.3, 'rgba(168, 85, 247, 0.6)'); // purple
+        armGlow.addColorStop(0.7, 'rgba(37, 99, 235, 0.3)');  // blue
+        armGlow.addColorStop(1, 'transparent');
+        pCtx.fillStyle = armGlow;
+        pCtx.fill();
+      }
+
+      pCtx.restore();
+
+      // Slow rotation increment
+      rotationAngle += 0.005;
+      requestAnimationFrame(drawPortal);
+    }
+    drawPortal();
+
+    // -------------------------------------------------------------
+    // Rising Volcanic Embers (Canvas)
+    // -------------------------------------------------------------
+    const embersCanvas = document.getElementById('embersCanvas');
+    const eCtx = embersCanvas.getContext('2d');
+    let eWidth = embersCanvas.width = window.innerWidth;
+    let eHeight = embersCanvas.height = window.innerHeight;
+
+    window.addEventListener('resize', () => {
+      eWidth = embersCanvas.width = window.innerWidth;
+      eHeight = embersCanvas.height = window.innerHeight;
+    });
+
+    const embers = [];
+    const maxEmbers = 45;
+
+    class Ember {
+      constructor() {
+        this.reset();
+        // Stagger spawn heights on start
+        this.y = Math.random() * eHeight;
+      }
+
+      reset() {
+        // Spawn restricted to the left side (volcanic region)
+        this.x = Math.random() * (eWidth * 0.45);
+        this.y = eHeight + Math.random() * 40;
+        this.size = 1 + Math.random() * 3.5;
+        this.speedY = 0.4 + Math.random() * 1.2;
+        this.speedX = -0.3 + Math.random() * 0.8;
+        this.alpha = 0.1 + Math.random() * 0.8;
+        this.decay = 0.002 + Math.random() * 0.005;
+        this.wobble = Math.random() * Math.PI;
+        this.wobbleSpeed = 0.01 + Math.random() * 0.03;
+      }
+
+      update() {
+        this.y -= this.speedY;
+        this.x += this.speedX + Math.sin(this.wobble) * 0.2;
+        this.wobble += this.wobbleSpeed;
+        this.alpha -= this.decay;
+
+        if (this.alpha <= 0 || this.y < -10 || this.x < -10 || this.x > eWidth) {
+          this.reset();
+        }
+      }
+
+      draw() {
+        eCtx.save();
+        eCtx.beginPath();
+        eCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        
+        // Ember glow style (soft orange/red)
+        eCtx.shadowBlur = 8;
+        eCtx.shadowColor = 'rgba(249, 115, 22, 0.9)';
+        eCtx.fillStyle = `rgba(253, 186, 116, ${this.alpha})`;
+        eCtx.fill();
+        eCtx.restore();
+      }
+    }
+
+    // Initialize embers
+    for (let i = 0; i < maxEmbers; i++) {
+      embers.push(new Ember());
+    }
+
+    function animateEmbers() {
+      eCtx.clearRect(0, 0, eWidth, eHeight);
+
+      for (let i = 0; i < embers.length; i++) {
+        embers[i].update();
+        embers[i].draw();
+      }
+
+      requestAnimationFrame(animateEmbers);
+    }
+    animateEmbers();
+
+    // -------------------------------------------------------------
+    // Distant Lightning Flashes
+    // -------------------------------------------------------------
+    const lightning = document.getElementById('lightning');
+
+    function triggerLightning() {
+      // Step 1: Create a rapid double flash keyframe style inline
+      const duration = 200 + Math.random() * 200; // 200-400ms flash duration
+      
+      lightning.style.transition = 'none';
+      lightning.style.backgroundColor = 'rgba(192, 132, 252, 0.25)'; // Purple-cyan lightning glow
+
+      setTimeout(() => {
+        lightning.style.transition = `background-color ${duration}ms ease-out`;
+        lightning.style.backgroundColor = 'rgba(192, 132, 252, 0)';
+      }, 50);
+
+      // Schedule next flash at a random interval (10 to 22 seconds)
+      const nextFlashDelay = 10000 + Math.random() * 12000;
+      setTimeout(triggerLightning, nextFlashDelay);
+    }
+
+    // Start scheduling lightning
+    setTimeout(triggerLightning, 6000);
+  </script>
+</body>
+</html>
