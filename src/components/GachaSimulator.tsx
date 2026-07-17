@@ -88,6 +88,15 @@ interface GachaCanvasAnimationProps {
 function GachaCanvasAnimation({ pullResults, onComplete }: GachaCanvasAnimationProps) {
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
 
+  // Store variables in refs to prevent the loop useEffect from restarting on parent re-renders
+  const onCompleteRef = React.useRef(onComplete);
+  const pullResultsRef = React.useRef(pullResults);
+
+  React.useEffect(() => {
+    onCompleteRef.current = onComplete;
+    pullResultsRef.current = pullResults;
+  }, [onComplete, pullResults]);
+
   React.useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -100,8 +109,9 @@ function GachaCanvasAnimation({ pullResults, onComplete }: GachaCanvasAnimationP
     const width = canvas.width;
     const height = canvas.height;
 
-    const maxRarity = Math.max(...pullResults.map(p => p.rarity), 3);
-    const sortedPulls = [...pullResults].map(p => p.rarity).sort((a, b) => b - a);
+    const currentPulls = pullResultsRef.current;
+    const maxRarity = Math.max(...currentPulls.map(p => p.rarity), 3);
+    const sortedPulls = [...currentPulls].map(p => p.rarity).sort((a, b) => b - a);
 
     const targetX = width * 0.35;
     const targetY = height * 0.65;
@@ -364,7 +374,8 @@ function GachaCanvasAnimation({ pullResults, onComplete }: GachaCanvasAnimationP
       });
 
       if (!activeMeteorsLeft && explosionParticles.length === 0 && shockwaves.length === 0 && lensFlares.length === 0) {
-        onComplete();
+        ctx.restore();
+        onCompleteRef.current();
         return;
       }
 
@@ -494,7 +505,7 @@ function GachaCanvasAnimation({ pullResults, onComplete }: GachaCanvasAnimationP
     return () => {
       cancelAnimationFrame(frameId);
     };
-  }, [pullResults, onComplete]);
+  }, []);
 
   return (
     <div className="absolute inset-0 bg-[#04060c] z-50 flex items-center justify-center overflow-hidden">
