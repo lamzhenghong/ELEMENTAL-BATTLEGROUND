@@ -115,13 +115,13 @@ Rename the page heading to `Forge`, keep currency balances and tab controls, and
 
 Add a semantic button with `aria-expanded={showStatBreakdown}`, `aria-controls="forge-stat-breakdown-panel"`, and a conditionally rendered panel containing the existing ATK, HP, DEF, CRIT, CRIT DMG, and cooldown formulas.
 
-- [ ] **Step 5: Run the focused contracts**
+- [ ] **Step 5: Run the staged contracts**
 
 Run: `npx tsx src/forgeInformationHierarchy.test.ts`
 
 Run: `npx tsx src/informationHierarchy.test.ts`
 
-Expected: both PASS after the shared shell and disclosure requirements are met.
+Expected: `informationHierarchy.test.ts` passes. The Forge contract advances past the shared-shell and stat-disclosure assertions, but may remain red only on concise weapon, ascension, artifact, or fusion requirements assigned to Task 3.
 
 - [ ] **Step 6: Commit**
 
@@ -168,7 +168,7 @@ Run: `npx tsx src/components/InventoryManager.salvagePortal.test.ts`
 
 Run: `npx tsx src/foundationIntegrity.test.ts`
 
-Expected: all PASS.
+Expected: all PASS. Task 3 is the point where the complete Forge hierarchy contract turns green.
 
 - [ ] **Step 7: Commit**
 
