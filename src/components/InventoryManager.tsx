@@ -149,6 +149,7 @@ export default function InventoryManager({
   const [showInventoryFilters, setShowInventoryFilters] = useState(false);
   const [showForgeNotes, setShowForgeNotes] = useState(false);
   const [showStatBreakdown, setShowStatBreakdown] = useState(false);
+  const [showArtifactFusion, setShowArtifactFusion] = useState(false);
   
   // Artifact filter states
   const [artSlotFilter, setArtSlotFilter] = useState<'all' | ArtifactSlot>('all');
@@ -1090,41 +1091,36 @@ export default function InventoryManager({
                       </div>
 
                       {/* Stats card */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-2 gap-3">
                         {/* Main Stat Card */}
-                        <div className="p-5 bg-black/45 border border-white/10 rounded-xl relative overflow-hidden space-y-3">
+                        <div className="p-3 bg-black/45 border border-white/10 rounded-lg relative overflow-hidden space-y-2">
                           <div className="absolute top-0 bottom-0 left-0 w-1.5 bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.7)]" />
-                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-mono">Core Attribute</span>
+                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-mono">Main Stat</span>
                           <div className="flex justify-between items-end mt-1">
-                            <span className="text-sm font-extrabold text-slate-205 uppercase font-mono">{mainStat.name} Boost</span>
-                            <span className="font-mono text-2xl font-black text-amber-400">{mainStat.display}</span>
+                            <span className="text-xs font-extrabold text-slate-205 uppercase font-mono">{mainStat.name}</span>
+                            <span className="font-mono text-lg font-black text-amber-400">{mainStat.display}</span>
                           </div>
-                          <p className="text-[10px] text-slate-500 leading-relaxed font-mono mt-2 uppercase">
-                            helmet: HP% • hands: DMG% • leg: CRIT rate% • shoe: CRIT dmg%
-                          </p>
                         </div>
 
                         {/* Equipment Status Card */}
-                        <div className="p-5 bg-black/45 border border-white/10 rounded-xl relative overflow-hidden space-y-3">
+                        <div className="p-3 bg-black/45 border border-white/10 rounded-lg relative overflow-hidden space-y-2">
                           <div className="absolute top-0 bottom-0 left-0 w-1.5 bg-indigo-500 shadow-[0_0_12px_rgba(99,102,241,0.7)]" />
-                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-mono">Attachment Registry</span>
+                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-mono">Equipped</span>
                           <div className="flex justify-between items-end mt-1">
-                            <span className="text-sm font-extrabold text-slate-205 uppercase font-mono">Equipped Status</span>
+                            <span className="text-xs font-extrabold text-slate-205 uppercase font-mono">Status</span>
                             <span className={`font-mono text-sm font-black uppercase ${equippedCharName ? 'text-indigo-400' : 'text-slate-500'}`}>
                               {equippedCharName ? `Equipped by ${equippedCharName}` : 'In Inventory'}
                             </span>
                           </div>
-                          <p className="text-[10px] text-slate-500 leading-relaxed font-mono mt-2 uppercase">
-                            {equippedCharName ? 'un-equip artifact inside character panel to free slot' : 'artifact can be equipped on any hero roster slot'}
-                          </p>
                         </div>
                       </div>
 
                       {/* Set bonuses details */}
-                      <div className="bg-black/35 border border-white/10 p-5 rounded-xl space-y-3">
+                      <div className="bg-black/35 border border-white/10 p-4 rounded-xl space-y-3">
                         <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
                           <Layers className="w-4 h-4 text-amber-400" />
-                          Set Bonus Matrix: {setInfo.name} ({activeArt.set})
+                          <span>Set Bonus</span>
+                          <span className="text-slate-500">{setInfo.name}</span>
                         </h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
                           <div className="bg-white/5 border border-white/10 p-3 rounded-lg">
@@ -1195,7 +1191,7 @@ export default function InventoryManager({
                             Artifact Fusion
                           </h4>
                           <p className="text-[10px] text-slate-450 font-mono uppercase mt-1">
-                            Same exact artifact name, set, slot, and tier only.
+                            {canFuseArtifact ? 'Ready to fuse.' : fusionBlockReason}
                           </p>
                         </div>
                         {fusionRule && (
@@ -1209,57 +1205,72 @@ export default function InventoryManager({
                         )}
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                        <div className="bg-white/5 border border-white/10 rounded-lg p-2">
-                          <span className="block text-[8px] text-slate-500 font-black uppercase tracking-wider">Matching Copies</span>
-                          <span className={`block text-sm font-black font-mono ${fusionArtifacts.length >= 3 ? 'text-emerald-300' : 'text-rose-300'}`}>
-                            {fusionArtifacts.length}/3
-                          </span>
-                        </div>
-                        <div className="bg-white/5 border border-white/10 rounded-lg p-2">
-                          <span className="block text-[8px] text-slate-500 font-black uppercase tracking-wider">Mora Cost</span>
-                          <span className={`block text-sm font-black font-mono ${fusionRule && mora >= fusionRule.moraCost ? 'text-amber-300' : 'text-rose-300'}`}>
-                            {fusionRule ? fusionRule.moraCost.toLocaleString() : 'MAX'}
-                          </span>
-                        </div>
-                        <div className="bg-white/5 border border-white/10 rounded-lg p-2">
-                          <span className="block text-[8px] text-slate-500 font-black uppercase tracking-wider">Gem Cost</span>
-                          <span className={`block text-sm font-black font-mono ${fusionRule && aetherGems >= fusionRule.gemCost ? 'text-sky-300' : 'text-rose-300'}`}>
-                            {fusionRule ? fusionRule.gemCost.toLocaleString() : 'MAX'}
-                          </span>
-                        </div>
-                      </div>
-
                       <button
                         type="button"
-                        disabled={!canFuseArtifact}
-                        onClick={() => {
-                          if (!fusionRule || !canFuseArtifact) {
-                            onShowAlert("Artifact Fusion Not Ready!", fusionBlockReason, "error");
-                            return;
-                          }
-                          const fusedArtifact = createFusedArtifact(activeArt);
-                          onFuseArtifacts?.(
-                            fusionArtifacts.map(art => art.id),
-                            fusedArtifact,
-                            fusionRule.moraCost,
-                            fusionRule.gemCost
-                          );
-                          setSelectedArtifactId(fusedArtifact.id);
-                        }}
-                        className={`w-full font-black text-xs uppercase tracking-widest px-6 py-3 rounded-lg flex items-center justify-center gap-2 transition-all active:scale-95 border ${
-                          canFuseArtifact
-                            ? 'bg-amber-400 hover:bg-amber-300 text-slate-950 border-amber-300/40 cursor-pointer shadow-[0_0_18px_rgba(251,191,36,0.22)]'
-                            : 'bg-slate-900/80 text-slate-500 border-white/5 cursor-not-allowed'
-                        }`}
+                        aria-expanded={showArtifactFusion}
+                        aria-controls="artifact-fusion-panel"
+                        onClick={() => setShowArtifactFusion((visible) => !visible)}
+                        className="text-xs font-black uppercase tracking-wider text-amber-300 hover:text-amber-200"
                       >
-                        <Sparkles className="w-4 h-4" />
-                        {fusionRule ? `Fuse to ${fusionRule.resultRarity === 5 ? 'Gold' : 'Purple'}` : 'Max Fusion Tier'}
+                        {showArtifactFusion ? 'Hide Fusion Details' : 'Fusion Details'}
                       </button>
 
-                      <p className={`text-[9px] font-mono uppercase leading-relaxed ${canFuseArtifact ? 'text-emerald-300' : 'text-slate-500'}`}>
-                        {fusionBlockReason}
-                      </p>
+                      {showArtifactFusion && (
+                        <section id="artifact-fusion-panel" aria-label="Artifact Fusion Details" className="space-y-3 border-t border-amber-400/15 pt-3">
+                          <p className="text-[10px] text-slate-450 font-mono uppercase">Same exact artifact name, set, slot, and tier only.</p>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                            <div className="bg-white/5 border border-white/10 rounded-lg p-2">
+                              <span className="block text-[8px] text-slate-500 font-black uppercase tracking-wider">Matching Copies</span>
+                              <span className={`block text-sm font-black font-mono ${fusionArtifacts.length >= 3 ? 'text-emerald-300' : 'text-rose-300'}`}>
+                                {fusionArtifacts.length}/3
+                              </span>
+                            </div>
+                            <div className="bg-white/5 border border-white/10 rounded-lg p-2">
+                              <span className="block text-[8px] text-slate-500 font-black uppercase tracking-wider">Mora Cost</span>
+                              <span className={`block text-sm font-black font-mono ${fusionRule && mora >= fusionRule.moraCost ? 'text-amber-300' : 'text-rose-300'}`}>
+                                {fusionRule ? fusionRule.moraCost.toLocaleString() : 'MAX'}
+                              </span>
+                            </div>
+                            <div className="bg-white/5 border border-white/10 rounded-lg p-2">
+                              <span className="block text-[8px] text-slate-500 font-black uppercase tracking-wider">Gem Cost</span>
+                              <span className={`block text-sm font-black font-mono ${fusionRule && aetherGems >= fusionRule.gemCost ? 'text-sky-300' : 'text-rose-300'}`}>
+                                {fusionRule ? fusionRule.gemCost.toLocaleString() : 'MAX'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            disabled={!canFuseArtifact}
+                            onClick={() => {
+                              if (!fusionRule || !canFuseArtifact) {
+                                onShowAlert("Artifact Fusion Not Ready!", fusionBlockReason, "error");
+                                return;
+                              }
+                              const fusedArtifact = createFusedArtifact(activeArt);
+                              onFuseArtifacts?.(
+                                fusionArtifacts.map(art => art.id),
+                                fusedArtifact,
+                                fusionRule.moraCost,
+                                fusionRule.gemCost
+                              );
+                              setSelectedArtifactId(fusedArtifact.id);
+                            }}
+                            className={`w-full font-black text-xs uppercase tracking-widest px-6 py-3 rounded-lg flex items-center justify-center gap-2 transition-all active:scale-95 border ${
+                              canFuseArtifact
+                                ? 'bg-amber-400 hover:bg-amber-300 text-slate-950 border-amber-300/40 cursor-pointer shadow-[0_0_18px_rgba(251,191,36,0.22)]'
+                                : 'bg-slate-900/80 text-slate-500 border-white/5 cursor-not-allowed'
+                            }`}
+                          >
+                            <Sparkles className="w-4 h-4" />
+                            {fusionRule ? `Fuse to ${fusionRule.resultRarity === 5 ? 'Gold' : 'Purple'}` : 'Max Fusion Tier'}
+                          </button>
+
+                          <p className={`text-[9px] font-mono uppercase leading-relaxed ${canFuseArtifact ? 'text-emerald-300' : 'text-slate-500'}`}>
+                            {fusionBlockReason}
+                          </p>
+                        </section>
+                      )}
                     </div>
                   </div>
                 );
@@ -1419,12 +1430,12 @@ export default function InventoryManager({
                     </div>
 
                     <div>
-                      <span className="text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-black px-2.5 py-1 rounded font-mono uppercase tracking-wider">WEAPON FORGING</span>
+                      <span className="text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-black px-2.5 py-1 rounded font-mono uppercase tracking-wider">Weapon</span>
                       <h5 className="text-[14px] font-black text-slate-200 mt-2 uppercase font-display truncate">{activeEquippedWeapon.name}</h5>
                       
                       {/* STAT ATTRIBUTE SUB-TYPE */}
                       <div className="mt-2.5 py-2 px-3 bg-black/40 border border-white/5 rounded-lg flex items-center justify-between">
-                        <span className="text-xs text-slate-400 font-bold uppercase font-mono">STAT SUB-TYPE:</span>
+                        <span className="text-xs text-slate-400 font-bold uppercase font-mono">Stats</span>
                         <span className="font-black text-emerald-400 font-mono text-xs uppercase tracking-tight">
                           {wStats ? wStats.calcStatBonus : 'Crit Rate +10.0%'}
                         </span>
@@ -1435,20 +1446,20 @@ export default function InventoryManager({
 
                       {activeEquippedWeapon.level >= 50 ? (
                         <p className="text-xs text-emerald-400 font-mono uppercase mt-2.5 font-black">
-                          LEVEL: LV.{activeEquippedWeapon.level} (MAXED)
+                          Lv. {activeEquippedWeapon.level} maxed
                         </p>
                       ) : (
                         <p className="text-xs text-slate-350 font-mono uppercase mt-2.5">
-                          LEVEL PROGRESS: LV.{activeEquippedWeapon.level} ➔ <span className="text-emerald-400 font-black">LV.{activeEquippedWeapon.level + 1}</span> (ATK +2.5 & Enhancements)
+                          Lv. {activeEquippedWeapon.level} {'->'} <span className="text-emerald-400 font-black">Lv. {activeEquippedWeapon.level + 1}</span>
                         </p>
                       )}
                       {activeEquippedWeapon.level >= 50 ? (
                         <p className="text-xs text-emerald-400 font-mono uppercase mt-1 font-black">
-                          WEAPON HAS REACHED MAXIMUM LEVEL
+                          Max level reached
                         </p>
                       ) : (
                         <p className="text-xs text-amber-400 font-black font-mono mt-1 uppercase tracking-wide">
-                          UPGRADE COST: {(activeEquippedWeapon.level * 200).toLocaleString()} MORA
+                          {(activeEquippedWeapon.level * 200).toLocaleString()} Mora
                         </p>
                       )}
                     </div>
@@ -1457,7 +1468,7 @@ export default function InventoryManager({
                     <div className="p-3.5 bg-gradient-to-br from-indigo-950/40 to-[#0c0d1b] border border-indigo-500/20 rounded-lg shadow-inner">
                       <span className="text-[11px] font-black uppercase text-indigo-300 tracking-wider flex items-center gap-1.5 pb-1 border-b border-indigo-500/15 mb-2">
                         <Hammer className="w-3.5 h-3.5 text-indigo-400" />
-                        Active Forged Feature (Passive)
+                        Passive
                       </span>
                       <p className="text-xs text-slate-200 leading-relaxed italic font-sans">
                         "{wStats ? wStats.calcFeatureDesc : 'Unlocks dynamic strike speed with automatic level up boosts inside active arena trials.'}"
@@ -1480,9 +1491,10 @@ export default function InventoryManager({
                         activeEquippedWeapon.level >= 50
                           ? 'bg-slate-800 text-slate-500 border-slate-700 shadow-none cursor-not-allowed border-slate-700 shadow-none'
                           : 'bg-indigo-650 hover:bg-indigo-550 text-white shadow-md border-indigo-500/20'
-                      } font-black text-xs uppercase tracking-widest py-3 rounded-lg active:scale-95 transition-all text-center cursor-pointer border`}
+                      } font-black text-xs uppercase tracking-widest py-3 rounded-lg active:scale-95 transition-all text-center cursor-pointer border flex items-center justify-center gap-2`}
                     >
-                      {activeEquippedWeapon.level >= 50 ? 'WEAPON MAXED' : 'Enchant Weapon (Forge Level Up)'}
+                      <span>Upgrade</span>
+                      <span className="text-[10px] opacity-75">{activeEquippedWeapon.level >= 50 ? 'Maxed' : `Lv. ${activeEquippedWeapon.level + 1}`}</span>
                     </button>
                   </div>
                 )}
@@ -1491,28 +1503,21 @@ export default function InventoryManager({
 
             <div className="p-4 bg-black/45 border border-white/10 rounded-xl flex flex-col md:flex-row justify-between items-center gap-4 relative overflow-hidden">
               <div className="space-y-1 text-center md:text-left">
-                <h5 className="text-xs font-black text-slate-300 uppercase tracking-widest">Ascend Attunement Sphere</h5>
+                <h5 className="text-xs font-black text-slate-300 uppercase tracking-widest">Ascend</h5>
                 {charLevel >= 80 ? (
                   <p className="text-xs text-emerald-400 font-mono uppercase font-black">
-                    CHARACTER LEVEL CAP REACHED (MAXED)
+                    Lv. {charLevel} maxed
                   </p>
                 ) : (
-                  <p className="text-xs text-slate-450 leading-relaxed font-mono uppercase text-slate-300">
-                    REQUIRED: <b className="text-[#fbbf24] font-black">{costSpecs.mora.toLocaleString()} MORA</b> FORGE REQUISITE &{' '}
-                    {usesWit ? (
-                      <><b className="text-indigo-400 font-mono font-black">{costSpecs.materials} HERO'S WIT</b> BOOKS (REMAINING: {availableBooks})</>
-                    ) : (
-                      <><b className="text-emerald-400 font-mono font-black">{costSpecs.materials} MYCONID SPORE CATALYST</b> (REMAINING: {availableCatalyst})</>
-                    )}
-                  </p>
+                  <div className="flex flex-wrap justify-center gap-2 text-[10px] font-black uppercase font-mono md:justify-start">
+                    <span className="rounded border border-white/10 bg-black/30 px-2 py-1 text-slate-300">Lv. {charLevel} {'->'} Lv. {charLevel + 1}</span>
+                    <span className="rounded border border-amber-400/20 bg-amber-400/10 px-2 py-1 text-amber-300">{costSpecs.mora.toLocaleString()} Mora</span>
+                    <span className={`rounded border px-2 py-1 ${usesWit ? 'border-indigo-400/20 bg-indigo-400/10 text-indigo-300' : 'border-emerald-400/20 bg-emerald-400/10 text-emerald-300'}`}>
+                      {costSpecs.materials} {materialName}
+                    </span>
+                    <span className="rounded border border-white/10 bg-black/30 px-2 py-1 text-slate-400">{availableMaterial} left</span>
+                  </div>
                 )}
-                <p className="text-[10px] text-slate-500 font-mono">
-                  {charLevel >= 80
-                    ? 'Maximum level reached. Character parameters are capped.'
-                    : usesWit
-                      ? 'LV.1•50: Uses Hero’s Wit • LV.50•80: Uses Myconid Spore Catalyst'
-                      : 'LV.50•80: Requires Myconid Spore Catalyst from Rogue Ruins'}
-                </p>
               </div>
 
               <button
@@ -1525,7 +1530,8 @@ export default function InventoryManager({
                 } font-black text-xs uppercase tracking-widest px-6 py-3 rounded-lg flex items-center gap-2 transition-all active:scale-95 cursor-pointer border`}
               >
                 <ArrowUpCircle className="w-5 h-5 text-slate-95" />
-                <span>{charLevel >= 80 ? 'CHARACTER MAXED' : `Ascend Character (LV.${charLevel + 1})`}</span>
+                <span>Ascend</span>
+                <span className="text-[10px] opacity-75">{charLevel >= 80 ? 'Maxed' : `Lv. ${charLevel + 1}`}</span>
               </button>
             </div>
 
@@ -1750,7 +1756,7 @@ export default function InventoryManager({
             </button>
             {showForgeNotes && (
               <p id="forge-notes-panel" className="mt-3">
-                *Ultimate metrics scale with active Forge levels. Armaments and level-up milestones amplify weapon stats and passive potentials every 5 levels!
+                *Ascension uses Hero's Wit from Lv. 1-50 and Myconid Spore Catalyst from Lv. 50-80. Armament upgrades amplify weapon stats and passive potency every 5 levels.
               </p>
             )}
           </div>
