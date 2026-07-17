@@ -148,6 +148,7 @@ export default function InventoryManager({
   const [elementFilter, setElementFilter] = useState<'all' | ElementType>('all');
   const [showInventoryFilters, setShowInventoryFilters] = useState(false);
   const [showForgeNotes, setShowForgeNotes] = useState(false);
+  const [showStatBreakdown, setShowStatBreakdown] = useState(false);
   
   // Artifact filter states
   const [artSlotFilter, setArtSlotFilter] = useState<'all' | ArtifactSlot>('all');
@@ -502,9 +503,7 @@ export default function InventoryManager({
         <div>
           <div className="flex items-center gap-2.5">
             <span className="w-3 h-3 rounded-full bg-cyan-400 animate-pulse"></span>
-            <h2 className="text-lg font-black text-slate-100 uppercase tracking-widest font-display">
-              Ascension Forge & Ledger
-            </h2>
+            <h2 className="text-lg font-black text-slate-100 uppercase tracking-widest font-display">Forge</h2>
           </div>
           <p className="text-xs text-slate-400 mt-1 uppercase font-mono tracking-wider">
             Elevate playable combat stats, optimize weapon slot combinations, and reinforce active loadouts.
@@ -1014,10 +1013,6 @@ export default function InventoryManager({
               </div>
             )}
           </div>
-          <div className="p-4 bg-black/40 border border-white/5 rounded-xl text-center">
-            <span className="text-xs text-slate-500 font-mono uppercase tracking-widest block">Ledger signature status</span>
-            <div className="text-sm text-emerald-400 font-extrabold uppercase mt-1">MATRIX ONLINE</div>
-          </div>
         </div>
 
         {/* Right Columns (2 columns) display detail of selected character */}
@@ -1298,90 +1293,45 @@ export default function InventoryManager({
               {/* Stats column with weapon bonus updates shown */}
               <div className="space-y-5 p-6 bg-black/40 border border-white/10 rounded-xl relative">
                 <div className="absolute top-0 bottom-0 left-0 w-1.5 bg-indigo-500 shadow-[0_0_12px_rgba(99,102,241,0.7)]" />
-                <h4 className="text-sm font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-indigo-400" />
-                  Active combat parameters
-                </h4>
-                
-                <div className="space-y-4 text-sm text-slate-200">
-                  {/* ATK */}
-                  <div className="flex flex-col border-b border-white/5 pb-2.5">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-slate-300 font-extrabold uppercase tracking-wide">Strike Attack Force (ATK)</span>
-                      <span className="font-mono text-lg font-black text-amber-400">
-                        {finalAtk}
-                      </span>
-                    </div>
-                    <span className="text-xs text-slate-500 font-mono lowercase tracking-wide mt-1">
-                      base: {Math.round(selectedChar.baseStats.atk * charMult)} + growth: {Math.round(charLevel * 3.8 * charMult)} + weapon: {finalWeaponBaseAtk} {totalArtDmgPercent > 0 ? ` (+${Math.round(totalArtDmgPercent * 100)}% artifact)` : ''} {pBuffs.atk > 0 ? ` (+${Math.round(pBuffs.atk * 100)}% portrait)` : ''} [mult: {charMult}x]
-                    </span>
+                <section aria-labelledby="forge-stats-title" className="rounded-xl border border-white/10 bg-black/40 p-4">
+                  <h4 id="forge-stats-title" className="text-sm font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2"><Sparkles className="w-5 h-5 text-indigo-400" />Stats</h4>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 mt-4">
+                    {[
+                      ['ATK', finalAtk],
+                      ['HP', finalHp],
+                      ['DEF', finalDef],
+                      ['CRIT', `${finalCritRate.toFixed(1)}%`],
+                      ['CRIT DMG', `${finalCritDmg.toFixed(1)}%`],
+                      ['Cooldown', `-${finalCdReduction.toFixed(0)}%`],
+                    ].map(([label, value]) => (
+                      <div key={label} className="bg-black/35 border border-white/5 rounded-lg px-3 py-2">
+                        <span className="block text-[10px] font-black text-slate-400 uppercase tracking-wider">{label}</span>
+                        <strong className="block mt-1 font-mono text-base text-slate-100">{value}</strong>
+                      </div>
+                    ))}
                   </div>
+                </section>
 
-                  {/* HP */}
-                  <div className="flex flex-col border-b border-white/5 pb-2.5">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-slate-300 font-extrabold uppercase tracking-wide">Celestial Health Index (HP)</span>
-                      <span className="font-mono text-lg font-black text-rose-400">
-                        {finalHp}
-                      </span>
-                    </div>
-                    <span className="text-xs text-slate-500 font-mono lowercase tracking-wide mt-1">
-                      base: {Math.round(selectedChar.baseStats.hp * charMult)} + growth: {Math.round(charLevel * 14 * charMult)} {totalArtHpPercent > 0 ? ` (+${Math.round(totalArtHpPercent * 100)}% artifact)` : ''} {pBuffs.hp > 0 ? ` (+${Math.round(pBuffs.hp * 100)}% portrait)` : ''}
-                    </span>
-                  </div>
+                <button
+                  type="button"
+                  aria-expanded={showStatBreakdown}
+                  aria-controls="forge-stat-breakdown-panel"
+                  onClick={() => setShowStatBreakdown((visible) => !visible)}
+                  className="text-left text-xs font-black uppercase tracking-wider text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+                >
+                  Stat Breakdown
+                </button>
 
-                  {/* DEF */}
-                  <div className="flex flex-col border-b border-white/5 pb-2.5">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-slate-300 font-extrabold uppercase tracking-wide">Steel Barrier Defense (DEF)</span>
-                      <span className="font-mono text-lg font-black text-blue-400">
-                        {finalDef}
-                      </span>
-                    </div>
-                    <span className="text-xs text-slate-500 font-mono lowercase tracking-wide mt-1">
-                      base: {Math.round(selectedChar.baseStats.def * charMult)} + growth: {Math.round(charLevel * 2.4 * charMult)} DEF {pBuffs.def > 0 ? ` (+${Math.round(pBuffs.def * 100)}% portrait)` : ''}
-                    </span>
+                {showStatBreakdown && (
+                  <div id="forge-stat-breakdown-panel" className="space-y-3 text-xs text-slate-400 font-mono">
+                    <p>ATK: base {Math.round(selectedChar.baseStats.atk * charMult)} + growth {Math.round(charLevel * 3.8 * charMult)} + weapon {finalWeaponBaseAtk}{totalArtDmgPercent > 0 ? ` (+${Math.round(totalArtDmgPercent * 100)}% artifact)` : ''}{pBuffs.atk > 0 ? ` (+${Math.round(pBuffs.atk * 100)}% portrait)` : ''} [mult: {charMult}x]</p>
+                    <p>HP: base {Math.round(selectedChar.baseStats.hp * charMult)} + growth {Math.round(charLevel * 14 * charMult)}{totalArtHpPercent > 0 ? ` (+${Math.round(totalArtHpPercent * 100)}% artifact)` : ''}{pBuffs.hp > 0 ? ` (+${Math.round(pBuffs.hp * 100)}% portrait)` : ''}</p>
+                    <p>DEF: base {Math.round(selectedChar.baseStats.def * charMult)} + growth {Math.round(charLevel * 2.4 * charMult)}{pBuffs.def > 0 ? ` (+${Math.round(pBuffs.def * 100)}% portrait)` : ''}</p>
+                    <p>CRIT: base {(selectedChar.baseStats.critRate * 100).toFixed(1)}% + weapon {(bonusCritRate * 100).toFixed(1)}%{totalArtCritRate > 0 ? ` + artifact +${(totalArtCritRate * 100).toFixed(1)}%` : ''}</p>
+                    <p>CRIT DMG: base {(selectedChar.baseStats.critDmg * 100).toFixed(1)}% + weapon {(bonusCritDmg * 100).toFixed(1)}%{totalArtCritDmg > 0 ? ` + artifact +${(totalArtCritDmg * 100).toFixed(1)}%` : ''}</p>
+                    <p>Cooldown: artifact chrono set bonus -{finalCdReduction.toFixed(0)}% skill cooldown duration</p>
                   </div>
-
-                  {/* CRIT RATE */}
-                  <div className="flex flex-col border-b border-white/5 pb-2.5">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-slate-300 font-extrabold uppercase tracking-wide">Strike Critical Rate (CRIT %)</span>
-                      <span className="font-mono text-lg font-black text-emerald-400">
-                        {finalCritRate.toFixed(1)}%
-                      </span>
-                    </div>
-                    <span className="text-xs text-slate-500 font-mono lowercase tracking-wide mt-1">
-                      base: {(selectedChar.baseStats.critRate * 100).toFixed(1)}% + weapon: {(bonusCritRate * 100).toFixed(1)}% {totalArtCritRate > 0 ? ` + artifact: +${(totalArtCritRate * 100).toFixed(1)}%` : ''}
-                    </span>
-                  </div>
-
-                  {/* CRIT DMG */}
-                  <div className="flex flex-col border-b border-white/5 pb-2.5">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-slate-300 font-extrabold uppercase tracking-wide">Critical Damage Multiplier</span>
-                      <span className="font-mono text-lg font-black text-cyan-400">
-                        {finalCritDmg.toFixed(1)}%
-                      </span>
-                    </div>
-                    <span className="text-xs text-slate-500 font-mono lowercase tracking-wide mt-1">
-                      base: {(selectedChar.baseStats.critDmg * 100).toFixed(1)}% + weapon: {(bonusCritDmg * 100).toFixed(1)}% {totalArtCritDmg > 0 ? ` + artifact: +${(totalArtCritDmg * 100).toFixed(1)}%` : ''}
-                    </span>
-                  </div>
-
-                  {/* COOLDOWN REDUCTION */}
-                  <div className="flex flex-col pb-1.5">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-slate-300 font-extrabold uppercase tracking-wide">Cooldown Reduction (CDR)</span>
-                      <span className="font-mono text-lg font-black text-violet-400">
-                        -{finalCdReduction.toFixed(0)}%
-                      </span>
-                    </div>
-                    <span className="text-xs text-slate-500 font-mono lowercase tracking-wide mt-1">
-                      artifact chrono set bonus: -{finalCdReduction.toFixed(0)}% skill cooldown duration
-                    </span>
-                  </div>
-                </div>
+                )}
 
               </div>
 
