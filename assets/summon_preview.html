@@ -370,9 +370,9 @@
           y: -80 + perpY,
           radius: item.rarity === 5 ? 12 : item.rarity === 4 ? 9 : 6,
           progress: 0,
-          speed: 0.014 + Math.random() * 0.003,
+          speed: (0.014 + Math.random() * 0.003) * 0.45, // 2.25x slower (0.45 speed multiplier)
           angle,
-          delay: index * 4.5,
+          delay: index * 10.2, // 2.25x staggered spacing
           rarity: item.rarity,
           element: item.element,
           primaryColor: pColor,
@@ -497,8 +497,8 @@
 
       // Dimensional vortex (Accretion disk)
       if (animationPhase === 'meteor') {
-        vortexRotation += 0.02 * timeScale;
-        vortexPulse += 0.05 * timeScale;
+        vortexRotation += 0.0087 * timeScale; // 2.25x slower accretion rotation
+        vortexPulse += 0.022 * timeScale; // 2.25x slower accretion pulsing
 
         const vX = width * 0.35;
         const vY = height * 0.65;
@@ -507,18 +507,34 @@
         ctx.save();
         ctx.translate(vX, vY);
         
-        // Swirling outer rings
+        // Swirling outer rings (rendered with uniform stroke arcs to support all devices)
         ctx.rotate(vortexRotation);
         ctx.strokeStyle = maxRarity === 5 ? 'rgba(245, 158, 11, 0.2)' : maxRarity === 4 ? 'rgba(168, 85, 247, 0.15)' : 'rgba(6, 182, 212, 0.12)';
         ctx.lineWidth = 4;
         
         ctx.beginPath();
-        ctx.ellipse(0, 0, 100 * pulseFactor, 30 * pulseFactor, 0, 0, Math.PI * 2);
+        const rX1 = 100 * pulseFactor;
+        const rY1 = 30 * pulseFactor;
+        for (let a = 0; a <= Math.PI * 2; a += 0.1) {
+          const px = Math.cos(a) * rX1;
+          const py = Math.sin(a) * rY1;
+          if (a === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
         ctx.stroke();
 
         ctx.rotate(-vortexRotation * 1.5);
         ctx.beginPath();
-        ctx.ellipse(0, 0, 70 * pulseFactor, 20 * pulseFactor, 0, 0, Math.PI * 2);
+        const rX2 = 70 * pulseFactor;
+        const rY2 = 20 * pulseFactor;
+        for (let a = 0; a <= Math.PI * 2; a += 0.1) {
+          const px = Math.cos(a) * rX2;
+          const py = Math.sin(a) * rY2;
+          if (a === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
         ctx.stroke();
 
         // Dark Event Horizon center core

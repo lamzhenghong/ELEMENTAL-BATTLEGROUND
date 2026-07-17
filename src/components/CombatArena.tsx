@@ -4070,7 +4070,7 @@ export default function CombatArena({
         ctx.fillStyle = 'rgba(249, 168, 212, 0.45)';
         for (let p = 0; p < 12; p++) {
           ctx.beginPath();
-          ctx.ellipse(Math.random() * dimensions.width, Math.random() * dimensions.height, 2.5, 5, Math.random() * Math.PI, 0, Math.PI * 2);
+          ctx.arc(Math.random() * dimensions.width, Math.random() * dimensions.height, 3.5, 0, Math.PI * 2);
           ctx.fill();
         }
         ctx.restore();
