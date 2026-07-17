@@ -3,7 +3,8 @@ import {
   ARTIFACT_FUSION_RULES,
   createFusedArtifact,
   getEligibleFusionArtifacts,
-  getArtifactFusionRule
+  getArtifactFusionRule,
+  getArtifactFusionAvailability
 } from './artifactFusion';
 import { Artifact } from '../types';
 
@@ -61,5 +62,15 @@ assert.equal(fused.slot, 'shoe');
 assert.equal(fused.rarity, 5);
 assert.equal(fused.isLocked, false);
 assert.equal(fused.equippedTo, undefined);
+
+const unavailableFusion = getArtifactFusionAvailability({
+  artifact: artifact('selected-blue', 3),
+  matchingArtifactCount: 3,
+  mora: 10000,
+  aetherGems: 1000,
+  hasFuseHandler: false
+});
+assert.equal(unavailableFusion.canFuse, false);
+assert.equal(unavailableFusion.blockReason, 'Artifact fusion is unavailable right now.');
 
 console.log('artifact fusion rules ok');

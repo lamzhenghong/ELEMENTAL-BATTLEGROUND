@@ -37,6 +37,54 @@ export const getArtifactFusionRule = (rarity: Artifact['rarity']): ArtifactFusio
   return null;
 };
 
+export interface ArtifactFusionAvailabilityInput {
+  artifact: Pick<Artifact, 'name' | 'rarity' | 'isLocked' | 'equippedTo'>;
+  matchingArtifactCount: number;
+  mora: number;
+  aetherGems: number;
+  hasFuseHandler: boolean;
+}
+
+export interface ArtifactFusionAvailability {
+  canFuse: boolean;
+  blockReason: string;
+}
+
+export const getArtifactFusionAvailability = ({
+  artifact,
+  matchingArtifactCount,
+  mora,
+  aetherGems,
+  hasFuseHandler
+}: ArtifactFusionAvailabilityInput): ArtifactFusionAvailability => {
+  const rule = getArtifactFusionRule(artifact.rarity);
+  if (!rule) {
+    return { canFuse: false, blockReason: 'Gold artifacts are already at maximum tier.' };
+  }
+  if (artifact.isLocked) {
+    return { canFuse: false, blockReason: 'Unlock this artifact before fusion.' };
+  }
+  if (artifact.equippedTo) {
+    return { canFuse: false, blockReason: 'Unequip this artifact before fusion.' };
+  }
+  if (matchingArtifactCount < 3) {
+    return {
+      canFuse: false,
+      blockReason: `Need 3 unlocked, unequipped copies of ${artifact.name}.`
+    };
+  }
+  if (mora < rule.moraCost || aetherGems < rule.gemCost) {
+    return {
+      canFuse: false,
+      blockReason: `Requires ${rule.moraCost.toLocaleString()} Mora and ${rule.gemCost.toLocaleString()} Gems.`
+    };
+  }
+  if (!hasFuseHandler) {
+    return { canFuse: false, blockReason: 'Artifact fusion is unavailable right now.' };
+  }
+  return { canFuse: true, blockReason: 'Ready to fuse this artifact part.' };
+};
+
 export const isSameArtifactPart = (a: Artifact, b: Artifact) => (
   a.name === b.name &&
   a.set === b.set &&

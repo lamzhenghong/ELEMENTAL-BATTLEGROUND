@@ -13,7 +13,12 @@ import { WEAPONS_DATABASE } from '../data/weapons';
 import { getAccumulatedPortraitBuffs } from '../utils/portraits';
 import { LanguageType, t } from '../utils/i18n';
 import { ARTIFACT_SETS, ARTIFACT_NAMES, getArtifactMainStat } from '../data/artifacts';
-import { createFusedArtifact, getArtifactFusionRule, getEligibleFusionArtifacts } from '../utils/artifactFusion';
+import {
+  createFusedArtifact,
+  getArtifactFusionAvailability,
+  getArtifactFusionRule,
+  getEligibleFusionArtifacts
+} from '../utils/artifactFusion';
 
 export function getUpgradedWeaponStats(weapon: Weapon) {
   const lvl = weapon.level || 1;
@@ -1048,19 +1053,15 @@ export default function InventoryManager({
                       activeArt,
                       ...eligibleFusionArtifacts.filter(art => art.id !== activeArt.id)
                     ].slice(0, 3);
-                const hasEnoughFusionCurrency = !!fusionRule && mora >= fusionRule.moraCost && aetherGems >= fusionRule.gemCost;
-                const canFuseArtifact = !!fusionRule && fusionArtifacts.length === 3 && hasEnoughFusionCurrency && !!onFuseArtifacts;
-                const fusionBlockReason = !fusionRule
-                  ? 'Gold artifacts are already at maximum tier.'
-                  : activeArt.isLocked
-                    ? 'Unlock this artifact before fusion.'
-                    : activeArt.equippedTo
-                      ? 'Unequip this artifact before fusion.'
-                      : fusionArtifacts.length < 3
-                        ? `Need 3 unlocked, unequipped copies of ${activeArt.name}.`
-                        : !hasEnoughFusionCurrency
-                          ? `Requires ${fusionRule.moraCost.toLocaleString()} Mora and ${fusionRule.gemCost.toLocaleString()} Gems.`
-                          : 'Ready to fuse this artifact part.';
+                const fusionAvailability = getArtifactFusionAvailability({
+                  artifact: activeArt,
+                  matchingArtifactCount: fusionArtifacts.length,
+                  mora,
+                  aetherGems,
+                  hasFuseHandler: !!onFuseArtifacts
+                });
+                const canFuseArtifact = fusionAvailability.canFuse;
+                const fusionBlockReason = fusionAvailability.blockReason;
 
                 return (
                   <div className="space-y-4 flex-1 flex flex-col">
