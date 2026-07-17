@@ -916,82 +916,46 @@ export default function InventoryManager({
             )}
 
             {activeTab === 'items' && (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Left side: Grid of materials (takes 2 cols on large screen) */}
-                <div className="lg:col-span-2 space-y-3">
-                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
-                    {inventoryItems.map((item, idx) => {
-                      const isSelected = selectedItemName === item.name;
-                      // Display icon based on item
-                      let itemEmoji = '📦';
-                      if (item.id === 'wit_exp') itemEmoji = '🧪';
-                      if (item.id === 'ore_exp') itemEmoji = '💎';
-                      
-                      // Rarity color borders
-                      const rarityBorders = [
-                        'border-white/5',
-                        'border-white/10',
-                        'border-emerald-500/20',
-                        'border-blue-500/20',
-                        'border-purple-500/30 bg-purple-950/10',
-                        'border-amber-500/30 bg-amber-950/10'
-                      ];
-                      const rarityClass = rarityBorders[item.rarity] || 'border-white/5';
-                      
-                      return (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => {
-                            setSelectedItemName(item.name);
-                            AetheriaAudioEngine.playClick();
-                          }}
-                          className={`aspect-square rounded-xl border flex flex-col items-center justify-center relative cursor-pointer group transition-all duration-155 ${rarityClass} ${
-                            isSelected 
-                              ? 'ring-2 ring-indigo-400 bg-slate-900 border-indigo-400 shadow-md shadow-indigo-500/10' 
-                              : 'bg-black/20 hover:bg-black/35 hover:border-white/10'
-                          }`}
-                        >
-                          <span className="text-3xl filter drop-shadow group-hover:scale-110 transition-transform">{itemEmoji}</span>
-                          <span className="absolute bottom-1 right-1.5 bg-black/80 px-1 py-0.5 rounded text-[9px] font-mono font-black text-slate-300">
-                            x{item.count}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-                
-                {/* Right side: selected item detail card */}
-                <div className="bg-[#0b0f19]/75 border border-white/10 p-5 rounded-2xl flex flex-col justify-between min-h-[160px] h-full shadow-[0_4px_30px_rgba(0,0,0,0.4)] backdrop-blur-md">
-                  {(() => {
-                    const selectedItem = inventoryItems.find(item => item.name === selectedItemName) || inventoryItems[0];
-                    if (!selectedItem) {
-                      return <div className="text-slate-500 text-xs italic text-center py-10">Select an item to view details</div>;
-                    }
-                    
-                    let itemEmoji = '📦';
-                    if (selectedItem.id === 'wit_exp') itemEmoji = '🧪';
-                    if (selectedItem.id === 'ore_exp') itemEmoji = '💎';
-                    
-                    return (
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-3 border-b border-white/5 pb-3">
-                          <span className="text-3xl">{itemEmoji}</span>
-                          <div>
-                            <h4 className="text-sm font-black text-slate-100 uppercase tracking-wide leading-tight">{selectedItem.name}</h4>
-                            <span className="text-[9px] font-black uppercase text-indigo-400 font-mono tracking-wider block mt-0.5">
-                              Quantity: x{selectedItem.count}
-                            </span>
-                          </div>
-                        </div>
-                        <p className="text-xs text-slate-400 leading-relaxed font-sans select-text">
-                          {selectedItem.desc}
-                        </p>
-                      </div>
-                    );
-                  })()}
-                </div>
+              <div className="grid grid-cols-4 sm:grid-cols-5 gap-2.5 max-h-[500px] overflow-y-auto pr-1">
+                {inventoryItems.map((item, idx) => {
+                  const isSelected = selectedItemName === item.name;
+                  // Display icon based on item
+                  let itemEmoji = '📦';
+                  if (item.id === 'wit_exp') itemEmoji = '🧪';
+                  if (item.id === 'ore_exp') itemEmoji = '💎';
+                  
+                  // Rarity color borders
+                  const rarityBorders = [
+                    'border-white/5',
+                    'border-white/10',
+                    'border-emerald-500/20',
+                    'border-blue-500/20',
+                    'border-purple-500/30 bg-purple-950/10',
+                    'border-amber-500/30 bg-amber-950/10'
+                  ];
+                  const rarityClass = rarityBorders[item.rarity] || 'border-white/5';
+                  
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        setSelectedItemName(item.name);
+                        AetheriaAudioEngine.playClick();
+                      }}
+                      className={`aspect-square rounded-xl border flex flex-col items-center justify-center relative cursor-pointer group transition-all duration-155 ${rarityClass} ${
+                        isSelected 
+                          ? 'ring-2 ring-indigo-400 bg-slate-900 border-indigo-400 shadow-md shadow-indigo-500/10' 
+                          : 'bg-black/20 hover:bg-black/35 hover:border-white/10'
+                      }`}
+                    >
+                      <span className="text-2xl filter drop-shadow group-hover:scale-110 transition-transform">{itemEmoji}</span>
+                      <span className="absolute bottom-1 right-1.5 bg-black/80 px-1 py-0.5 rounded text-[8px] font-mono font-black text-slate-300">
+                        x{item.count}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             )}
 
@@ -1090,7 +1054,78 @@ export default function InventoryManager({
 
         {/* Right Columns (2 columns) display detail of selected character */}
         <div className="lg:col-span-2 bg-[#060811]/60 border border-white/10 p-6 rounded-xl flex flex-col justify-between shadow-[0_0_25px_rgba(99,102,241,0.06)]">
-          {activeTab === 'artifacts' ? (
+          {activeTab === 'items' ? (
+            // AUGMENT DETAIL AND DESCRIPTION CONTENT
+            <div className="space-y-6 flex-1 flex flex-col justify-start">
+              {(() => {
+                const selectedItem = inventoryItems.find(item => item.name === selectedItemName) || inventoryItems[0];
+                if (!selectedItem) {
+                  return (
+                    <div className="flex-1 flex flex-col items-center justify-center text-center p-8 space-y-3">
+                      <span className="text-5xl">📦</span>
+                      <h3 className="text-base font-black text-slate-400 uppercase tracking-widest font-mono">No Items Available</h3>
+                    </div>
+                  );
+                }
+                
+                let itemEmoji = '📦';
+                if (selectedItem.id === 'wit_exp') itemEmoji = '🧪';
+                if (selectedItem.id === 'ore_exp') itemEmoji = '💎';
+                
+                // Rarity text color
+                const rarityColors = [
+                  'text-slate-400',
+                  'text-slate-300',
+                  'text-emerald-400',
+                  'text-blue-400',
+                  'text-purple-400',
+                  'text-amber-400'
+                ];
+                const rarityText = rarityColors[selectedItem.rarity] || 'text-slate-400';
+                
+                const rarityLabel = 
+                  selectedItem.rarity === 5 ? 'Legendary' :
+                  selectedItem.rarity === 4 ? 'Epic' :
+                  selectedItem.rarity === 3 ? 'Rare' : 'Common';
+                
+                return (
+                  <div className="space-y-6 animate-fade-in">
+                    <div className="flex items-center gap-4 border-b border-white/15 pb-4">
+                      <div className="w-16 h-16 rounded-xl bg-black/40 border border-white/15 flex items-center justify-center text-4xl shadow-md shrink-0">
+                        {itemEmoji}
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-black text-slate-100 uppercase tracking-wide font-display">{selectedItem.name}</h3>
+                        <div className="text-xs text-slate-350 flex items-center gap-2.5 mt-1 font-mono uppercase">
+                          <span className={`font-extrabold ${rarityText}`}>{rarityLabel} Augment</span>
+                          <span>•</span>
+                          <span className="text-indigo-400 font-black">Quantity: x{selectedItem.count}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-black/30 border border-white/10 p-5 rounded-xl space-y-3">
+                      <h4 className="text-xs font-black text-slate-300 uppercase tracking-widest font-mono">Augment Description & Effect</h4>
+                      <p className="text-sm text-slate-300 leading-relaxed font-sans select-text">
+                        {selectedItem.desc}
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="bg-white/5 border border-white/10 p-4 rounded-lg space-y-1">
+                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider block font-mono">Acquisition Source</span>
+                        <span className="text-xs text-slate-305 text-slate-300 font-bold block">Obtained from Combat Arena waves and quest milestones.</span>
+                      </div>
+                      <div className="bg-white/5 border border-white/10 p-4 rounded-lg space-y-1">
+                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider block font-mono">Utility Guide</span>
+                        <span className="text-xs text-slate-305 text-slate-300 font-bold block">Apply under the Roster panel to upgrade active heroes.</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          ) : activeTab === 'artifacts' ? (
             // ARTIFACT DETAIL AND MANAGEMENT CONTENT
             <div className="space-y-4 flex-1 flex flex-col">
               {(() => {
