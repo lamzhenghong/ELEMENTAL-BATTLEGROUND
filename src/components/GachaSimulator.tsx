@@ -1203,19 +1203,19 @@ export default function GachaSimulator({
           >
             {/* Ambient Background Particles */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-40">
-              {Array.from({ length: 15 }).map((_, idx) => (
+              {Array.from({ length: 4 }).map((_, idx) => (
                 <div
                   key={idx}
                   className={`absolute rounded-full filter blur-xl animate-pulse ${
                     maxRarityInPull === 5 ? 'bg-amber-500/20' : maxRarityInPull === 4 ? 'bg-purple-500/10' : 'bg-cyan-500/10'
                   }`}
                   style={{
-                    width: `${80 + Math.random() * 150}px`,
-                    height: `${80 + Math.random() * 150}px`,
+                    width: `${120 + Math.random() * 100}px`,
+                    height: `${120 + Math.random() * 100}px`,
                     left: `${Math.random() * 100}%`,
                     top: `${Math.random() * 100}%`,
-                    animationDuration: `${3 + Math.random() * 5}s`,
-                    animationDelay: `${Math.random() * 3}s`,
+                    animationDuration: `${4 + Math.random() * 4}s`,
+                    animationDelay: `${idx * 0.5}s`,
                   }}
                 />
               ))}
@@ -1255,15 +1255,16 @@ export default function GachaSimulator({
                   return (
                     <motion.div
                       key={i}
-                      initial={{ scale: 0.2, opacity: 0, rotateY: 90, y: 40 }}
-                      animate={{ scale: 1, opacity: 1, rotateY: 0, y: 0 }}
-                      exit={{ scale: 0.2, opacity: 0, rotateY: -90, y: -40 }}
+                      initial={{ scale: 0.8, opacity: 0, y: 30 }}
+                      animate={{ scale: 1, opacity: 1, y: 0 }}
+                      exit={{ scale: 0.8, opacity: 0, y: -30 }}
                       transition={{ 
-                        type: "spring", 
-                        stiffness: 160, 
-                        damping: 14, 
-                        delay: i * 0.08 
+                        type: "tween", 
+                        ease: "easeOut",
+                        duration: 0.3, 
+                        delay: i * 0.04 
                       }}
+                      style={{ willChange: "transform, opacity" }}
                       onClick={() => {
                         if (item.isCharacter && onNavigateToWikiChar) {
                           AetheriaAudioEngine.playClick();
@@ -1275,12 +1276,12 @@ export default function GachaSimulator({
                           onNavigateToWikiWeapon(item.name);
                         }
                       }}
-                      className={`relative rounded-xl border p-4 flex flex-col justify-between items-center text-center min-h-[190px] transition-all backdrop-blur-md overflow-hidden group cursor-pointer hover:scale-[1.03] active:scale-[0.98] ${
+                      className={`relative rounded-xl border p-4 flex flex-col justify-between items-center text-center min-h-[190px] transition-all overflow-hidden group cursor-pointer hover:scale-[1.03] active:scale-[0.98] ${
                         isGold 
-                          ? 'bg-amber-955/20 border-amber-400/50 shadow-[0_0_25px_rgba(245,158,11,0.2)] hover:border-amber-400' 
+                          ? 'bg-[#15130b] border-amber-400/50 shadow-[0_0_25px_rgba(245,158,11,0.2)] hover:border-amber-400' 
                           : isPurple 
-                            ? 'bg-purple-955/20 border-purple-400/40 shadow-[0_0_20px_rgba(168,85,247,0.15)] hover:border-purple-400' 
-                            : 'bg-slate-900/40 border-white/5 shadow-md hover:border-slate-800'
+                            ? 'bg-[#110c1b] border-purple-400/40 shadow-[0_0_20px_rgba(168,85,247,0.15)] hover:border-purple-400' 
+                            : 'bg-[#0d1222] border-white/5 shadow-md hover:border-slate-800'
                       }`}
                     >
                       {/* NEW! Badge */}
