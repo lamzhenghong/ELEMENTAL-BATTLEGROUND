@@ -14,7 +14,7 @@ import { getAccumulatedPortraitBuffs } from '../utils/portraits';
 import { LanguageType, t } from '../utils/i18n';
 import { ARTIFACT_SETS, ARTIFACT_NAMES, getArtifactMainStat } from '../data/artifacts';
 import {
-  createFusedArtifact,
+  createArtifactFusionRequest,
   getArtifactFusionAvailability,
   getArtifactFusionRule,
   getEligibleFusionArtifacts
@@ -1208,10 +1208,11 @@ export default function InventoryManager({
 
                       <button
                         type="button"
+                        aria-label="Fusion Details"
                         aria-expanded={showArtifactFusion}
                         aria-controls="artifact-fusion-panel"
                         onClick={() => setShowArtifactFusion((visible) => !visible)}
-                        className="text-xs font-black uppercase tracking-wider text-amber-300 hover:text-amber-200"
+                        className="inline-flex min-h-10 items-center px-3 py-2 text-xs font-black uppercase tracking-wider text-amber-300 transition-colors hover:text-amber-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300"
                       >
                         {showArtifactFusion ? 'Hide Fusion Details' : 'Fusion Details'}
                       </button>
@@ -1248,14 +1249,25 @@ export default function InventoryManager({
                                 onShowAlert("Artifact Fusion Not Ready!", fusionBlockReason, "error");
                                 return;
                               }
-                              const fusedArtifact = createFusedArtifact(activeArt);
+                              const fusionRequest = createArtifactFusionRequest({
+                                artifact: activeArt,
+                                fusionArtifacts,
+                                mora,
+                                aetherGems,
+                                hasFuseHandler: !!onFuseArtifacts,
+                                fusedArtifactId: `art_fuse_${Date.now()}_${Math.floor(Math.random() * 100000)}`
+                              });
+                              if (!fusionRequest) {
+                                onShowAlert("Artifact Fusion Not Ready!", fusionBlockReason, "error");
+                                return;
+                              }
                               onFuseArtifacts?.(
-                                fusionArtifacts.map(art => art.id),
-                                fusedArtifact,
-                                fusionRule.moraCost,
-                                fusionRule.gemCost
+                                fusionRequest.consumeArtifactIds,
+                                fusionRequest.upgradedArtifact,
+                                fusionRequest.costMora,
+                                fusionRequest.costGems
                               );
-                              setSelectedArtifactId(fusedArtifact.id);
+                              setSelectedArtifactId(fusionRequest.upgradedArtifact.id);
                             }}
                             className={`w-full font-black text-xs uppercase tracking-widest px-6 py-3 rounded-lg flex items-center justify-center gap-2 transition-all active:scale-95 border ${
                               canFuseArtifact
@@ -1288,11 +1300,13 @@ export default function InventoryManager({
               <div>
                 <h3 className="text-xl font-black text-slate-100 uppercase tracking-widest font-display">{selectedChar.name}</h3>
                 <div className="text-xs text-slate-300 flex flex-wrap items-center gap-3 mt-1.5 uppercase font-[#95a5a6] font-mono">
+                  <span className="font-extrabold text-amber-400 bg-amber-400/10 px-2 py-0.5 border border-amber-400/20 rounded">{selectedChar.rarity}★</span>
+                  <span>•</span>
                   <span className="font-extrabold text-amber-400 bg-amber-400/10 px-2 py-0.5 border border-amber-400/20 rounded">LEVEL {charLevel} / 80</span>
                   <span>•</span>
-                  <span className="text-cyan-400 font-bold">{selectedChar.element} ATTUNEMENT</span>
+                  <span className="text-cyan-400 font-bold">{selectedChar.element}</span>
                   <span>•</span>
-                  <span className="text-purple-455 font-bold text-purple-300">{selectedChar.weaponType} PROFESSIONAL</span>
+                  <span className="text-purple-455 font-bold text-purple-300">{selectedChar.weaponType}</span>
                   <span>•</span>
                   <span className="text-amber-400 font-extrabold bg-amber-400/10 px-2.5 py-0.5 border border-amber-400/20 rounded">PORTRAIT P{pLvl}</span>
                 </div>
@@ -1326,10 +1340,11 @@ export default function InventoryManager({
 
                 <button
                   type="button"
+                  aria-label="Stat Breakdown"
                   aria-expanded={showStatBreakdown}
                   aria-controls="forge-stat-breakdown-panel"
                   onClick={() => setShowStatBreakdown((visible) => !visible)}
-                  className="text-left text-xs font-black uppercase tracking-wider text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+                  className="inline-flex min-h-10 items-center px-3 py-2 text-left text-xs font-black uppercase tracking-wider text-slate-400 transition-colors cursor-pointer hover:text-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-300"
                 >
                   Stat Breakdown
                 </button>
@@ -1352,7 +1367,7 @@ export default function InventoryManager({
                 <div className="bg-black/35 border border-white/10 rounded-xl p-5">
                   <h4 className="text-sm font-black text-pink-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                     <Shield className="w-5 h-5 text-pink-400" />
-                    Equip Armaments Slot
+                    Weapon
                   </h4>
 
                   {/* Searching Input Form Box */}
@@ -1363,12 +1378,15 @@ export default function InventoryManager({
                       placeholder="Search compatible weapons..."
                       value={weaponSearchQuery}
                       onChange={(e) => setWeaponSearchQuery(e.target.value)}
-                      className="w-full pl-9 pr-8 py-2 bg-black/45 border border-white/10 rounded-lg text-xs font-mono text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500/50"
+                      className="w-full pl-9 pr-12 py-2 bg-black/45 border border-white/10 rounded-lg text-xs font-mono text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500/50"
                     />
                     {weaponSearchQuery && (
                       <button
+                        type="button"
+                        aria-label="Clear weapon search"
+                        title="Clear weapon search"
                         onClick={() => setWeaponSearchQuery('')}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white font-extrabold text-sm"
+                        className="absolute right-1 top-1/2 inline-flex min-h-10 min-w-10 -translate-y-1/2 items-center justify-center rounded text-sm font-extrabold text-slate-400 transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-300"
                       >
                         ✕
                       </button>
@@ -1476,7 +1494,7 @@ export default function InventoryManager({
                       </p>
                       <div className="flex justify-between items-center mt-3 pt-2 border-t border-white/5">
                         <span className="text-[10px] text-[#fbbf24] font-mono uppercase font-black tracking-widest">
-                          Refinement Stage: S{Math.floor(Math.min(activeEquippedWeapon.level, 49) / 5) + 1}
+                          Refinement: S{Math.floor(Math.min(activeEquippedWeapon.level, 49) / 5) + 1}
                         </span>
                         <span className="text-[10px] text-emerald-400 font-mono uppercase font-bold text-right">
                           Passive Potency: +{Math.floor(Math.min(activeEquippedWeapon.level, 49) / 5) * 8}%

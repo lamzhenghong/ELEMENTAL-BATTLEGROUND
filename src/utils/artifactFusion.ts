@@ -50,6 +50,22 @@ export interface ArtifactFusionAvailability {
   blockReason: string;
 }
 
+export interface ArtifactFusionRequestInput {
+  artifact: Artifact;
+  fusionArtifacts: Artifact[];
+  mora: number;
+  aetherGems: number;
+  hasFuseHandler: boolean;
+  fusedArtifactId: string;
+}
+
+export interface ArtifactFusionRequest {
+  consumeArtifactIds: string[];
+  upgradedArtifact: Artifact;
+  costMora: number;
+  costGems: number;
+}
+
 export const getArtifactFusionAvailability = ({
   artifact,
   matchingArtifactCount,
@@ -103,6 +119,33 @@ export const getEligibleFusionArtifacts = (artifacts: Artifact[], baseArtifact: 
       !art.equippedTo
     ))
     .slice(0, 3);
+};
+
+export const createArtifactFusionRequest = ({
+  artifact,
+  fusionArtifacts,
+  mora,
+  aetherGems,
+  hasFuseHandler,
+  fusedArtifactId
+}: ArtifactFusionRequestInput): ArtifactFusionRequest | null => {
+  const rule = getArtifactFusionRule(artifact.rarity);
+  const availability = getArtifactFusionAvailability({
+    artifact,
+    matchingArtifactCount: fusionArtifacts.length,
+    mora,
+    aetherGems,
+    hasFuseHandler
+  });
+
+  if (!rule || !availability.canFuse) return null;
+
+  return {
+    consumeArtifactIds: fusionArtifacts.map(artifactToConsume => artifactToConsume.id),
+    upgradedArtifact: createFusedArtifact(artifact, fusedArtifactId),
+    costMora: rule.moraCost,
+    costGems: rule.gemCost
+  };
 };
 
 export const createFusedArtifact = (baseArtifact: Artifact, id = `art_fuse_${Date.now()}_${Math.floor(Math.random() * 100000)}`): Artifact => {
