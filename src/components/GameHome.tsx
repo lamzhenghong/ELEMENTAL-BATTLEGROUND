@@ -51,8 +51,8 @@ const GameHome = ({
       className="relative isolate min-h-[540px] overflow-hidden rounded-xl border border-white/15 bg-slate-950 shadow-2xl"
     >
       <div
-        className="absolute inset-0 -z-20 bg-center bg-no-repeat"
-        style={{ backgroundImage: `url(${homeBg})`, backgroundSize: 'auto 92%' }}
+        className="absolute inset-0 -z-20 bg-cover bg-center"
+        style={{ backgroundImage: `url(${homeBg})` }}
       />
       <div className="absolute inset-0 -z-10 bg-slate-950/50" />
       <div className="absolute inset-x-0 bottom-0 top-1/3 -z-10 bg-gradient-to-t from-slate-950 via-slate-950/75 to-transparent" />
