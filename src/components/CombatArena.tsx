@@ -5106,7 +5106,15 @@ export default function CombatArena({
                     }}
                     className="w-full p-2.5 bg-sky-955/20 hover:bg-sky-600/30 border border-sky-500/20 text-sky-400 text-xs rounded-lg font-black uppercase tracking-wider cursor-pointer flex items-center justify-center gap-1.5"
                   >
-                    <BookOpen className="w-3.5 h-3.5" /> {t('exit_to_wiki', language)}
+                    {storyMode ? (
+                      <>
+                        <BookOpen className="w-3.5 h-3.5" /> {t('exit_to_story', language)}
+                      </>
+                    ) : (
+                      <>
+                        <Home className="w-3.5 h-3.5" /> {t('exit_to_home', language)}
+                      </>
+                    )}
                   </button>
                 )}
 
@@ -5123,7 +5131,7 @@ export default function CombatArena({
                         {pendingAction === 'restart' && t('notice_restart_run', language)}
                         {pendingAction === 'end_run' && t('notice_end_run', language)}
                         {pendingAction === 'home' && t('notice_home', language)}
-                        {pendingAction === 'wiki' && t('notice_wiki', language)}
+                        {pendingAction === 'wiki' && (storyMode ? t('notice_exit_to_story', language) : t('notice_exit_to_home', language))}
                       </p>
                     </div>
                     <div className="flex gap-2 w-full max-w-[220px]">
@@ -5274,7 +5282,7 @@ export default function CombatArena({
                         }}
                         className="w-full p-2.5 bg-[#0b0f19] hover:bg-slate-900 border border-white/10 text-slate-400 text-xs rounded-lg font-black uppercase tracking-wider cursor-pointer"
                       >
-                        Return to Main Deck
+                        {storyMode ? t('exit_to_story', language) : t('exit_to_home', language)}
                       </button>
                     )}
                   </>

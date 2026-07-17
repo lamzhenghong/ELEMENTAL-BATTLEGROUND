@@ -707,6 +707,7 @@ export default function RogueDungeon({
                       AetheriaAudioEngine.playClick();
                       setShowAbandonConfirm(false);
                       setRunActive(false);
+                      onBackToMenu();
                     }}
                     className="flex-1 py-3 bg-red-650 hover:bg-red-550 text-white font-black text-[10px] uppercase tracking-widest rounded-xl transition-all shadow-[0_0_20px_rgba(220,38,38,0.25)] cursor-pointer"
                   >
@@ -761,7 +762,7 @@ export default function RogueDungeon({
             }}
             className="w-full p-2.5 bg-slate-900/60 hover:bg-slate-800 border border-white/10 hover:border-white/20 text-slate-350 hover:text-white font-black text-[10px] uppercase tracking-widest rounded-xl transition-all cursor-pointer"
           >
-            Return to Main Menu
+            Return to Home
           </button>
         </div>
       </div>

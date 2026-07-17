@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Quest } from '../types';
 import { CheckCircle2, Circle, Sparkles, Coins, Trophy, HelpCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -20,6 +20,38 @@ export default function SquadronQuestLedger({ activeQuests, onClaimQuestReward, 
     if (activeQuests.some(q => q.group === 'weekly')) return 'weekly';
     return 'normal';
   });
+
+  const [timeLeft, setTimeLeft] = useState('');
+
+  useEffect(() => {
+    if (activeTab === 'normal') return;
+
+    const updateTimer = () => {
+      const now = new Date();
+      if (activeTab === 'daily') {
+        const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
+        const diff = tomorrow.getTime() - now.getTime();
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const mins = Math.floor((diff / (1000 * 60)) % 60);
+        const secs = Math.floor((diff / 1000) % 60);
+        setTimeLeft(`${hours}h ${mins}m ${secs}s`);
+      } else if (activeTab === 'weekly') {
+        const day = now.getDay();
+        const daysUntilMonday = day === 0 ? 1 : 8 - day;
+        const nextMonday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysUntilMonday, 0, 0, 0);
+        const diff = nextMonday.getTime() - now.getTime();
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+        const mins = Math.floor((diff / (1000 * 60)) % 60);
+        const secs = Math.floor((diff / 1000) % 60);
+        setTimeLeft(`${days}d ${hours}h ${mins}m ${secs}s`);
+      }
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [activeTab]);
 
 
   const dailyQuests = activeQuests.filter(q => q.group === 'daily');
@@ -94,6 +126,16 @@ export default function SquadronQuestLedger({ activeQuests, onClaimQuestReward, 
             );
           })}
         </div>
+
+        {activeTab !== 'normal' && (
+          <div className="flex items-center gap-1.5 text-[9.5px] font-mono text-amber-400 bg-amber-500/10 border border-amber-500/25 px-2.5 py-1.5 rounded-lg justify-center w-full shadow-sm">
+            <span className="animate-pulse">🕒</span>
+            <span className="font-bold uppercase tracking-wider">
+              {activeTab === 'daily' ? 'Daily Reset In:' : 'Weekly Reset In:'}
+            </span>
+            <span className="font-black text-[10px]">{timeLeft}</span>
+          </div>
+        )}
 
         {/* Quest List */}
         <div className="space-y-3.5 max-h-[350px] overflow-y-auto pr-1">
@@ -273,6 +315,16 @@ export default function SquadronQuestLedger({ activeQuests, onClaimQuestReward, 
           );
         })}
       </div>
+
+      {activeTab !== 'normal' && (
+        <div className="flex items-center gap-1.5 text-[10.5px] font-mono text-amber-400 bg-amber-500/10 border border-amber-500/25 px-3.5 py-2.5 rounded-xl justify-center w-full max-w-lg shadow-sm">
+          <span className="animate-pulse">🕒</span>
+          <span className="font-bold uppercase tracking-wider">
+            {activeTab === 'daily' ? 'Daily Reset In:' : 'Weekly Reset In:'}
+          </span>
+          <span className="font-black text-[11.5px]">{timeLeft}</span>
+        </div>
+      )}
 
       {/* Quest Cards Grid */}
       <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">

@@ -3059,8 +3059,8 @@ export default function App() {
                         return prev;
                       });
                     }}
-                    onBackToMenu={() => setActiveScreen('menu')}
-                    onExitToWiki={() => setActiveScreen('wiki')}
+                    onBackToMenu={() => setActiveScreen('home')}
+                    onExitToWiki={() => setActiveScreen('home')}
                     onAddItems={handleAddItems}
                     devCheatsEnabled={devCheatsEnabled}
                     playerLevel={saveState.playerLevel || 1}
@@ -3095,8 +3095,8 @@ export default function App() {
                     characterPortraits={saveState.characterPortraits || {}}
                     onEarnRewards={(gems, mora, exp) => handleModifyCurrencies(gems, mora, exp)}
                     onIncrementStat={(pk) => handleIncrementStat(pk)}
-                    onBackToMenu={() => setActiveScreen('menu')}
-                    onExitToWiki={() => setActiveScreen('wiki')}
+                    onBackToMenu={() => setActiveScreen('home')}
+                    onExitToWiki={() => setActiveScreen('home')}
                     onAddItems={handleAddItems}
                     devCheatsEnabled={devCheatsEnabled}
                     playerLevel={saveState.playerLevel || 1}
@@ -4387,8 +4387,8 @@ export default function App() {
               characterEquippedWeapon={saveState.characterEquippedWeapon}
               inventoryWeapons={saveState.inventoryWeapons}
               characterPortraits={saveState.characterPortraits || {}}
-              onBackToMenu={() => setStoryBattleActive(false)}
-              onExitToWiki={() => setStoryBattleActive(false)}
+              onBackToMenu={() => { setStoryBattleActive(false); setActiveScreen('story'); }}
+              onExitToWiki={() => { setStoryBattleActive(false); setActiveScreen('story'); }}
               onAddItems={handleAddItems}
               devCheatsEnabled={devCheatsEnabled}
               playerLevel={saveState.playerLevel || 1}

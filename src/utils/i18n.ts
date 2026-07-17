@@ -75,11 +75,17 @@ export const TRANSLATIONS: Record<string, Record<LanguageType, string>> = {
     zh: '返回菜单',
     ko: '메뉴로 돌아가기'
   },
-  'exit_to_wiki': {
-    en: 'Exit to Wiki',
-    jp: '図鑑に移動する',
-    zh: '退出到图鉴',
-    ko: '도감으로 나가기'
+  'exit_to_home': {
+    en: 'Exit to Home',
+    jp: 'ホームに戻る',
+    zh: '退出到主页',
+    ko: '홈으로 나가기'
+  },
+  'exit_to_story': {
+    en: 'Exit to Story',
+    jp: 'ストーリーに戻る',
+    zh: '返回故事',
+    ko: '스토리로 돌아가기'
   },
   'confirm': {
     en: 'Confirm',
@@ -439,11 +445,17 @@ export const TRANSLATIONS: Record<string, Record<LanguageType, string>> = {
     zh: '返回主菜单？当前挑战的进度将会丢失。',
     ko: '메인 메뉴로 돌아가시겠습니까? 현재 도전이 취소됩니다.'
   },
-  'notice_wiki': {
-    en: 'Exit to Wiki? Current run progress will be lost.',
-    jp: '図鑑に戻りますか？現在の挑戦の進捗は失われます。',
-    zh: '退出到图鉴？当前挑战的进度将会丢失。',
-    ko: '도감으로 나가시겠습니까? 현재 도전이 취소됩니다.'
+  'notice_exit_to_home': {
+    en: 'Exit to Home? Current run progress will be lost.',
+    jp: 'ホームに戻りますか？現在の挑戦の進捗は失われます。',
+    zh: '退出到主页？当前挑战的进度将会丢失。',
+    ko: '홈으로 나가시겠습니까? 현재 도전이 취소됩니다.'
+  },
+  'notice_exit_to_story': {
+    en: 'Exit to Story? Current run progress will be lost.',
+    jp: 'ストーリーに戻りますか？現在の挑戦の進捗は失われます。',
+    zh: '退出并返回故事？当前挑战的进度将会丢失。',
+    ko: '스토리로 돌아가시겠습니까? 현재 도전이 취소됩니다.'
   }
 };
 

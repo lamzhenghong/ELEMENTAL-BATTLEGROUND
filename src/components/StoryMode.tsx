@@ -400,24 +400,31 @@ export default function StoryMode({
                 </div>
 
                 {/* Hard Mode Toggle */}
-                {getChapterCompletionPct(selectedChapter) === 100 && (
-                  <div className="flex items-center gap-2 bg-slate-900 border border-white/10 px-3 py-1.5 rounded-xl shadow">
-                    <span className="text-[10px] font-mono uppercase text-slate-400">Campaign Difficulty:</span>
-                    <button
-                      onClick={() => {
-                        setIsHardMode((prev) => !prev);
-                        AetheriaAudioEngine.playClick();
-                      }}
-                      className={`text-[9px] font-black uppercase px-2.5 py-1 rounded transition-all cursor-pointer ${
-                        isHardMode
-                          ? 'bg-rose-600 text-white shadow-sm'
-                          : 'bg-indigo-650 text-white shadow-sm'
-                      }`}
-                    >
-                      {isHardMode ? '🔴 Hard Mode Active' : '🔵 Normal Campaign'}
-                    </button>
-                  </div>
-                )}
+                <div className="flex items-center gap-2 bg-slate-900 border border-white/10 px-3 py-1.5 rounded-xl shadow">
+                  <span className="text-[10px] font-mono uppercase text-slate-400">Campaign Difficulty:</span>
+                  <button
+                    disabled={getChapterCompletionPct(selectedChapter) < 100 && !devCheatsEnabled}
+                    onClick={() => {
+                      setIsHardMode((prev) => !prev);
+                      AetheriaAudioEngine.playClick();
+                    }}
+                    className={`text-[9px] font-black uppercase px-2.5 py-1 rounded transition-all select-none ${
+                      getChapterCompletionPct(selectedChapter) < 100 && !devCheatsEnabled
+                        ? 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-50'
+                        : 'cursor-pointer'
+                    } ${
+                      isHardMode
+                        ? 'bg-rose-600 text-white shadow-sm'
+                        : 'bg-indigo-650 text-white shadow-sm'
+                    }`}
+                  >
+                    {getChapterCompletionPct(selectedChapter) < 100 && !devCheatsEnabled ? (
+                      <span>🔒 Complete Chapter to Unlock</span>
+                    ) : (
+                      <span>{isHardMode ? '🔴 Hard Mode Active' : '🔵 Normal Campaign'}</span>
+                    )}
+                  </button>
+                </div>
               </div>
 
               {/* Story Map rendering */}
