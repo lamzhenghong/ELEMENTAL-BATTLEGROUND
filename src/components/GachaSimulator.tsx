@@ -363,44 +363,26 @@ function GachaCanvasAnimation({ pullResults, onComplete }: GachaCanvasAnimationP
                 vx: Math.cos(angle) * speed,
                 vy: Math.sin(angle) * speed,
                 gravity: Math.random() * 0.08 + 0.03,
-                color: Math.random() < 0.25 ? '#ffffff' : Math.random() < 0.6 ? m.secondaryColor : m.primaryColor,
-                size: Math.random() * (m.radius * 0.5) + 1.2,
+                spriteKey: key,
+                size: Math.random() * (mRadius * 0.85) + 1.5,
                 life: 0,
-                maxLife: 35 + Math.random() * 35
+                maxLife: 35 + Math.random() * 30
               });
             }
           }
         }
       });
 
-      if (!activeMeteorsLeft && explosionParticles.length === 0 && shockwaves.length === 0 && lensFlares.length === 0) {
+      if (!activeMeteorsLeft && explosionParticles.length === 0 && shockwaves.length === 0 && lensFlares.length === 0 && cracks.length === 0) {
         ctx.restore();
         onCompleteRef.current();
         return;
       }
 
-      for (let i = particles.length - 1; i >= 0; i--) {
-        const p = particles[i];
-        p.x += p.vx * timeScale;
-        p.y += p.vy * timeScale;
-        p.life += timeScale;
-
-        if (p.life >= p.maxLife) {
-          particles.splice(i, 1);
-        } else {
-          const alpha = 1 - p.life / p.maxLife;
-          ctx.save();
-          ctx.globalAlpha = alpha;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-          ctx.fillStyle = p.color;
-          ctx.shadowBlur = 6;
-          ctx.shadowColor = p.color;
-          ctx.fill();
-          ctx.restore();
-        }
-      }
-
+      const activeGroups: Record<string, Array<{ x: number; y: number; size: number; alpha: number }>> = { 
+        white: [], gold: [], purple: [], cyan: [] 
+      };
+      
       for (let i = explosionParticles.length - 1; i >= 0; i--) {
         const ep = explosionParticles[i];
         ep.x += ep.vx * timeScale;
@@ -414,17 +396,29 @@ function GachaCanvasAnimation({ pullResults, onComplete }: GachaCanvasAnimationP
           explosionParticles.splice(i, 1);
         } else {
           const alpha = 1 - ep.life / ep.maxLife;
-          ctx.save();
-          ctx.globalAlpha = alpha;
-          ctx.beginPath();
-          ctx.arc(ep.x, ep.y, ep.size, 0, Math.PI * 2);
-          ctx.fillStyle = ep.color;
-          ctx.shadowBlur = 10;
-          ctx.shadowColor = ep.color;
-          ctx.fill();
-          ctx.restore();
+          activeGroups[ep.spriteKey].push({ x: ep.x, y: ep.y, size: ep.size, alpha });
         }
       }
+
+      Object.keys(activeGroups).forEach(key => {
+        const items = activeGroups[key];
+        if (items.length === 0) return;
+        const spriteImg = spriteCache[key];
+        if (!spriteImg) return;
+        
+        items.forEach(item => {
+          ctx.save();
+          ctx.globalAlpha = item.alpha;
+          ctx.drawImage(
+            spriteImg,
+            item.x - item.size,
+            item.y - item.size,
+            item.size * 2,
+            item.size * 2
+          );
+          ctx.restore();
+        });
+      });
 
       for (let i = shockwaves.length - 1; i >= 0; i--) {
         const sw = shockwaves[i];
@@ -440,8 +434,6 @@ function GachaCanvasAnimation({ pullResults, onComplete }: GachaCanvasAnimationP
           ctx.arc(sw.x, sw.y, sw.radius, 0, Math.PI * 2);
           ctx.strokeStyle = sw.color;
           ctx.lineWidth = 3;
-          ctx.shadowBlur = 15;
-          ctx.shadowColor = sw.color;
           ctx.stroke();
           ctx.restore();
         }
@@ -458,9 +450,6 @@ function GachaCanvasAnimation({ pullResults, onComplete }: GachaCanvasAnimationP
           ctx.save();
           ctx.fillStyle = lf.color;
           ctx.globalAlpha = lf.alpha;
-          ctx.shadowBlur = 20;
-          ctx.shadowColor = lf.color;
-          
           ctx.beginPath();
           ctx.moveTo(lf.x - lf.width, lf.y);
           ctx.lineTo(lf.x, lf.y - lf.height);
@@ -468,6 +457,27 @@ function GachaCanvasAnimation({ pullResults, onComplete }: GachaCanvasAnimationP
           ctx.lineTo(lf.x, lf.y + lf.height);
           ctx.closePath();
           ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      for (let i = cracks.length - 1; i >= 0; i--) {
+        const crack = cracks[i];
+        crack.alpha -= 0.02 * timeScale;
+        if (crack.alpha <= 0) {
+          cracks.splice(i, 1);
+        } else {
+          ctx.save();
+          ctx.strokeStyle = `rgba(251, 191, 36, ${crack.alpha * 0.8})`;
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = '#fbbf24';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          crack.segments.forEach(seg => {
+            ctx.moveTo(seg.x1, seg.y1);
+            ctx.lineTo(seg.x2, seg.y2);
+          });
+          ctx.stroke();
           ctx.restore();
         }
       }

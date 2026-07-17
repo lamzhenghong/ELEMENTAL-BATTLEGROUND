@@ -42,7 +42,7 @@
       display: flex;
       flex-wrap: wrap;
       gap: 12px;
-      background: rgba(11, 15, 27, 0.8);
+      background: rgba(11, 15, 27, 0.85);
       border: 1px solid rgba(255, 255, 255, 0.1);
       padding: 16px 24px;
       border-radius: 20px;
@@ -138,7 +138,7 @@
       position: absolute;
       inset: 0;
       z-index: 15;
-      background: rgba(2, 3, 8, 0.96);
+      background: rgba(2, 3, 8, 0.97);
       display: none;
       flex-direction: column;
       align-items: center;
@@ -161,7 +161,7 @@
       width: 120px;
       height: 180px;
       border-radius: 12px;
-      background: rgba(15, 23, 42, 0.4);
+      background: rgba(15, 23, 42, 0.45);
       border: 1px solid rgba(255, 255, 255, 0.05);
       backdrop-filter: blur(10px);
       display: flex;
@@ -179,8 +179,8 @@
       to { opacity: 1; transform: scale(1) translateY(0); }
     }
 
-    .card-5 { border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.08); box-shadow: 0 0 25px rgba(245, 158, 11, 0.15); }
-    .card-4 { border-color: rgba(168, 85, 247, 0.4); background: rgba(168, 85, 247, 0.08); box-shadow: 0 0 20px rgba(168, 85, 247, 0.15); }
+    .card-5 { border-color: rgba(245, 158, 11, 0.45); background: rgba(245, 158, 11, 0.08); box-shadow: 0 0 25px rgba(245, 158, 11, 0.15); }
+    .card-4 { border-color: rgba(168, 85, 247, 0.45); background: rgba(168, 85, 247, 0.08); box-shadow: 0 0 20px rgba(168, 85, 247, 0.15); }
 
     .card-rarity {
       color: #fbbf24;
@@ -192,7 +192,7 @@
 <body>
 
   <div id="container">
-    <div id="status-msg">Gacha Particle Space Stable</div>
+    <div id="status-msg">Cosmic Singularity Stabilized</div>
     <button id="skip-btn">Skip Sequence</button>
 
     <!-- Transparent Drawing Layer -->
@@ -202,7 +202,7 @@
     <div id="showcase-box">
       <h2 style="font-weight: 900; letter-spacing: 0.18em; text-transform: uppercase; margin: 0; text-align: center;">Summon stabilized</h2>
       <div id="showcase-grid"></div>
-      <button id="close-showcase" style="border-color: rgba(255, 255, 255, 0.25);">Close Results</button>
+      <button id="close-showcase" style="border-color: rgba(255, 255, 255, 0.25); margin-top: 15px;">Close Results</button>
     </div>
 
     <!-- Interface Panel -->
@@ -238,39 +238,86 @@
     let currentResults = [];
     let frameId;
 
-    // Simulation Arrays
+    // Simulation Pools
     let stars = [];
     let meteors = [];
-    let particles = [];
     let explosionParticles = [];
     let shockwaves = [];
     let lensFlares = [];
+    let cracks = []; // Screen crack segments
 
     let timeScale = 1.0;
     let flashFrameCount = 0;
     let shakeFrameCount = 0;
+    let vortexRotation = 0;
+    let vortexPulse = 0;
 
-    // Initial stars setup (Hyperspace field)
+    // Pre-render glowing sprites in offscreen canvas caches (White, Cyan, Purple, Gold)
+    const spriteCache = {};
+    const spriteColors = {
+      cyan: 'rgba(34, 211, 238, ',
+      purple: 'rgba(192, 132, 252, ',
+      gold: 'rgba(251, 191, 36, ',
+      white: 'rgba(255, 255, 255, '
+    };
+
+    function initSprites() {
+      Object.keys(spriteColors).forEach(colorKey => {
+        const offCanvas = document.createElement('canvas');
+        offCanvas.width = 32;
+        offCanvas.height = 32;
+        const offCtx = offCanvas.getContext('2d');
+        const grad = offCtx.createRadialGradient(16, 16, 1, 16, 16, 14);
+        grad.addColorStop(0, spriteColors[colorKey] + '1.0)');
+        grad.addColorStop(0.3, spriteColors[colorKey] + '0.6)');
+        grad.addColorStop(0.6, spriteColors[colorKey] + '0.15)');
+        grad.addColorStop(1, spriteColors[colorKey] + '0.0)');
+        
+        offCtx.fillStyle = grad;
+        offCtx.beginPath();
+        offCtx.arc(16, 16, 16, 0, Math.PI * 2);
+        offCtx.fill();
+        spriteCache[colorKey] = offCanvas;
+      });
+    }
+    initSprites();
+
+    // Initial stars setup
     function setupStars() {
       stars = [];
       for (let i = 0; i < 120; i++) {
         stars.push({
           x: Math.random() * width,
           y: Math.random() * height,
-          size: Math.random() * 1.5 + 0.5,
-          speed: Math.random() * 1.5 + 0.5,
-          vx: -(Math.random() * 0.8 + 0.2), // moving opposite of meteor (diagonal leftward)
+          size: Math.random() * 1.5 + 0.4,
+          speed: Math.random() * 1.2 + 0.4,
+          vx: -(Math.random() * 0.8 + 0.2), 
           vy: Math.random() * 0.8 + 0.2
         });
       }
     }
     setupStars();
 
+    function getElementColors(element) {
+      switch (element) {
+        case 'pyro': return ['#ef4444', '#f97316', '#fbbf24'];
+        case 'hydro': return ['#3b82f6', '#60a5fa', '#ffffff'];
+        case 'electro': return ['#a855f7', '#c084fc', '#e9d5ff'];
+        case 'cryo': return ['#22d3ee', '#38bdf8', '#ffffff'];
+        case 'anemo': return ['#2dd4bf', '#a7f3d0', '#ffffff'];
+        case 'geo': return ['#ca8a04', '#fbbf24', '#fef08a'];
+        case 'dendro': return ['#22c55e', '#86efac', '#ffffff'];
+        default: return ['#38bdf8', '#06b6d4', '#ffffff'];
+      }
+    }
+
     function startSummon(pulls) {
+      const elements = ['pyro', 'hydro', 'electro', 'cryo', 'anemo', 'geo', 'dendro'];
       currentResults = pulls.map((rarity, i) => ({
         id: i,
         name: rarity === 5 ? 'Celestial Hero' : rarity === 4 ? 'Elite Armament' : 'Standard Weapon',
-        rarity
+        rarity,
+        element: rarity >= 4 ? elements[Math.floor(Math.random() * elements.length)] : undefined
       }));
 
       maxRarity = Math.max(...pulls);
@@ -279,34 +326,38 @@
 
       // Reset Pools
       meteors = [];
-      particles = [];
       explosionParticles = [];
       shockwaves = [];
       lensFlares = [];
+      cracks = [];
       timeScale = 1.0;
       flashFrameCount = 0;
       shakeFrameCount = 0;
+      vortexRotation = 0;
+      vortexPulse = 0;
 
-      // Setup Meteors Group (Sort highest rarity to the front so it leads!)
-      const sortedPulls = [...pulls].sort((a, b) => b - a);
-
+      // Setup meteors. Sort highest rarity to the front so it leads.
+      const sortedResults = [...currentResults].sort((a, b) => b.rarity - a.rarity);
       const targetX = width * 0.35;
       const targetY = height * 0.65;
       const angle = Math.atan2(targetY + 50, targetX - (width + 50));
 
-      meteors = sortedPulls.map((r, index) => {
+      meteors = sortedResults.map((item, index) => {
         let pColor = '#06b6d4'; // 3★ Cyan
         let sColor = '#38bdf8';
-        if (r === 5) {
+        let sCacheKey = 'cyan';
+        if (item.rarity === 5) {
           pColor = '#f59e0b'; // 5★ Amber
           sColor = '#fbbf24';
-        } else if (r === 4) {
+          sCacheKey = 'gold';
+        } else if (item.rarity === 4) {
           pColor = '#a855f7'; // 4★ Purple
           sColor = '#c084fc';
+          sCacheKey = 'purple';
         }
 
-        // Parallel offset spacing
-        const spreadOffset = pulls.length === 1 ? 0 : (index - (pulls.length - 1)/2) * 24;
+        // Offset parallel spacing spread
+        const spreadOffset = sortedResults.length === 1 ? 0 : (index - (sortedResults.length - 1)/2) * 26;
         const perpX = Math.cos(angle + Math.PI/2) * spreadOffset;
         const perpY = Math.sin(angle + Math.PI/2) * spreadOffset;
 
@@ -317,15 +368,18 @@
           endY: targetY + perpY,
           x: width + 80 + perpX,
           y: -80 + perpY,
-          radius: r === 5 ? 12 : r === 4 ? 9 : 6,
+          radius: item.rarity === 5 ? 12 : item.rarity === 4 ? 9 : 6,
           progress: 0,
           speed: 0.014 + Math.random() * 0.003,
           angle,
-          delay: index * 4, // Stagger entrance
-          rarity: r,
+          delay: index * 4.5,
+          rarity: item.rarity,
+          element: item.element,
           primaryColor: pColor,
           secondaryColor: sColor,
-          isExploded: false
+          spriteKey: sCacheKey,
+          isExploded: false,
+          history: [] // Holds coordinate history for rendering smooth tapering ribbon tails
         };
       });
 
@@ -345,11 +399,33 @@
       }, 300);
     });
 
+    function generateScreenCrack(x, y) {
+      const crackCount = 6;
+      cracks = [];
+      for (let i = 0; i < crackCount; i++) {
+        const segments = [];
+        let currX = x;
+        let currY = y;
+        let angle = (i / crackCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
+        const totalLength = 80 + Math.random() * 120;
+        const step = 20;
+
+        for (let len = 0; len < totalLength; len += step) {
+          const nextX = currX + Math.cos(angle) * step + (Math.random() - 0.5) * 12;
+          const nextY = currY + Math.sin(angle) * step + (Math.random() - 0.5) * 12;
+          segments.push({ x1: currX, y1: currY, x2: nextX, y2: nextY });
+          currX = nextX;
+          currY = nextY;
+          angle += (Math.random() - 0.5) * 0.2;
+        }
+        cracks.push({ segments, alpha: 1.0 });
+      }
+    }
+
     function finishAnimation() {
       skipBtn.style.display = 'none';
       animationPhase = 'showcase';
       
-      // Render Card Showcase Grid
       showcaseGrid.innerHTML = '';
       currentResults.forEach((res, index) => {
         const card = document.createElement('div');
@@ -362,7 +438,10 @@
 
         card.innerHTML = `
           <div style="font-size: 26px;">${emoji}</div>
-          <div style="font-size: 8px; font-family: monospace; text-transform: uppercase; color: #94a3b8;">${res.name}</div>
+          <div style="font-size: 8px; font-family: monospace; text-transform: uppercase; color: #94a3b8; text-align:center;">
+            ${res.rarity >= 4 ? `<span style="font-size:7px; color:#38bdf8; display:block;">${res.element}</span>` : ''}
+            ${res.name}
+          </div>
           <div class="card-rarity">${'★'.repeat(res.rarity)}</div>
         `;
         showcaseGrid.appendChild(card);
@@ -374,7 +453,7 @@
       }, 50);
     }
 
-    // MAIN CANVAS LOOP
+    // MAIN ANIMATION LOOP
     function loop() {
       ctx.save();
 
@@ -388,22 +467,20 @@
 
       ctx.clearRect(0, 0, width, height);
 
-      // Deep space nebula background style
-      ctx.fillStyle = '#03050c';
+      // Cosmic background
+      ctx.fillStyle = '#030409';
       ctx.fillRect(0, 0, width, height);
 
-      // Update and draw background stars (hyperspace drift)
+      // Starfield warp rendering
       stars.forEach(star => {
-        star.x += star.vx * star.speed * timeScale * (animationPhase === 'meteor' && maxRarity === 5 ? 3 : 1);
-        star.y += star.vy * star.speed * timeScale * (animationPhase === 'meteor' && maxRarity === 5 ? 3 : 1);
+        const warpMultiplier = (animationPhase === 'meteor' && maxRarity === 5) ? 3.5 : 1.0;
+        star.x += star.vx * star.speed * timeScale * warpMultiplier;
+        star.y += star.vy * star.speed * timeScale * warpMultiplier;
 
-        // wrap around
         if (star.x < 0) { star.x = width; star.y = Math.random() * height; }
         if (star.y > height) { star.y = 0; star.x = Math.random() * width; }
 
         ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-        ctx.beginPath();
-        // If 5-star pull and flying, stretch stars
         if (animationPhase === 'meteor' && maxRarity === 5) {
           ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
           ctx.lineWidth = star.size;
@@ -412,10 +489,45 @@
           ctx.lineTo(star.x - star.vx * 15, star.y - star.vy * 15);
           ctx.stroke();
         } else {
+          ctx.beginPath();
           ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
           ctx.fill();
         }
       });
+
+      // Dimensional vortex (Accretion disk)
+      if (animationPhase === 'meteor') {
+        vortexRotation += 0.02 * timeScale;
+        vortexPulse += 0.05 * timeScale;
+
+        const vX = width * 0.35;
+        const vY = height * 0.65;
+        const pulseFactor = 1.0 + Math.sin(vortexPulse) * 0.05;
+
+        ctx.save();
+        ctx.translate(vX, vY);
+        
+        // Swirling outer rings
+        ctx.rotate(vortexRotation);
+        ctx.strokeStyle = maxRarity === 5 ? 'rgba(245, 158, 11, 0.2)' : maxRarity === 4 ? 'rgba(168, 85, 247, 0.15)' : 'rgba(6, 182, 212, 0.12)';
+        ctx.lineWidth = 4;
+        
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 100 * pulseFactor, 30 * pulseFactor, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.rotate(-vortexRotation * 1.5);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 70 * pulseFactor, 20 * pulseFactor, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Dark Event Horizon center core
+        ctx.fillStyle = '#020308';
+        ctx.beginPath();
+        ctx.arc(0, 0, 16 * pulseFactor, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
 
       if (animationPhase === 'meteor') {
         let activeMeteorsLeft = false;
@@ -424,11 +536,9 @@
         if (maxRarity === 5) {
           const mainMeteor = meteors[0];
           if (mainMeteor && !mainMeteor.isExploded && mainMeteor.progress >= 0.72 && mainMeteor.progress < 0.94) {
-            // Decelerate time dramatically
-            timeScale = Math.max(0.1, timeScale - 0.08);
+            timeScale = Math.max(0.12, timeScale - 0.08); // Decelerate
           } else {
-            // Return to normal
-            timeScale = Math.min(1.0, timeScale + 0.08);
+            timeScale = Math.min(1.0, timeScale + 0.08); // Return to normal
           }
         } else {
           timeScale = 1.0;
@@ -448,6 +558,9 @@
             const t = m.progress;
             const easeT = 1 - Math.pow(1 - t, 3); // Cubic ease out
 
+            // 3D perspective depth sizing
+            const mRadius = m.radius * (0.3 + 0.7 * easeT);
+
             m.x = m.startX + (m.endX - m.startX) * easeT;
             m.y = m.startY + (m.endY - m.startY) * easeT;
 
@@ -457,41 +570,37 @@
             m.x += Math.cos(perpAngle) * waveOffset;
             m.y += Math.sin(perpAngle) * waveOffset;
 
-            // Spawn trail particles
-            const spawnCount = m.rarity === 5 ? 6 : m.rarity === 4 ? 4 : 2;
-            for (let j = 0; j < spawnCount; j++) {
-              particles.push({
-                x: m.x + (Math.random() - 0.5) * m.radius,
-                y: m.y + (Math.random() - 0.5) * m.radius,
-                vx: -Math.cos(m.angle) * (1 + Math.random() * 3) + (Math.random() - 0.5) * 1.5,
-                vy: -Math.sin(m.angle) * (1 + Math.random() * 3) + (Math.random() - 0.5) * 1.5,
-                color: Math.random() < 0.3 ? '#ffffff' : Math.random() < 0.65 ? m.secondaryColor : m.primaryColor,
-                size: Math.random() * (m.radius * 0.55) + 1,
-                life: 0,
-                maxLife: 20 + Math.random() * 20
-              });
+            // Update coordinate history for ribbon comet rendering
+            m.history.push({ x: m.x, y: m.y });
+            if (m.history.length > 8) m.history.shift();
+
+            // Render glowing taper comets (smooth ribbon trails)
+            if (m.history.length > 1) {
+              ctx.save();
+              ctx.beginPath();
+              ctx.moveTo(m.history[0].x, m.history[0].y);
+              for (let hIdx = 1; hIdx < m.history.length; hIdx++) {
+                ctx.lineTo(m.history[hIdx].x, m.history[hIdx].y);
+              }
+              ctx.strokeStyle = m.primaryColor;
+              ctx.lineWidth = mRadius * 1.5;
+              ctx.lineCap = 'round';
+              ctx.lineJoin = 'round';
+              ctx.stroke();
+              ctx.restore();
             }
 
-            // Draw radial glow backing
-            const radGlow = ctx.createRadialGradient(m.x, m.y, m.radius * 0.2, m.x, m.y, m.radius * 5);
-            radGlow.addColorStop(0, m.primaryColor + '66');
-            radGlow.addColorStop(1, 'transparent');
-            ctx.fillStyle = radGlow;
-            ctx.beginPath();
-            ctx.arc(m.x, m.y, m.radius * 5, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Draw meteor head
+            // Draw comet head
             ctx.save();
             ctx.beginPath();
-            ctx.arc(m.x, m.y, m.radius, 0, Math.PI * 2);
+            ctx.arc(m.x, m.y, mRadius, 0, Math.PI * 2);
             ctx.fillStyle = '#ffffff';
-            ctx.shadowBlur = 18;
+            ctx.shadowBlur = 15;
             ctx.shadowColor = m.secondaryColor;
             ctx.fill();
             ctx.restore();
 
-            // Check destination reached
+            // Destination reached
             if (m.progress >= 1.0) {
               m.isExploded = true;
               m.x = m.endX;
@@ -499,6 +608,11 @@
 
               shakeFrameCount = 15;
               flashFrameCount = 12;
+
+              // Generate Screen Crack on 5-Star impact
+              if (m.rarity === 5) {
+                generateScreenCrack(m.endX, m.endY);
+              }
 
               // Shockwave Rings
               const ringColors = m.rarity === 5 ? ['#fbbf24', '#fb7185', '#ffffff'] : m.rarity === 4 ? ['#c084fc', '#818cf8', '#ffffff'] : ['#22d3ee', '#38bdf8'];
@@ -508,7 +622,7 @@
                   y: m.endY,
                   radius: 5,
                   maxRadius: 100 + idx * 40 + (m.rarity === 5 ? 60 : 20),
-                  speed: 4 + idx * 2,
+                  speed: 4.5 + idx * 2,
                   color,
                   alpha: 1.0
                 });
@@ -525,21 +639,32 @@
                 color: m.secondaryColor
               });
 
-              // Spawn explosion gravity sparks
-              const burstCount = m.rarity === 5 ? 100 : m.rarity === 4 ? 60 : 30;
+              // Map colors for Element-Specific explosions
+              const sparkColors = m.element ? getElementColors(m.element) : [m.secondaryColor, m.primaryColor, '#ffffff'];
+
+              // Spawn explosion sparks
+              const burstCount = m.rarity === 5 ? 85 : m.rarity === 4 ? 50 : 25;
               for (let k = 0; k < burstCount; k++) {
                 const angle = Math.random() * Math.PI * 2;
-                const speed = Math.random() * (m.rarity === 5 ? 7 : m.rarity === 4 ? 5 : 3.5) + 1;
+                const speed = Math.random() * (m.rarity === 5 ? 6 : m.rarity === 4 ? 4.5 : 3.5) + 1;
+                const color = sparkColors[Math.floor(Math.random() * sparkColors.length)];
+                
+                // Assign a sprite cache key for hardware acceleration
+                let key = 'white';
+                if (color.includes('#fb') || color.includes('#eab') || color.includes('#f97')) key = 'gold';
+                else if (color.includes('#c0') || color.includes('#a8') || color.includes('#81')) key = 'purple';
+                else if (color.includes('#22') || color.includes('#3b') || color.includes('#60')) key = 'cyan';
+
                 explosionParticles.push({
                   x: m.endX,
                   y: m.endY,
                   vx: Math.cos(angle) * speed,
                   vy: Math.sin(angle) * speed,
                   gravity: Math.random() * 0.08 + 0.03, // curve downward
-                  color: Math.random() < 0.25 ? '#ffffff' : Math.random() < 0.6 ? m.secondaryColor : m.primaryColor,
-                  size: Math.random() * (m.radius * 0.5) + 1.2,
+                  spriteKey: key,
+                  size: Math.random() * (mRadius * 0.85) + 1.5,
                   life: 0,
-                  maxLife: 35 + Math.random() * 35
+                  maxLife: 35 + Math.random() * 30
                 });
               }
             }
@@ -547,41 +672,20 @@
         });
 
         // Trigger finish once all active particles/flares have finished exploding
-        if (!activeMeteorsLeft && explosionParticles.length === 0 && shockwaves.length === 0) {
+        if (!activeMeteorsLeft && explosionParticles.length === 0 && shockwaves.length === 0 && lensFlares.length === 0 && cracks.length === 0) {
           finishAnimation();
         }
       }
 
-      // Update and draw trail particles
-      for (let i = particles.length - 1; i >= 0; i--) {
-        const p = particles[i];
-        p.x += p.vx * timeScale;
-        p.y += p.vy * timeScale;
-        p.life += timeScale;
-
-        if (p.life >= p.maxLife) {
-          particles.splice(i, 1);
-        } else {
-          const alpha = 1 - p.life / p.maxLife;
-          ctx.save();
-          ctx.globalAlpha = alpha;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-          ctx.fillStyle = p.color;
-          ctx.shadowBlur = 6;
-          ctx.shadowColor = p.color;
-          ctx.fill();
-          ctx.restore();
-        }
-      }
-
-      // Update and draw explosion particles with gravity curves
+      // Draw Hardware-Accelerated hardware explosion particles
+      const activeGroups = { white: [], gold: [], purple: [], cyan: [] };
+      
       for (let i = explosionParticles.length - 1; i >= 0; i--) {
         const ep = explosionParticles[i];
         ep.x += ep.vx * timeScale;
         ep.y += ep.vy * timeScale;
-        ep.vy += ep.gravity * timeScale; // Pull downward
-        ep.vx *= 0.97; // air resistance
+        ep.vy += ep.gravity * timeScale; // gravity pull
+        ep.vx *= 0.97;
         ep.vy *= 0.97;
         ep.life += timeScale;
 
@@ -589,17 +693,30 @@
           explosionParticles.splice(i, 1);
         } else {
           const alpha = 1 - ep.life / ep.maxLife;
-          ctx.save();
-          ctx.globalAlpha = alpha;
-          ctx.beginPath();
-          ctx.arc(ep.x, ep.y, ep.size, 0, Math.PI * 2);
-          ctx.fillStyle = ep.color;
-          ctx.shadowBlur = 10;
-          ctx.shadowColor = ep.color;
-          ctx.fill();
-          ctx.restore();
+          activeGroups[ep.spriteKey].push({ x: ep.x, y: ep.y, size: ep.size, alpha });
         }
       }
+
+      // Render batched particle sprites from offscreen canvas
+      Object.keys(activeGroups).forEach(key => {
+        const items = activeGroups[key];
+        if (items.length === 0) return;
+        const spriteImg = spriteCache[key];
+        
+        items.forEach(item => {
+          ctx.save();
+          ctx.globalAlpha = item.alpha;
+          // Draw pre-cached sprite stretched/scaled to particle size
+          ctx.drawImage(
+            spriteImg,
+            item.x - item.size,
+            item.y - item.size,
+            item.size * 2,
+            item.size * 2
+          );
+          ctx.restore();
+        });
+      });
 
       // Update and draw shockwaves
       for (let i = shockwaves.length - 1; i >= 0; i--) {
@@ -616,8 +733,6 @@
           ctx.arc(sw.x, sw.y, sw.radius, 0, Math.PI * 2);
           ctx.strokeStyle = sw.color;
           ctx.lineWidth = 3;
-          ctx.shadowBlur = 15;
-          ctx.shadowColor = sw.color;
           ctx.stroke();
           ctx.restore();
         }
@@ -635,10 +750,6 @@
           ctx.save();
           ctx.fillStyle = lf.color;
           ctx.globalAlpha = lf.alpha;
-          ctx.shadowBlur = 20;
-          ctx.shadowColor = lf.color;
-          
-          // Draw anamorphic horizontal bar
           ctx.beginPath();
           ctx.moveTo(lf.x - lf.width, lf.y);
           ctx.lineTo(lf.x, lf.y - lf.height);
@@ -650,7 +761,29 @@
         }
       }
 
-      // Draw bottom alert text HUD during meteor
+      // Draw screen dimensional cracks
+      for (let i = cracks.length - 1; i >= 0; i--) {
+        const crack = cracks[i];
+        crack.alpha -= 0.02 * timeScale;
+        if (crack.alpha <= 0) {
+          cracks.splice(i, 1);
+        } else {
+          ctx.save();
+          ctx.strokeStyle = `rgba(251, 191, 36, ${crack.alpha * 0.8})`;
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = '#fbbf24';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          crack.segments.forEach(seg => {
+            ctx.moveTo(seg.x1, seg.y1);
+            ctx.lineTo(seg.x2, seg.y2);
+          });
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+
+      // Bottom HUD message
       if (animationPhase === 'meteor' && meteors.length > 0 && meteors[0].progress > 0.05) {
         ctx.save();
         ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
