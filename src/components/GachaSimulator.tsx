@@ -1490,8 +1490,8 @@ export default function GachaSimulator({
               ))}
             </div>
 
-            <div className="relative z-10 max-w-5xl w-full flex flex-col items-center space-y-8">
-              <div className="text-center space-y-1">
+            <div className="relative z-10 max-w-5xl w-full flex flex-col items-center space-y-3 sm:space-y-6 md:space-y-8">
+              <div className="text-center space-y-0.5 sm:space-y-1">
                 <motion.div
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
@@ -1504,17 +1504,17 @@ export default function GachaSimulator({
                   initial={{ y: -10, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ delay: 0.2 }}
-                  className="text-2xl md:text-3xl font-black text-slate-100 uppercase tracking-widest font-display text-transparent bg-clip-text bg-gradient-to-r from-slate-100 via-indigo-200 to-slate-200"
+                  className="text-lg sm:text-2xl md:text-3xl font-black text-slate-100 uppercase tracking-widest font-display text-transparent bg-clip-text bg-gradient-to-r from-slate-100 via-indigo-200 to-slate-200"
                 >
                   Acquisition Showcase
                 </motion.h3>
               </div>
 
               {/* Staggered Cards Grid */}
-              <div className={`grid gap-4 w-full justify-center ${
+              <div className={`grid gap-1.5 md:gap-4 w-full justify-center ${
                 currentPullResults.length === 1 
                   ? 'grid-cols-1 max-w-xs' 
-                  : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-5'
+                  : 'grid-cols-5'
               }`}>
                 {currentPullResults.map((item, i) => {
                   const elColor = item.element ? getElementColor(item.element) : 'text-slate-400';
@@ -1545,7 +1545,7 @@ export default function GachaSimulator({
                           onNavigateToWikiWeapon(item.name);
                         }
                       }}
-                      className={`relative rounded-xl border p-4 flex flex-col justify-between items-center text-center min-h-[190px] transition-all overflow-hidden group cursor-pointer hover:scale-[1.03] active:scale-[0.98] ${
+                      className={`relative rounded-lg md:rounded-xl border p-1.5 md:p-4 flex flex-col justify-between items-center text-center min-h-[110px] sm:min-h-[150px] md:min-h-[190px] transition-all overflow-hidden group cursor-pointer hover:scale-[1.03] active:scale-[0.98] ${
                         isGold 
                           ? 'bg-[#15130b] border-amber-400/50 shadow-[0_0_25px_rgba(245,158,11,0.2)] hover:border-amber-400' 
                           : isPurple 
@@ -1555,7 +1555,7 @@ export default function GachaSimulator({
                     >
                       {/* NEW! Badge */}
                       {item.isNew && (
-                        <div className="absolute top-1.5 right-1.5 bg-rose-500 text-white text-[7.5px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider z-20 shadow-sm animate-pulse">
+                        <div className="absolute top-1 right-1 bg-rose-500 text-white text-[6px] sm:text-[7.5px] font-black px-1 py-0.5 rounded uppercase tracking-wider z-20 shadow-sm animate-pulse">
                           NEW!
                         </div>
                       )}
@@ -1568,15 +1568,15 @@ export default function GachaSimulator({
                       {/* Stars count */}
                       <div className="flex gap-0.5 z-10">
                         {Array.from({ length: item.rarity }).map((_, sIdx) => (
-                          <Star key={sIdx} className={`w-2.5 h-2.5 fill-current ${
+                          <Star key={sIdx} className={`w-1.5 sm:w-2 md:w-2.5 h-1.5 sm:h-2 md:h-2.5 fill-current ${
                             isGold ? 'text-amber-400' : isPurple ? 'text-purple-400' : 'text-cyan-400'
                           }`} />
                         ))}
                       </div>
 
                       {/* Icon representation */}
-                      <div className="my-3 z-10">
-                        <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-2xl font-black text-slate-950 border border-white/10 relative shadow-[0_4px_12px_rgba(0,0,0,0.4)] ${
+                      <div className="my-1 sm:my-2 md:my-3 z-10">
+                        <div className={`w-7 h-7 sm:w-11 sm:h-11 md:w-14 md:h-14 rounded-lg md:rounded-xl flex items-center justify-center text-[10px] sm:text-lg md:text-2xl font-black text-slate-950 border border-white/10 relative shadow-[0_4px_12px_rgba(0,0,0,0.4)] ${
                           item.isCharacter 
                             ? (PLAYABLE_CHARACTERS.find(c => c.id === item.id)?.avatarPlaceholder || 'bg-amber-550')
                             : 'bg-gradient-to-tr from-slate-700 via-indigo-950 to-slate-900 border-indigo-400/20 text-indigo-200'
@@ -1584,33 +1584,33 @@ export default function GachaSimulator({
                           {item.isCharacter ? (
                             item.name.charAt(0)
                           ) : (
-                            <Sword className="w-6 h-6 text-indigo-300" />
+                            <Sword className="w-3.5 h-3.5 sm:w-5 sm:h-5 md:w-6 md:h-6 text-indigo-300" />
                           )}
                         </div>
                       </div>
 
                       {/* Rarity/Category text */}
-                      <div className="space-y-1 z-10 w-full">
-                        <span className="text-[10.5px] font-black text-slate-200 block truncate uppercase tracking-tighter w-full">
+                      <div className="space-y-0.5 md:space-y-1 z-10 w-full">
+                        <span className="text-[7.5px] sm:text-[9px] md:text-[10.5px] font-black text-slate-200 block truncate uppercase tracking-tighter w-full">
                           {item.name}
                           {item.nextPortrait !== undefined && item.nextPortrait !== null && (
-                            <span className="text-amber-400 font-extrabold ml-1">
+                            <span className="text-amber-400 font-extrabold ml-0.5">
                               (P{item.nextPortrait})
                             </span>
                           )}
                         </span>
-                        <span className={`text-[8px] font-extrabold uppercase tracking-widest block font-mono ${
+                        <span className={`text-[6px] sm:text-[7.5px] md:text-[8px] font-extrabold uppercase tracking-widest block font-mono ${
                           item.element ? elColor : 'text-slate-500'
                         }`}>
                           {item.element ? item.element : item.rarity === 5 ? '5★ WEAPON' : item.rarity === 4 ? '4★ WEAPON' : '3★ WEAPON'}
                         </span>
                         {item.isCharacter ? (
-                          <span className="text-[7px] text-indigo-400/70 group-hover:text-indigo-300 font-black uppercase tracking-wider block font-sans mt-1 opacity-60 group-hover:opacity-100 transition-opacity">
-                            🔍 View Lore Wiki
+                          <span className="text-[5.5px] sm:text-[6.5px] md:text-[7px] text-indigo-400/70 group-hover:text-indigo-300 font-black uppercase tracking-wider block font-sans mt-0.5 opacity-60 group-hover:opacity-100 transition-opacity">
+                            🔍 Wiki
                           </span>
                         ) : (
-                          <span className="text-[7px] text-indigo-400/70 group-hover:text-indigo-300 font-black uppercase tracking-wider block font-sans mt-1 opacity-60 group-hover:opacity-100 transition-opacity">
-                            🔍 View Armory Wiki
+                          <span className="text-[5.5px] sm:text-[6.5px] md:text-[7px] text-indigo-400/70 group-hover:text-indigo-300 font-black uppercase tracking-wider block font-sans mt-0.5 opacity-60 group-hover:opacity-100 transition-opacity">
+                            🔍 Wiki
                           </span>
                         )}
                       </div>
@@ -1620,29 +1620,29 @@ export default function GachaSimulator({
               </div>
 
               {/* Actions Footer */}
-              <div className="flex flex-wrap justify-center gap-4 z-20">
+              <div className="flex flex-wrap justify-center gap-2 sm:gap-4 z-20 w-full px-4">
                 <motion.button
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: currentPullResults.length * 0.08 + 0.15 }}
+                  transition={{ delay: 0.5 }}
                   onClick={() => {
                     executeWishPulls(10);
                   }}
-                  className="bg-amber-500 hover:bg-amber-400 hover:scale-105 active:scale-95 text-slate-950 font-black text-xs uppercase tracking-widest px-6 py-3 rounded-lg cursor-pointer transition-all shadow-[0_0_20px_rgba(245,158,11,0.35)] flex items-center gap-1.5"
+                  className="bg-amber-500 hover:bg-amber-400 hover:scale-[1.02] active:scale-95 text-slate-950 font-black text-[10px] sm:text-xs uppercase tracking-widest px-4 sm:px-6 py-2 sm:py-3 rounded-lg cursor-pointer transition-all shadow-[0_0_20px_rgba(245,158,11,0.35)] flex items-center gap-1"
                 >
                   <span>🔄 Summon x10 More</span>
-                  <span className="text-[10px] opacity-75 font-mono">(1440 Gems)</span>
+                  <span className="text-[8px] sm:text-[10px] opacity-75 font-mono">(1440 Gems)</span>
                 </motion.button>
 
                 <motion.button
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: currentPullResults.length * 0.08 + 0.2 }}
+                  transition={{ delay: 0.55 }}
                   onClick={() => {
                     AetheriaAudioEngine.playClick();
                     setAnimationPhase('none');
                   }}
-                  className="bg-indigo-600 hover:bg-indigo-500 hover:scale-105 active:scale-95 text-white font-black text-xs uppercase tracking-widest px-6 py-3 rounded-lg cursor-pointer transition-all shadow-[0_0_20px_rgba(79,70,229,0.3)]"
+                  className="bg-indigo-600 hover:bg-indigo-500 hover:scale-[1.02] active:scale-95 text-white font-black text-[10px] sm:text-xs uppercase tracking-widest px-4 sm:px-6 py-2 sm:py-3 rounded-lg cursor-pointer transition-all shadow-[0_0_20px_rgba(79,70,229,0.3)]"
                 >
                   📥 Confirm Acquisitions
                 </motion.button>
