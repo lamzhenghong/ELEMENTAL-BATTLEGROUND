@@ -2684,21 +2684,6 @@ export default function App() {
             <span className="font-black font-mono text-[10px] md:text-[11px]">{saveState.aetherGems.toLocaleString()}</span>
           </div>
 
-          {/* Global Quick Quest Claim Button */}
-          {saveState.activeQuests.filter(q => q.completed).length > 0 && (
-            <button
-              onClick={() => {
-                claimAllQuestRewards();
-              }}
-              className="p-1 md:p-1.5 px-2 md:px-3 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/30 rounded-lg text-[9px] md:text-[10px] uppercase font-black tracking-wider transition-all active:scale-95 cursor-pointer flex items-center gap-1 md:gap-1.5 shadow-[0_0_15px_rgba(52,211,153,0.2)] text-emerald-350 font-sans shrink-0"
-              title="Quick Claim All Completed Quests"
-            >
-              <Trophy className="w-3.5 h-3.5 text-amber-400 animate-bounce" />
-              <span className="hidden md:inline">Claim Quests </span>
-              <span className="md:hidden">Claim </span>
-              ({saveState.activeQuests.filter(q => q.completed).length})
-            </button>
-          )}
 
           {/* ENHANCED SETTINGS TRIGGER */}
           <button 
@@ -2749,7 +2734,7 @@ export default function App() {
               }`}
               id="dash_screen_home"
             >
-              <Compass className="w-3.5 h-3.5 shrink-0 text-slate-955 text-slate-950" />
+              <Compass className={`w-3.5 h-3.5 shrink-0 ${activeScreen === 'home' ? 'text-slate-955' : 'text-cyan-400 animate-pulse'}`} />
               <span>Home</span>
             </button>
 
@@ -2765,7 +2750,7 @@ export default function App() {
               }`}
               id="dash_screen_story"
             >
-              <BookOpen className="w-3.5 h-3.5 shrink-0 text-slate-955 text-slate-950" />
+              <BookOpen className={`w-3.5 h-3.5 shrink-0 ${activeScreen === 'story' ? 'text-slate-955' : 'text-emerald-400 animate-pulse'}`} />
               <span className="hidden md:inline">Story Campaign</span>
               <span className="md:hidden">Story</span>
             </button>
@@ -2782,7 +2767,7 @@ export default function App() {
               }`}
               id="dash_screen_arena"
             >
-              <Sword className="w-3.5 h-3.5 shrink-0 animate-pulse text-slate-955 text-slate-950" />
+              <Sword className={`w-3.5 h-3.5 shrink-0 ${activeScreen === 'arena' ? 'text-slate-955' : 'text-rose-400 animate-pulse'}`} />
               <span className="hidden md:inline">{t('combat_arena', language)}</span>
               <span className="md:hidden">Arena</span>
             </button>
@@ -2791,7 +2776,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={handleNavigateToDungeon}
-                className="relative p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all cursor-pointer bg-slate-900/30 border border-slate-800/80 text-slate-500 hover:bg-slate-900/40 hover:text-slate-450 flex flex-col md:flex-row items-center justify-center gap-1.5 shrink-0 md:flex-initial"
+                className="relative p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all cursor-pointer bg-slate-900/30 border border-slate-800/80 text-slate-500 hover:bg-slate-900/45 flex flex-col md:flex-row items-center justify-center gap-1.5 shrink-0 md:flex-initial"
                 title={`Unlocks at Player Level 10 (Current: Level ${saveState.playerLevel || 1}/10)`}
               >
                 <div className="flex items-center gap-1.5">
@@ -2824,7 +2809,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={handleNavigateToWish}
-                className="relative p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all cursor-pointer bg-slate-900/30 border border-slate-800/80 text-slate-500 hover:bg-slate-900/40 hover:text-slate-450 flex flex-col md:flex-row items-center justify-center gap-1.5 shrink-0 md:flex-initial"
+                className="relative p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all cursor-pointer bg-slate-900/30 border border-slate-800/80 text-slate-500 hover:bg-slate-900/45 flex flex-col md:flex-row items-center justify-center gap-1.5 shrink-0 md:flex-initial"
                 title={`Unlocks at Player Level 5 (Current: Level ${saveState.playerLevel || 1}/5)`}
               >
                 <div className="flex items-center gap-1.5">
@@ -2847,7 +2832,7 @@ export default function App() {
                 }`}
                 id="dash_screen_wish"
               >
-                <Sparkles className="w-3.5 h-3.5 shrink-0 text-slate-955 text-slate-950" />
+                <Sparkles className={`w-3.5 h-3.5 shrink-0 ${activeScreen === 'wish' ? 'text-slate-955' : 'text-amber-400 animate-pulse'}`} />
                 <span className="hidden md:inline">{t('celestial_summons', language)}</span>
                 <span className="md:hidden">Wish</span>
               </button>
@@ -2865,7 +2850,7 @@ export default function App() {
               }`}
               id="dash_screen_inventory"
             >
-              <Hammer className="w-3.5 h-3.5 shrink-0 text-slate-955 text-slate-950" />
+              <Hammer className={`w-3.5 h-3.5 shrink-0 ${activeScreen === 'inventory' ? 'text-slate-955' : 'text-orange-400 animate-pulse'}`} />
               <span className="hidden md:inline">{t('forge_ascension', language)}</span>
               <span className="md:hidden">Forge</span>
             </button>
@@ -2882,7 +2867,7 @@ export default function App() {
               }`}
               id="dash_screen_quest"
             >
-              <Trophy className="w-3.5 h-3.5 shrink-0 text-slate-955 text-slate-950" />
+              <Trophy className={`w-3.5 h-3.5 shrink-0 ${activeScreen === 'quest' ? 'text-slate-955' : 'text-yellow-400 animate-pulse'}`} />
               <span className="hidden md:inline">{t('quest_log', language)}</span>
               <span className="md:hidden">Quest</span>
             </button>
@@ -2899,7 +2884,7 @@ export default function App() {
               }`}
               id="dash_screen_party"
             >
-              <Users className="w-3.5 h-3.5 shrink-0 text-slate-955 text-slate-950" />
+              <Users className={`w-3.5 h-3.5 shrink-0 ${activeScreen === 'party' ? 'text-slate-955' : 'text-blue-400 animate-pulse'}`} />
               <span className="hidden md:inline">{t('party_setup', language)}</span>
               <span className="md:hidden">Party</span>
             </button>
@@ -2940,7 +2925,7 @@ export default function App() {
                 }`}
                 id="dash_screen_shop"
               >
-                <Coins className="w-3.5 h-3.5 shrink-0 text-slate-955 text-slate-955 text-slate-950" />
+                <Coins className={`w-3.5 h-3.5 shrink-0 ${activeScreen === 'shop' ? 'text-slate-955' : 'text-teal-400 animate-pulse'}`} />
                 <span className="hidden md:inline">Gems Shop</span>
                 <span className="md:hidden">Shop</span>
               </button>
@@ -2957,7 +2942,7 @@ export default function App() {
               }`}
               id="dash_screen_wiki"
             >
-              <BookOpen className="w-3.5 h-3.5 shrink-0 text-slate-955 text-slate-950" />
+              <BookOpen className={`w-3.5 h-3.5 shrink-0 ${activeScreen === 'wiki' ? 'text-slate-955' : 'text-fuchsia-400 animate-pulse'}`} />
               <span className="hidden md:inline">{t('lore_wiki', language)}</span>
               <span className="md:hidden">Wiki</span>
             </button>

@@ -37,12 +37,12 @@ const GameHome = ({
   onQuest,
 }: GameHomeProps) => {
   const actions = [
-    { label: 'Combat Arena', icon: Sword, onClick: onArena },
-    { label: 'Rogue Ruins', icon: Landmark, onClick: onRogue, locked: isDungeonLocked },
-    { label: 'Party Setup', icon: Users, onClick: onParty },
-    { label: 'Celestial Summons', icon: Sparkles, onClick: onWish, locked: isWishLocked },
-    { label: 'Forge and Ascension', icon: Hammer, onClick: onForge },
-    { label: 'Quest Log', icon: Trophy, onClick: onQuest },
+    { label: 'Combat Arena', icon: Sword, onClick: onArena, colorClass: 'text-rose-400 animate-pulse' },
+    { label: 'Rogue Ruins', icon: Landmark, onClick: onRogue, locked: isDungeonLocked, colorClass: 'text-violet-400 animate-pulse' },
+    { label: 'Party Setup', icon: Users, onClick: onParty, colorClass: 'text-blue-400 animate-pulse' },
+    { label: 'Celestial Summons', icon: Sparkles, onClick: onWish, locked: isWishLocked, colorClass: 'text-amber-400 animate-pulse' },
+    { label: 'Forge and Ascension', icon: Hammer, onClick: onForge, colorClass: 'text-orange-400 animate-pulse' },
+    { label: 'Quest Log', icon: Trophy, onClick: onQuest, colorClass: 'text-yellow-400 animate-pulse' },
   ];
 
   return (
@@ -66,20 +66,20 @@ const GameHome = ({
             onClick={onStory}
             className="inline-flex min-h-12 items-center gap-2 rounded-lg bg-amber-400 px-5 py-3 text-sm font-black uppercase tracking-wider text-slate-950 shadow-lg shadow-amber-400/30 transition hover:bg-amber-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-200"
           >
-            <Compass className="h-4 w-4" />
+            <Compass className="h-4 w-4 text-slate-950 animate-pulse" />
             Continue Story
           </button>
         </div>
 
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {actions.map(({ label, icon: Icon, onClick, locked }) => (
+          {actions.map(({ label, icon: Icon, onClick, locked, colorClass }) => (
             <button
               key={label}
               type="button"
               onClick={onClick}
               className="flex min-h-16 items-center gap-2 rounded-lg border border-white/15 bg-slate-950/70 px-3 py-2 text-left text-xs font-black uppercase tracking-wide text-slate-100 backdrop-blur-sm transition hover:border-amber-300/70 hover:bg-slate-900/85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-200"
             >
-              <Icon className="h-4 w-4 shrink-0 text-amber-300" />
+              <Icon className={`h-4 w-4 shrink-0 ${locked ? 'text-slate-500' : (colorClass || 'text-amber-300')}`} />
               <span className="min-w-0 leading-tight">{label}</span>
               {locked && <span className="ml-auto text-[9px] text-red-300">Locked</span>}
             </button>
