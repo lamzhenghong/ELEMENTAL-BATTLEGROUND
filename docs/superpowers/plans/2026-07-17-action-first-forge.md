@@ -164,7 +164,7 @@ Confirm the source still calls `onLockArtifact`, `setSalvageConfirmArtifactId`, 
 
 Run: `npx tsx src/forgeInformationHierarchy.test.ts`
 
-Run: `npx tsx src/inventorySalvageModal.test.ts`
+Run: `npx tsx src/components/InventoryManager.salvagePortal.test.ts`
 
 Run: `npx tsx src/foundationIntegrity.test.ts`
 
