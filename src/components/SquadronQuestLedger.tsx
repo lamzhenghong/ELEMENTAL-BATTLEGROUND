@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Quest } from '../types';
-import { CheckCircle2, Circle, Sparkles, Coins, Trophy } from 'lucide-react';
+import { CheckCircle2, Circle, Sparkles, Coins, Trophy, HelpCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AetheriaAudioEngine } from '../utils/audio';
 
@@ -12,6 +12,7 @@ interface SquadronQuestLedgerProps {
 }
 
 export default function SquadronQuestLedger({ activeQuests, onClaimQuestReward, onClaimAllQuestRewards, layout }: SquadronQuestLedgerProps) {
+  const [showDescId, setShowDescId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'daily' | 'weekly' | 'normal'>(() => {
     if (activeQuests.some(q => q.group === 'daily' && !q.completed)) return 'daily';
     if (activeQuests.some(q => q.group === 'daily')) return 'daily';
@@ -131,12 +132,27 @@ export default function SquadronQuestLedger({ activeQuests, onClaimQuestReward, 
                         </span>
                       )}
 
-                      <span className="text-[10.5px] font-black text-slate-100 block leading-tight uppercase font-display tracking-wide">
-                        {q.name.toUpperCase()}
-                      </span>
-                      <span className="text-[9.5px] text-slate-400 leading-normal block">
-                        {q.desc}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10.5px] font-black text-slate-100 block leading-tight uppercase font-display tracking-wide">
+                          {q.name.toUpperCase()}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowDescId(showDescId === q.id ? null : q.id);
+                          }}
+                          className="text-slate-500 hover:text-slate-350 p-0.5 transition-colors cursor-pointer"
+                          title="Show Description"
+                        >
+                          <HelpCircle className="w-3 h-3" />
+                        </button>
+                      </div>
+                      {showDescId === q.id && (
+                        <span className="text-[9.5px] text-slate-400 leading-normal block bg-black/40 p-2 rounded border border-white/5 mt-1 font-mono">
+                          {q.desc}
+                        </span>
+                      )}
                     </div>
 
                     {q.completed ? (
@@ -299,10 +315,23 @@ export default function SquadronQuestLedger({ activeQuests, onClaimQuestReward, 
 
                     <h3 className="text-sm font-black text-slate-100 uppercase tracking-wide font-display flex items-center gap-1.5 mt-1">
                       {q.name.toUpperCase()}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowDescId(showDescId === q.id ? null : q.id);
+                        }}
+                        className="text-slate-500 hover:text-slate-355 p-0.5 transition-colors cursor-pointer"
+                        title="Show Description"
+                      >
+                        <HelpCircle className="w-3.5 h-3.5" />
+                      </button>
                     </h3>
-                    <p className="text-xs text-slate-400 leading-relaxed max-w-2xl">
-                      {q.desc}
-                    </p>
+                    {showDescId === q.id && (
+                      <p className="text-xs text-slate-400 leading-relaxed max-w-2xl bg-black/40 p-3 rounded-lg border border-white/5 mt-1.5 font-mono">
+                        {q.desc}
+                      </p>
+                    )}
                   </div>
 
                   {q.completed ? (

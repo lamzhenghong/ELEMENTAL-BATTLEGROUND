@@ -99,6 +99,9 @@ export default function GDDViewer({
   const [selectedCharacterId, setSelectedCharacterId] = React.useState<string>(initialCharacterId || PLAYABLE_CHARACTERS[0].id);
   const [selectedWeaponName, setSelectedWeaponName] = useState<string>(initialWeaponName || WEAPONS_DATABASE[0].name);
   const [selectedNationName, setSelectedNationName] = useState<string>(GDD_DATA.nations[0].name);
+  const [hoveredFactionIdx, setHoveredFactionIdx] = useState<number | null>(null);
+  const [showNationHistory, setShowNationHistory] = useState<boolean>(false);
+  const [expandedSystemId, setExpandedSystemId] = useState<string | null>(null);
   const [charSearch, setCharSearch] = useState('');
   const [weapSearch, setWeapSearch] = useState('');
   const [charOwnershipFilter, setCharOwnershipFilter] = useState<'all' | 'owned' | 'unowned'>('all');
@@ -352,7 +355,11 @@ export default function GDDViewer({
                 {GDD_DATA.nations.map((nation) => (
                   <button
                     key={nation.name}
-                    onClick={() => setSelectedNationName(nation.name)}
+                    onClick={() => {
+                      setSelectedNationName(nation.name);
+                      setHoveredFactionIdx(null);
+                      setShowNationHistory(false);
+                    }}
                     className={`w-full text-left p-3.5 rounded-xl border transition-all ${
                       selectedNationName === nation.name
                         ? `bg-slate-800/80 border-slate-700 shadow-lg text-slate-100`
@@ -400,15 +407,39 @@ export default function GDDViewer({
                     </div>
                   </div>
 
-                  <div className="bg-slate-950/60 p-4 border border-slate-800/80 rounded-xl space-y-2">
-                    <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Major political factions</div>
+                  <div className="bg-slate-950/60 p-4 border border-slate-800/80 rounded-xl space-y-3">
+                    <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex justify-between items-center">
+                      <span>Major Factions</span>
+                      <span className="text-[8.5px] text-slate-500 font-normal normal-case italic">(Tap to expand)</span>
+                    </div>
                     <div className="space-y-2 mt-1">
                       {selectedNation.majorFactions.map((fac, idx) => {
                         const [name, desc] = fac.split(':');
+                        const isExpanded = hoveredFactionIdx === idx;
                         return (
-                          <div key={idx} className="text-[11px] leading-relaxed">
-                            <span className="font-bold text-amber-500">{name}:</span>
-                            <span className="text-slate-300">{desc}</span>
+                          <div 
+                            key={idx} 
+                            onClick={() => setHoveredFactionIdx(hoveredFactionIdx === idx ? null : idx)}
+                            className={`p-2.5 rounded-lg border text-[11px] leading-relaxed transition-all cursor-pointer ${
+                              isExpanded 
+                                ? 'bg-indigo-950/20 border-indigo-500/35 shadow-inner' 
+                                : 'bg-black/30 border-white/5 hover:border-slate-700/50'
+                            }`}
+                          >
+                            <div className="flex justify-between items-center">
+                              <span className="font-extrabold text-slate-100 flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                                {name}
+                              </span>
+                              <span className="text-[9px] text-indigo-400 font-bold uppercase font-mono">
+                                {isExpanded ? '▲ Info' : '▼ Info'}
+                              </span>
+                            </div>
+                            {isExpanded && (
+                              <p className="text-[10.5px] text-slate-400 leading-normal mt-1.5 border-t border-white/5 pt-1.5 font-mono select-text">
+                                {desc}
+                              </p>
+                            )}
                           </div>
                         );
                       })}
@@ -416,11 +447,24 @@ export default function GDDViewer({
                   </div>
                 </div>
 
-                <div className="bg-slate-950/40 p-5 border border-slate-800 rounded-xl">
-                  <h4 className="text-xs font-bold text-slate-300 uppercase tracking-widest mb-2">Dynastic Annals & Origin Arc</h4>
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    {selectedNation.history}
-                  </p>
+                <div className="bg-slate-950/40 border border-slate-800 rounded-xl overflow-hidden">
+                  <button
+                    onClick={() => setShowNationHistory(prev => !prev)}
+                    className="w-full p-4 flex justify-between items-center text-xs font-bold text-slate-200 uppercase tracking-widest bg-slate-950/60 hover:bg-slate-900/50 transition-colors cursor-pointer"
+                  >
+                    <span className="flex items-center gap-2">
+                      <BookOpen className="w-4 h-4 text-indigo-400" />
+                      Dynastic Annals & Origin Arc
+                    </span>
+                    <span className="text-[10px] text-indigo-400 font-mono">
+                      {showNationHistory ? 'COLLAPSE LOGS [-]' : 'EXPAND ORIGINS [+]'}
+                    </span>
+                  </button>
+                  {showNationHistory && (
+                    <div className="p-5 border-t border-slate-900 bg-slate-950/30 text-xs text-slate-400 leading-relaxed font-mono select-text">
+                      {selectedNation.history}
+                    </div>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -1223,20 +1267,35 @@ export default function GDDViewer({
                     <h3 className="text-sm font-bold text-slate-200 uppercase tracking-widest">Real-time Combat Mechanics</h3>
                   </div>
                   {GDD_DATA.combatSystems.map((sys) => (
-                    <div key={sys.id} className="p-4 bg-slate-950/60 border border-slate-800/80 rounded-xl space-y-2">
-                      <div className="flex items-center gap-2">
-                        {getSystemIcon(sys.iconName)}
-                        <h4 className="text-xs font-bold text-slate-100">{sys.title}</h4>
+                    <div 
+                      key={sys.id} 
+                      onClick={() => setExpandedSystemId(expandedSystemId === sys.id ? null : sys.id)}
+                      className={`p-4 bg-slate-950/60 border rounded-xl space-y-2 cursor-pointer transition-all ${
+                        expandedSystemId === sys.id 
+                          ? 'border-indigo-500/40 bg-indigo-950/5 shadow-inner' 
+                          : 'border-slate-800/80 hover:border-slate-700/50'
+                      }`}
+                    >
+                      <div className="flex justify-between items-center w-full">
+                        <div className="flex items-center gap-2">
+                          {getSystemIcon(sys.iconName)}
+                          <h4 className="text-xs font-bold text-slate-100">{sys.title}</h4>
+                        </div>
+                        <span className="text-[9px] text-indigo-400 font-bold font-mono">
+                          {expandedSystemId === sys.id ? '[-] Details' : '[+] Details'}
+                        </span>
                       </div>
                       <p className="text-[11px] text-slate-400 leading-relaxed">{sys.summary}</p>
-                      <ul className="space-y-1.5 pt-1">
-                        {sys.details.map((det, i) => (
-                          <li key={i} className="text-[10px] text-slate-300 flex items-start gap-1.5 leading-relaxed">
-                            <span className="text-amber-500 font-bold">•</span>
-                            <span>{det}</span>
-                          </li>
-                        ))}
-                      </ul>
+                      {expandedSystemId === sys.id && (
+                        <ul className="space-y-1.5 pt-2 border-t border-white/5 mt-2 animate-fade-in font-mono text-[10px]">
+                          {sys.details.map((det, i) => (
+                            <li key={i} className="text-[10px] text-slate-350 flex items-start gap-1.5 leading-relaxed select-text">
+                              <span className="text-amber-500 font-bold">•</span>
+                              <span>{det}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1248,20 +1307,35 @@ export default function GDDViewer({
                     <h3 className="text-sm font-bold text-slate-200 uppercase tracking-widest">Core Progression Loops</h3>
                   </div>
                   {GDD_DATA.gachaSystems.concat(GDD_DATA.equipmentSystems).concat(GDD_DATA.economySystems).map((sys) => (
-                    <div key={sys.id} className="p-4 bg-slate-950/60 border border-slate-800/80 rounded-xl space-y-2">
-                      <div className="flex items-center gap-2">
-                        {getSystemIcon(sys.iconName)}
-                        <h4 className="text-xs font-bold text-slate-100">{sys.title}</h4>
+                    <div 
+                      key={sys.id} 
+                      onClick={() => setExpandedSystemId(expandedSystemId === sys.id ? null : sys.id)}
+                      className={`p-4 bg-slate-950/60 border rounded-xl space-y-2 cursor-pointer transition-all ${
+                        expandedSystemId === sys.id 
+                          ? 'border-indigo-500/40 bg-indigo-950/5 shadow-inner' 
+                          : 'border-slate-800/80 hover:border-slate-700/50'
+                      }`}
+                    >
+                      <div className="flex justify-between items-center w-full">
+                        <div className="flex items-center gap-2">
+                          {getSystemIcon(sys.iconName)}
+                          <h4 className="text-xs font-bold text-slate-100">{sys.title}</h4>
+                        </div>
+                        <span className="text-[9px] text-indigo-400 font-bold font-mono">
+                          {expandedSystemId === sys.id ? '[-] Details' : '[+] Details'}
+                        </span>
                       </div>
                       <p className="text-[11px] text-slate-400 leading-relaxed">{sys.summary}</p>
-                      <ul className="space-y-1.5 pt-1">
-                        {sys.details.map((det, i) => (
-                          <li key={i} className="text-[10px] text-slate-300 flex items-start gap-1.5 leading-relaxed">
-                            <span className="text-amber-500 font-bold">•</span>
-                            <span>{det}</span>
-                          </li>
-                        ))}
-                      </ul>
+                      {expandedSystemId === sys.id && (
+                        <ul className="space-y-1.5 pt-2 border-t border-white/5 mt-2 animate-fade-in font-mono text-[10px]">
+                          {sys.details.map((det, i) => (
+                            <li key={i} className="text-[10px] text-slate-350 flex items-start gap-1.5 leading-relaxed select-text">
+                              <span className="text-amber-500 font-bold">•</span>
+                              <span>{det}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1273,20 +1347,35 @@ export default function GDDViewer({
                     <h3 className="text-sm font-bold text-slate-200 uppercase tracking-widest">Retention & Monetization</h3>
                   </div>
                   {GDD_DATA.endgameSystems.concat(GDD_DATA.monetizationStrategies).map((sys) => (
-                    <div key={sys.id} className="p-4 bg-slate-950/60 border border-slate-800/80 rounded-xl space-y-2">
-                      <div className="flex items-center gap-2">
-                        {getSystemIcon(sys.iconName)}
-                        <h4 className="text-xs font-bold text-slate-100">{sys.title}</h4>
+                    <div 
+                      key={sys.id} 
+                      onClick={() => setExpandedSystemId(expandedSystemId === sys.id ? null : sys.id)}
+                      className={`p-4 bg-slate-950/60 border rounded-xl space-y-2 cursor-pointer transition-all ${
+                        expandedSystemId === sys.id 
+                          ? 'border-indigo-500/40 bg-indigo-950/5 shadow-inner' 
+                          : 'border-slate-800/80 hover:border-slate-700/50'
+                      }`}
+                    >
+                      <div className="flex justify-between items-center w-full">
+                        <div className="flex items-center gap-2">
+                          {getSystemIcon(sys.iconName)}
+                          <h4 className="text-xs font-bold text-slate-100">{sys.title}</h4>
+                        </div>
+                        <span className="text-[9px] text-indigo-400 font-bold font-mono">
+                          {expandedSystemId === sys.id ? '[-] Details' : '[+] Details'}
+                        </span>
                       </div>
                       <p className="text-[11px] text-slate-400 leading-relaxed">{sys.summary}</p>
-                      <ul className="space-y-1.5 pt-1">
-                        {sys.details.map((det, i) => (
-                          <li key={i} className="text-[10px] text-slate-300 flex items-start gap-1.5 leading-relaxed">
-                            <span className="text-amber-500 font-bold">•</span>
-                            <span>{det}</span>
-                          </li>
-                        ))}
-                      </ul>
+                      {expandedSystemId === sys.id && (
+                        <ul className="space-y-1.5 pt-2 border-t border-white/5 mt-2 animate-fade-in font-mono text-[10px]">
+                          {sys.details.map((det, i) => (
+                            <li key={i} className="text-[10px] text-slate-350 flex items-start gap-1.5 leading-relaxed select-text">
+                              <span className="text-amber-500 font-bold">•</span>
+                              <span>{det}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
                   ))}
                 </div>

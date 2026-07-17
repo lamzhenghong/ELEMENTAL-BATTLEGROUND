@@ -182,6 +182,7 @@ export default function InventoryManager({
   const [artifactEquipSearch, setArtifactEquipSearch] = useState('');
 
   const [weaponSearchQuery, setWeaponSearchQuery] = useState('');
+  const [selectedItemName, setSelectedItemName] = useState<string | null>(() => inventoryItems[0]?.name || null);
 
   const selectedChar = PLAYABLE_CHARACTERS.find(c => c.id === selectedCharId) || PLAYABLE_CHARACTERS[0];
   const charLevel = characterLevels[selectedChar.id] || 1;
@@ -915,16 +916,82 @@ export default function InventoryManager({
             )}
 
             {activeTab === 'items' && (
-              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
-                {inventoryItems.map((item, idx) => (
-                  <div key={idx} className="p-4 bg-black/20 border border-white/5 rounded-xl flex justify-between items-center text-sm hover:bg-black/35 transition-all">
-                    <div>
-                      <span className="font-extrabold text-slate-205 uppercase text-sm tracking-tight">{item.name}</span>
-                      <span className="text-xs text-slate-400 block mt-1.5">{item.desc}</span>
-                    </div>
-                    <span className="font-black font-mono text-indigo-400 bg-indigo-400/10 border border-indigo-500/20 px-3 py-1 rounded text-xs shrink-0 self-center">x{item.count}</span>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Left side: Grid of materials (takes 2 cols on large screen) */}
+                <div className="lg:col-span-2 space-y-3">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+                    {inventoryItems.map((item, idx) => {
+                      const isSelected = selectedItemName === item.name;
+                      // Display icon based on item
+                      let itemEmoji = '📦';
+                      if (item.id === 'wit_exp') itemEmoji = '🧪';
+                      if (item.id === 'ore_exp') itemEmoji = '💎';
+                      
+                      // Rarity color borders
+                      const rarityBorders = [
+                        'border-white/5',
+                        'border-white/10',
+                        'border-emerald-500/20',
+                        'border-blue-500/20',
+                        'border-purple-500/30 bg-purple-950/10',
+                        'border-amber-500/30 bg-amber-950/10'
+                      ];
+                      const rarityClass = rarityBorders[item.rarity] || 'border-white/5';
+                      
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            setSelectedItemName(item.name);
+                            AetheriaAudioEngine.playClick();
+                          }}
+                          className={`aspect-square rounded-xl border flex flex-col items-center justify-center relative cursor-pointer group transition-all duration-155 ${rarityClass} ${
+                            isSelected 
+                              ? 'ring-2 ring-indigo-400 bg-slate-900 border-indigo-400 shadow-md shadow-indigo-500/10' 
+                              : 'bg-black/20 hover:bg-black/35 hover:border-white/10'
+                          }`}
+                        >
+                          <span className="text-3xl filter drop-shadow group-hover:scale-110 transition-transform">{itemEmoji}</span>
+                          <span className="absolute bottom-1 right-1.5 bg-black/80 px-1 py-0.5 rounded text-[9px] font-mono font-black text-slate-300">
+                            x{item.count}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
-                ))}
+                </div>
+                
+                {/* Right side: selected item detail card */}
+                <div className="bg-[#0b0f19]/75 border border-white/10 p-5 rounded-2xl flex flex-col justify-between min-h-[160px] h-full shadow-[0_4px_30px_rgba(0,0,0,0.4)] backdrop-blur-md">
+                  {(() => {
+                    const selectedItem = inventoryItems.find(item => item.name === selectedItemName) || inventoryItems[0];
+                    if (!selectedItem) {
+                      return <div className="text-slate-500 text-xs italic text-center py-10">Select an item to view details</div>;
+                    }
+                    
+                    let itemEmoji = '📦';
+                    if (selectedItem.id === 'wit_exp') itemEmoji = '🧪';
+                    if (selectedItem.id === 'ore_exp') itemEmoji = '💎';
+                    
+                    return (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-3 border-b border-white/5 pb-3">
+                          <span className="text-3xl">{itemEmoji}</span>
+                          <div>
+                            <h4 className="text-sm font-black text-slate-100 uppercase tracking-wide leading-tight">{selectedItem.name}</h4>
+                            <span className="text-[9px] font-black uppercase text-indigo-400 font-mono tracking-wider block mt-0.5">
+                              Quantity: x{selectedItem.count}
+                            </span>
+                          </div>
+                        </div>
+                        <p className="text-xs text-slate-400 leading-relaxed font-sans select-text">
+                          {selectedItem.desc}
+                        </p>
+                      </div>
+                    );
+                  })()}
+                </div>
               </div>
             )}
 

@@ -1163,9 +1163,57 @@ export default function GachaSimulator({
             </button>
 
             {showBannerDetails && (
-              <div id="banner-details-panel" className="text-[9.5px] bg-black/40 border border-white/5 p-3 rounded-lg text-slate-400 font-mono uppercase space-y-1">
-                <b className="text-[#a855f7] block font-extrabold mb-1">PROBABILITY UP-RATES:</b>
-                <p>{activeBanner.details}</p>
+              <div id="banner-details-panel" className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-black/45 border border-white/5 p-4 rounded-xl text-[10px] font-mono uppercase w-full">
+                {/* 5-Star details */}
+                <div className="bg-slate-900/60 p-3 rounded-lg border border-amber-400/20 flex flex-col justify-between gap-1 shadow-inner relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-8 h-8 bg-amber-400/5 rotate-45 transform translate-x-4 -translate-y-4"></div>
+                  <span className="text-[9px] text-amber-400 font-black tracking-wider block">5★ GUARANTEE & RATES</span>
+                  <div className="space-y-1 mt-1 text-slate-350">
+                    <p className="flex justify-between">
+                      <span className="text-slate-500">BASE RATE:</span>
+                      <span className="font-extrabold text-amber-300">0.60%</span>
+                    </p>
+                    <p className="flex justify-between">
+                      <span className="text-slate-500">SOFT PITY:</span>
+                      <span className="font-bold text-slate-200">74 pulls</span>
+                    </p>
+                    <p className="flex justify-between">
+                      <span className="text-slate-500">HARD PITY:</span>
+                      <span className="font-extrabold text-amber-400">90 rolls</span>
+                    </p>
+                  </div>
+                </div>
+
+                {/* 4-Star details */}
+                <div className="bg-slate-900/60 p-3 rounded-lg border border-purple-400/20 flex flex-col justify-between gap-1 shadow-inner relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-8 h-8 bg-purple-400/5 rotate-45 transform translate-x-4 -translate-y-4"></div>
+                  <span className="text-[9px] text-purple-400 font-black tracking-wider block">4★ GUARANTEE & RATES</span>
+                  <div className="space-y-1 mt-1 text-slate-350">
+                    <p className="flex justify-between">
+                      <span className="text-slate-500">BASE RATE:</span>
+                      <span className="font-extrabold text-purple-300">5.10%</span>
+                    </p>
+                    <p className="flex justify-between">
+                      <span className="text-slate-500">HARD PITY:</span>
+                      <span className="font-extrabold text-purple-400">10 rolls</span>
+                    </p>
+                    <p className="flex justify-between">
+                      <span className="text-slate-500">FEATURE ODDS:</span>
+                      <span className="font-bold text-slate-200">50% chance</span>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Event Drop Rule */}
+                <div className="bg-slate-900/60 p-3 rounded-lg border border-indigo-400/20 flex flex-col justify-between gap-1 shadow-inner relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-8 h-8 bg-indigo-500/5 rotate-45 transform translate-x-4 -translate-y-4"></div>
+                  <span className="text-[9px] text-indigo-400 font-black tracking-wider block">BANNER SYNERGY RULE</span>
+                  <div className="space-y-1 mt-1 text-slate-355">
+                    <p className="text-[9px] text-slate-300 leading-relaxed uppercase">
+                      {activeBanner.details}
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
 
