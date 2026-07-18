@@ -55,6 +55,12 @@ export default function StoryMode({
   const storyProgress = normalizeStoryProgress(saveState.storyProgress);
 
   useEffect(() => {
+    AetheriaAudioEngine.setBgmContext(activeTab === 'campaign'
+      ? 'story-map'
+      : 'character-stories-memories');
+  }, [activeTab]);
+
+  useEffect(() => {
     if (activeTab !== 'campaign') return;
     const chapterStrip = chapterStripRef.current;
     const selectedCard = chapterCardRefs.current.get(selectedChapter);

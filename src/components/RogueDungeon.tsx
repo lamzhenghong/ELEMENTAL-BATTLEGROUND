@@ -97,6 +97,12 @@ export default function RogueDungeon({
   const [combatActive, setCombatActive] = useState<boolean>(false);
   const [showAbandonConfirm, setShowAbandonConfirm] = useState<boolean>(false);
 
+  useEffect(() => {
+    if (!combatActive) {
+      AetheriaAudioEngine.setBgmContext('rogue-exploration');
+    }
+  }, [combatActive]);
+
   // Auto-save effect
   useEffect(() => {
     if (runActive) {

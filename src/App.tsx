@@ -1475,11 +1475,15 @@ export default function App() {
 
   const handleStartStoryBattle = (config: { stageId: string; isHardMode: boolean; isCharStory: boolean; choiceSelections: StoryChoiceSelections; charId?: string; act?: number }) => {
     setStoryBattleConfig(config);
+    AetheriaAudioEngine.setBgmContext('story-battle');
     setStoryBattleActive(true);
   };
 
   const handleStoryBattleEnd = (victory: boolean, stats: { stars: number; hp: Record<string, number>; ult: Record<string, number>; duration: number; deaths: number }) => {
     setStoryBattleActive(false);
+    AetheriaAudioEngine.setBgmContext(storyBattleConfig.isCharStory
+      ? 'character-stories-memories'
+      : 'story-map');
     if (!victory) {
       showInGameAlert("Story Battle Defeated!", "Adjust your party elements, upgrade character levels, or forge better weapons to try again!", "error");
       return;
@@ -4414,8 +4418,16 @@ export default function App() {
               characterEquippedWeapon={saveState.characterEquippedWeapon}
               inventoryWeapons={saveState.inventoryWeapons}
               characterPortraits={saveState.characterPortraits || {}}
-              onBackToMenu={() => { setStoryBattleActive(false); setActiveScreen('story'); }}
-              onExitToWiki={() => { setStoryBattleActive(false); setActiveScreen('story'); }}
+              onBackToMenu={() => {
+                setStoryBattleActive(false);
+                setActiveScreen('story');
+                AetheriaAudioEngine.setBgmContext(storyBattleConfig.isCharStory ? 'character-stories-memories' : 'story-map');
+              }}
+              onExitToWiki={() => {
+                setStoryBattleActive(false);
+                setActiveScreen('story');
+                AetheriaAudioEngine.setBgmContext(storyBattleConfig.isCharStory ? 'character-stories-memories' : 'story-map');
+              }}
               onAddItems={handleAddItems}
               devCheatsEnabled={devCheatsEnabled}
               playerLevel={saveState.playerLevel || 1}

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AetheriaAudioEngine, SPECIAL_ULTIMATE_THEME_DURATION_MS } from '../utils/audio';
+import { getCombatBgmTrack } from '../utils/bgm';
 import { LanguageType, t } from '../utils/i18n';
 import { getAccumulatedPortraitBuffs } from '../utils/portraits';
 import { WEAPONS_DATABASE } from '../data/weapons';
@@ -629,6 +630,16 @@ export default function CombatArena({
   const hasRevivedRef = useRef<boolean>(false);
   const waveResolvingRef = useRef<boolean>(false);
 
+  const combatBgmTrack = getCombatBgmTrack({
+    storyMode,
+    dungeonMode,
+    artifactGrindMode: isArtifactGrindMode
+  });
+
+  useEffect(() => {
+    AetheriaAudioEngine.setBgmContext(combatBgmTrack);
+  }, [combatBgmTrack]);
+
   // Weather, stamina and premium visual states
   const [currentWeather, setCurrentWeather] = useState<CombatWeather>('Sunny');
   const weatherTimerRef = useRef<number>(1200); // 20 seconds at 60fps
@@ -788,7 +799,6 @@ export default function CombatArena({
     weatherMeteorTimerRef.current = 0;
     lightningWarningRef.current = null;
     lightningStrikeVisualRef.current = null;
-    AetheriaAudioEngine.updateWeatherBgm(replacedNormal);
     showWeatherAnnouncement(weather, rarity);
   };
 
@@ -808,7 +818,6 @@ export default function CombatArena({
     setWeatherRarity('Normal');
     setCurrentWeather('Sunny');
     setWeatherAnnouncement(null);
-    AetheriaAudioEngine.updateWeatherBgm('Sunny');
   };
 
   const resetComboState = () => {
@@ -1137,13 +1146,6 @@ export default function CombatArena({
       }
     }
   };
-
-  // Start music loop once battle starts
-  useEffect(() => {
-    if (battleStarted) {
-      AetheriaAudioEngine.updateWeatherBgm(isNormalWeather(weatherRef.current) ? weatherRef.current : normalWeatherCursorRef.current);
-    }
-  }, [battleStarted]);
 
   // Get color details relative to elements
   const getElementColorHex = (element: ElementType) => {
