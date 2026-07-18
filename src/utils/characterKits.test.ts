@@ -12,7 +12,11 @@ assert.equal(aurelia?.normalAttack.reactionEligible, false);
 assert.deepEqual(aurelia?.skill.effects, [{
   kind: 'burn', duration: 6, tickInterval: 1, attackMultiplier: 0.35, refreshes: true
 }]);
-assert.equal(aurelia?.burst.effects[0]?.kind, 'large-explosion');
+assert.deepEqual(aurelia?.burst.effects, [
+  { kind: 'large-explosion' },
+  { kind: 'burn', duration: 10, tickInterval: 1, attackMultiplier: 0.75, refreshes: true }
+]);
+assert.match(aurelia?.burst.description ?? '', /10 seconds.*75%.*ATK.*once every second/i);
 assert.equal(aurelia?.burst.rangeMultiplier, 2.5);
 
 const kaelen = getCharacterKit('kaelen');

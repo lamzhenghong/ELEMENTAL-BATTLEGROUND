@@ -16,7 +16,7 @@ const burn: CombatStatusEffect = {
   duration: 6,
   remainingDuration: 6,
   strength: 0.35,
-  stackBehavior: 'refresh',
+  stackBehavior: 'strongest',
   visualKind: 'burning',
   tickInterval: 1,
   timeUntilNextTick: 1,
@@ -37,8 +37,30 @@ result = applyCombatStatus(ticked.statuses, burn, 'normal');
 assert.equal(result.statuses.length, 1);
 assert.equal(result.statuses[0]?.remainingDuration, 6);
 
-ticked = tickCombatStatuses(result.statuses, 6);
-assert.equal(ticked.events.length, 6);
+const burstBurn: CombatStatusEffect = {
+  ...burn,
+  id: 'burn:aurelia:burst',
+  sourceAbility: 'burst',
+  duration: 10,
+  remainingDuration: 10,
+  strength: 0.75,
+  snapshotAtk: 1200
+};
+result = applyCombatStatus(result.statuses, burstBurn, 'normal');
+assert.equal(result.statuses.length, 1);
+assert.equal(result.statuses[0]?.sourceAbility, 'burst');
+assert.equal(result.statuses[0]?.remainingDuration, 10);
+assert.equal(result.statuses[0]?.strength, 0.75);
+assert.equal(result.statuses[0]?.snapshotAtk, 1200);
+
+result = applyCombatStatus(result.statuses, burn, 'normal');
+assert.equal(result.statuses.length, 1);
+assert.equal(result.statuses[0]?.sourceAbility, 'burst');
+assert.equal(result.statuses[0]?.remainingDuration, 10);
+
+ticked = tickCombatStatuses(result.statuses, 10);
+assert.equal(ticked.events.length, 10);
+assert.ok(ticked.events.every(event => event.damage === 900));
 assert.equal(ticked.statuses.length, 0);
 
 const slow = (strength: number, duration = 3): CombatStatusEffect => ({

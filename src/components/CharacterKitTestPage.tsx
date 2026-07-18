@@ -128,19 +128,19 @@ export default function CharacterKitTestPage() {
   const applyStatusEffect = (
     current: TestEnemy,
     effect: CharacterKitEffect,
-    sourceAbility: 'normal-attack' | 'skill'
+    sourceAbility: 'normal-attack' | 'skill' | 'burst'
   ) => {
     let incoming: CombatStatusEffect | null = null;
     if (effect.kind === 'burn') {
       incoming = {
-        id: `burn:${characterId}:skill`,
+        id: `burn:${characterId}:${sourceAbility}`,
         type: 'burn',
         sourceCharacterId: characterId,
         sourceAbility,
         duration: effect.duration,
         remainingDuration: effect.duration,
         strength: effect.attackMultiplier,
-        stackBehavior: 'refresh',
+        stackBehavior: 'strongest',
         visualKind: 'burning',
         tickInterval: effect.tickInterval,
         timeUntilNextTick: effect.tickInterval,
@@ -261,6 +261,8 @@ export default function CharacterKitTestPage() {
         log(`Stormglass Dominion snapshotted ${adjustedStats.atk} ATK.`);
       } else if (effect.kind === 'large-explosion') {
         log('Solar Detonation reached the full test arena.');
+      } else {
+        next = applyStatusEffect(next, effect, 'burst');
       }
     }
     setPartyEffects(nextParty);

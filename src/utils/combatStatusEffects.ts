@@ -60,7 +60,7 @@ export const applyCombatStatus = (
   const matchIndex = statuses.findIndex(status =>
     status.type === incoming.type
     && status.sourceCharacterId === incoming.sourceCharacterId
-    && status.sourceAbility === incoming.sourceAbility
+    && (incoming.type === 'burn' || status.sourceAbility === incoming.sourceAbility)
   );
 
   if (matchIndex < 0) {
@@ -76,7 +76,7 @@ export const applyCombatStatus = (
   }
 
   if (incoming.stackBehavior === 'strongest' && current.strength > incoming.strength) {
-    next[matchIndex] = { ...current, remainingDuration: Math.max(current.remainingDuration, incoming.duration) };
+    next[matchIndex] = current;
   } else if (incoming.stackBehavior === 'additive') {
     next[matchIndex] = {
       ...incoming,

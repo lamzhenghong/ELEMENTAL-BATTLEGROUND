@@ -55,9 +55,13 @@ export const LIMITED_CHARACTER_KITS: Readonly<Record<LimitedKitCharacterId, Limi
     },
     burst: {
       name: 'Solar Detonation',
-      description: 'Releases a devastating Pyro explosion across a massive area, dealing heavy damage to every enemy caught within the blast.',
+      description: "Releases a devastating Pyro explosion across a massive area and inflicts Burning for 10 seconds. Burning deals Pyro damage equal to 75% of Aurelia's ATK once every second; its damage cannot trigger reactions.",
       shape: 'large-aoe', directDamage: true, reactionEligible: true,
-      rangeMultiplier: 2.5, damageMultiplier: 1, effects: [{ kind: 'large-explosion' }]
+      rangeMultiplier: 2.5, damageMultiplier: 1,
+      effects: [
+        { kind: 'large-explosion' },
+        { kind: 'burn', duration: 10, tickInterval: 1, attackMultiplier: 0.75, refreshes: true }
+      ]
     }
   },
   kaelen: {

@@ -18,12 +18,12 @@ export interface PortraitBuffValues {
 
 export const CHARACTER_PORTRAIT_BUFFS: Record<string, PortraitBuffValues[]> = {
   aurelia: [
-    { atk: 0.15 },
-    { critRate: 0.08 },
-    { atk: 0.2 },
-    { critDmg: 0.15 },
-    { critRate: 0.12 },
-    { atk: 0.25, critDmg: 0.25 },
+    { atk: 0.08 },
+    { critRate: 0.04 },
+    { atk: 0.08 },
+    { critDmg: 0.1 },
+    { critRate: 0.04 },
+    { atk: 0.12, critDmg: 0.12 },
   ],
   ignis: [
     { hp: 0.2 },
@@ -34,28 +34,28 @@ export const CHARACTER_PORTRAIT_BUFFS: Record<string, PortraitBuffValues[]> = {
     { hp: 0.25, def: 0.3 },
   ],
   kaelen: [
-    { atk: 0.12 },
-    { critRate: 0.1 },
-    { critDmg: 0.18 },
-    { atk: 0.18 },
-    { critRate: 0.08, critDmg: 0.15 },
-    { atk: 0.22, critRate: 0.12 },
+    { atk: 0.06 },
+    { hp: 0.08 },
+    { critRate: 0.04 },
+    { critDmg: 0.1 },
+    { def: 0.08 },
+    { atk: 0.1, critRate: 0.04 },
   ],
   maelis: [
-    { hp: 0.2 },
-    { def: 0.2 },
-    { atk: 0.15 },
-    { hp: 0.15, def: 0.15 },
-    { critRate: 0.1 },
-    { hp: 0.25, def: 0.2, atk: 0.22 },
+    { hp: 0.08 },
+    { def: 0.08 },
+    { atk: 0.06 },
+    { hp: 0.08, def: 0.08 },
+    { critRate: 0.04 },
+    { hp: 0.1, def: 0.1, atk: 0.08 },
   ],
   veyra: [
-    { critRate: 0.12 },
-    { critDmg: 0.22 },
-    { atk: 0.16 },
-    { critRate: 0.1 },
-    { critDmg: 0.24 },
-    { atk: 0.24, critRate: 0.14, critDmg: 0.28 },
+    { critRate: 0.04 },
+    { critDmg: 0.1 },
+    { atk: 0.08 },
+    { critRate: 0.04 },
+    { critDmg: 0.12 },
+    { atk: 0.12, critRate: 0.04, critDmg: 0.12 },
   ],
   marina: [
     { hp: 0.15 },
@@ -295,12 +295,12 @@ export function getPortraitInfoList(element: string, charId: string): PortraitIn
   switch (charId) {
     case 'aurelia':
       return [
-        { name: 'Solar Crucible', desc: 'Increases Attack Force (ATK) by +15%. Sun Warden training boosts base cell vitality.' },
-        { name: 'Dawn Blade Aegis', desc: 'Increases Critical Rate by +8% (flat). Unlocks ancient potential.' },
-        { name: 'Searing Solstice', desc: 'Increases Attack Force (ATK) by +20%. Searing Dawnburst attacks burn hotter.' },
-        { name: 'Sunflare Focus', desc: 'Increases Critical Damage by +15% (flat). Unlocks ancient potential.' },
-        { name: 'Daybreak Combustion', desc: 'Increases Critical Rate by +12% (flat). Daybreak Solstice eruptions melt defenses.' },
-        { name: 'Eternal Warden Dominion', desc: 'Increases Attack Force (ATK) by +25% and Critical Damage by +25% (flat). Max HP, DEF, and ATK receive an additional +20% boost.' },
+        { name: 'Solar Temper', desc: 'Increases ATK by +8%, strengthening Scorching Edge and every Burning damage snapshot.' },
+        { name: 'Brand Precision', desc: 'Increases Critical Rate by +4% for the initial hits of Searing Brand and Solar Detonation.' },
+        { name: 'Searing Solstice', desc: 'Increases ATK by +8%, improving direct damage and future Burning applications.' },
+        { name: 'Sunflare Focus', desc: 'Increases Critical Damage by +10% for Aurelia\'s direct strikes and explosions.' },
+        { name: 'Daybreak Combustion', desc: 'Increases Critical Rate by +4%, keeping Aurelia\'s on-field damage consistent.' },
+        { name: 'Eternal Warden Dominion', desc: 'Increases ATK by +12% and Critical Damage by +12% without changing Burning tick frequency.' },
       ];
 
     case 'ignis':
@@ -315,32 +315,32 @@ export function getPortraitInfoList(element: string, charId: string): PortraitIn
 
     case 'kaelen':
       return [
-        { name: 'Admiral Tidebound', desc: 'Increases Attack Force (ATK) by +12%. Hydro-spectral Navy training increases marine vitality.' },
-        { name: 'Pearl Fleet Shielding', desc: 'Increases Critical Rate by +10% (flat). Swirling mist shields redirect incoming attacks.' },
-        { name: 'Abyssal Vortex Force', desc: 'Increases Critical Damage by +18% (flat). Admiralty Vortex pull forces deal increased damage.' },
-        { name: 'Naval Tactical Focus', desc: 'Increases Attack Force (ATK) by +18%. Unlocks ancient potential.' },
-        { name: 'Pearl Salvo Detonation', desc: 'Increases Critical Rate by +8% (flat) and Critical Damage by +15% (flat). Pearl Fleet Salvo strikes deal heavy damage.' },
-        { name: 'Grand Admiral Sovereignty', desc: 'Increases Attack Force (ATK) by +22% and Critical Rate by +12% (flat). Max HP, DEF, and ATK receive an additional +20% boost.' },
+        { name: 'Tidebound Discipline', desc: 'Increases ATK by +6%, improving Frozen Tide and Abyssal Whirlpool damage.' },
+        { name: 'Cold Current Guard', desc: 'Increases Max HP by +8% while Kaelen controls enemies at close range.' },
+        { name: 'Abyssal Vortex Focus', desc: 'Increases Critical Rate by +4% for Kaelen\'s direct Hydro impacts.' },
+        { name: 'Frozen Tide Pressure', desc: 'Increases Critical Damage by +10% without extending crowd-control durations.' },
+        { name: 'Pearl Fleet Poise', desc: 'Increases DEF by +8%, helping Kaelen hold position while gathering enemies.' },
+        { name: 'Grand Admiral Command', desc: 'Increases ATK by +10% and Critical Rate by +4% for a balanced control-offense finish.' },
       ];
 
     case 'maelis':
       return [
-        { name: 'Deepwood Vitality', desc: 'Increases Max HP by +20%. Rootbound endurance strengthens Maelis against sustained attacks.' },
-        { name: 'Heartwood Aegis', desc: 'Increases Defense (DEF) by +20%. Living bark hardens around every guarded stance.' },
-        { name: 'Verdant Cleave Force', desc: 'Increases Attack Force (ATK) by +15%. Root sigils amplify each claymore impact.' },
-        { name: 'Canopy Bastion', desc: 'Increases Max HP by +15% and Defense (DEF) by +15%. The forest reinforces its chosen sentinel.' },
-        { name: 'Sovereign Bloom Focus', desc: 'Increases Critical Rate by +10% (flat). Canopy blooms expose enemy weak points.' },
-        { name: 'Rootbound Prince Dominion', desc: 'Increases Max HP by +25%, Defense (DEF) by +20%, and Attack Force (ATK) by +22%. Max HP, DEF, and ATK receive an additional +20% boost.' },
+        { name: 'Deepwood Vitality', desc: 'Increases Max HP by +8%, reinforcing Maelis\'s durable support role.' },
+        { name: 'Heartwood Aegis', desc: 'Increases DEF by +8% while Maelis protects the party with Verdant Aegis.' },
+        { name: 'Verdant Cleave Force', desc: 'Increases ATK by +6% for Maelis\'s direct claymore strikes.' },
+        { name: 'Canopy Bastion', desc: 'Increases Max HP and DEF by +8% each for steadier frontline support.' },
+        { name: 'Sovereign Bloom Focus', desc: 'Increases Critical Rate by +4% for Maelis\'s direct attacks.' },
+        { name: 'Rootbound Prince Dominion', desc: 'Increases Max HP and DEF by +10% each and ATK by +8%, preserving a support-first balance.' },
       ];
 
     case 'veyra':
       return [
-        { name: 'Stormglass Precision', desc: 'Increases Critical Rate by +12% (flat). Prism sighting aligns arrows with electrical weak points.' },
-        { name: 'Nocturne Refraction', desc: 'Increases Critical Damage by +22% (flat). Stormglass facets multiply each lightning fracture.' },
-        { name: 'Prism Bolt Force', desc: 'Increases Attack Force (ATK) by +16%. Charged crystal arrows strike with greater kinetic force.' },
-        { name: 'Thunder Spire Focus', desc: 'Increases Critical Rate by +10% (flat). High-altitude training sharpens Veyra\'s aim.' },
-        { name: 'Nocturne Thunderfall', desc: 'Increases Critical Damage by +24% (flat). Each falling bolt detonates through fractured glass.' },
-        { name: 'Stormglass Archer Dominion', desc: 'Increases Attack Force (ATK) by +24%, Critical Rate by +14% (flat), and Critical Damage by +28% (flat). Max HP, DEF, and ATK receive an additional +20% boost.' },
+        { name: 'Stormglass Precision', desc: 'Increases Critical Rate by +4% for Veyra\'s rapid direct attacks.' },
+        { name: 'Nocturne Refraction', desc: 'Increases Critical Damage by +10% when Stormglass arrows find a weak point.' },
+        { name: 'Prism Bolt Force', desc: 'Increases ATK by +8%, strengthening Thunder Lock and Dominion snapshots.' },
+        { name: 'Thunder Spire Focus', desc: 'Increases Critical Rate by +4% without increasing stun frequency.' },
+        { name: 'Nocturne Thunderfall', desc: 'Increases Critical Damage by +12% for direct Electro impacts.' },
+        { name: 'Stormglass Archer Dominion', desc: 'Increases ATK by +12%, Critical Rate by +4%, and Critical Damage by +12% for a controlled finisher.' },
       ];
 
     case 'marina':

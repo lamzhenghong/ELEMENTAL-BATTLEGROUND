@@ -1062,7 +1062,7 @@ export default function CombatArena({
     enemy: any,
     effect: CharacterKitEffect,
     sourceCharacterId: string,
-    sourceAbility: 'normal-attack' | 'skill',
+    sourceAbility: 'normal-attack' | 'skill' | 'burst',
     snapshotAtk: number
   ) => {
     const targetClass = getEnemyTargetClass(enemy);
@@ -1078,7 +1078,7 @@ export default function CombatArena({
         duration: effect.duration,
         remainingDuration: effect.duration,
         strength: effect.attackMultiplier,
-        stackBehavior: 'refresh',
+        stackBehavior: 'strongest',
         visualKind: 'burning',
         tickInterval: effect.tickInterval,
         timeUntilNextTick: effect.tickInterval,
@@ -2206,6 +2206,9 @@ export default function CombatArena({
          if (enemy.hp <= 0) return;
          if (Math.hypot(enemy.x - px, enemy.y - py) >= burstRadius + enemy.radius) return;
          applySkillDamage(enemy, getStatScaledAttackDamage(currentActiveChar.atk, currentActiveChar.skills.ultimate.damageMultiplier), currentActiveChar.element, burstReactionContext, true, false);
+         burstKit?.burst.effects.forEach(effect => {
+           applyKitStatusEffect(enemy, effect, currentActiveChar.id, 'burst', currentActiveChar.atk);
+         });
       });
 
       const echo = activeAetherEchoRef.current;
@@ -5925,10 +5928,10 @@ export default function CombatArena({
 
         {/* On screen active controls overlay for mobile and clicking explorers */}
         {!isMobile && (
-          <div className="bg-[#060810]/95 border-t border-white/10 p-5 md:p-6 grid grid-cols-1 md:grid-cols-3 items-center gap-6 z-10 w-full backdrop-blur-md">
+          <div className="bg-[#060810]/95 border-t border-white/10 p-4 lg:p-5 grid grid-cols-1 lg:grid-cols-[minmax(420px,1.05fr)_minmax(0,1.95fr)] items-center gap-4 lg:gap-5 z-10 w-full backdrop-blur-md">
           
           {/* Party setup swaps row */}
-          <div className="flex gap-3 justify-start">
+          <div data-testid="desktop-party-strip" className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 w-full min-w-0">
             {combatParty.map((c, i) => {
               const activeRatio = (c.currentHp / c.maxHp) * 100;
               const charTemplate = PLAYABLE_CHARACTERS.find(p => p.id === c.id);
@@ -5938,7 +5941,7 @@ export default function CombatArena({
                   key={c.id}
                   onClick={() => swapPartyIndex(i)}
                   disabled={c.currentHp <= 0}
-                  className={`flex-1 p-3.5 rounded-xl border text-left transition-all relative overflow-hidden cursor-pointer ${
+                  className={`min-w-0 p-3 rounded-lg border text-left transition-all relative overflow-hidden cursor-pointer ${
                     c.currentHp <= 0
                       ? 'opacity-40 bg-zinc-955/80 border-dashed border-red-900 text-slate-600'
                       : activePartyIndex === i
@@ -5949,7 +5952,7 @@ export default function CombatArena({
                 >
                   <div className="flex flex-col gap-1">
                     <div className="flex justify-between items-center text-[12px]">
-                      <span className="font-extrabold truncate max-w-[85px] text-slate-200 uppercase tracking-tight">{c.name}</span>
+                      <span className="min-w-0 truncate font-extrabold text-slate-200 uppercase tracking-tight">{c.name.split(' ')[0]}</span>
                       <span className="font-black text-amber-400 font-mono text-[11px]">L.{c.level}</span>
                     </div>
                     <div className="flex items-center justify-between gap-2 select-none">
@@ -5983,7 +5986,7 @@ export default function CombatArena({
           </div>
 
           {/* Action Combat Trigger Controls buttons */}
-          <div className="flex flex-wrap gap-3.5 justify-center col-span-1 md:col-span-2">
+          <div className="flex min-w-0 flex-wrap gap-3.5 justify-center">
             <button
               onClick={() => triggerBasicAttack()}
               className="bg-black/55 hover:bg-black/80 border border-white/15 text-slate-100 p-4 rounded-xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all w-36 h-24 cursor-pointer hover:border-white/40 shadow-lg"
