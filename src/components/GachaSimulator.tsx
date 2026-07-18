@@ -12,6 +12,7 @@ import { Sparkles, HelpCircle, History, RefreshCw, Star, X, Info, Shield, Sword,
 import { AetheriaAudioEngine } from '../utils/audio';
 import { LanguageType, t } from '../utils/i18n';
 import { DAY_MS, getLimitedCharacterBannerForTime, getStandardFiveStarCharacters } from '../utils/limitedBanners';
+import CharacterRoleBadge from './CharacterRoleBadge';
 import {
   FIVE_STAR_BASE_RATE,
   FOUR_STAR_BASE_RATE,
@@ -1099,6 +1100,12 @@ export default function GachaSimulator({
     tag: `5★ ${selectedWeaponName}`,
     details: `GUARANTEED target: 5★ ${selectedWeaponName}. No 50/50. Select your target below.`
   } : rawActiveBanner;
+  const showSplashCharacter = showSplashItem?.isCharacter
+    ? PLAYABLE_CHARACTERS.find(character => character.id === showSplashItem.id)
+    : undefined;
+  const featuredCharacter = activeBanner.type === 'character'
+    ? PLAYABLE_CHARACTERS.find(character => character.id === activeBanner.featured5StarId)
+    : undefined;
   const artworkLayout = getBannerArtworkLayout(activeBanner.featured5StarId, activeBanner.type);
 
   const hours = Math.floor(msRemaining / 3600000);
@@ -1434,6 +1441,11 @@ export default function GachaSimulator({
                   <h3 className="text-lg font-black text-slate-100 flex items-center justify-center gap-1.5 uppercase font-display tracking-widest">
                     {showSplashItem.name}
                   </h3>
+                  {showSplashCharacter?.role && (
+                    <div className="mt-2 flex justify-center">
+                      <CharacterRoleBadge role={showSplashCharacter.role} />
+                    </div>
+                  )}
                   <div className="flex justify-center gap-0.5 mt-2">
                     {Array.from({ length: showSplashItem.rarity }).map((_, i) => (
                       <Star key={i} className="w-4 h-4 text-amber-400 fill-amber-400" />
@@ -1533,6 +1545,9 @@ export default function GachaSimulator({
                   const elColor = item.element ? getElementColor(item.element) : 'text-slate-400';
                   const isGold = item.rarity === 5;
                   const isPurple = item.rarity === 4;
+                  const resultCharacter = item.isCharacter
+                    ? PLAYABLE_CHARACTERS.find(character => character.id === item.id)
+                    : undefined;
                   
                   return (
                     <motion.div
@@ -1617,6 +1632,9 @@ export default function GachaSimulator({
                         }`}>
                           {item.element ? item.element : item.rarity === 5 ? '5★ WEAPON' : item.rarity === 4 ? '4★ WEAPON' : '3★ WEAPON'}
                         </span>
+                        {resultCharacter?.role && (
+                          <CharacterRoleBadge role={resultCharacter.role} compact className="hidden sm:inline-flex mt-1" />
+                        )}
                         {item.isCharacter ? (
                           <span className="text-[5.5px] sm:text-[6.5px] md:text-[7px] text-indigo-400/70 group-hover:text-indigo-300 font-black uppercase tracking-wider block font-sans mt-0.5 opacity-60 group-hover:opacity-100 transition-opacity">
                             🔍 Wiki
@@ -1766,6 +1784,7 @@ export default function GachaSimulator({
                   ⏱️ Rotation Switch: {timerString}
                 </span>
               )}
+              {featuredCharacter?.role && <CharacterRoleBadge role={featuredCharacter.role} compact />}
             </div>
             
             <h3 className="text-xl font-black tracking-widest text-[#f8fafc] uppercase leading-none font-display">

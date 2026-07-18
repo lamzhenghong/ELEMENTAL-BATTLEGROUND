@@ -11,11 +11,13 @@ import { WEAPONS_DATABASE } from '../data/weapons';
 import { AetheriaAudioEngine } from '../utils/audio';
 import { getPortraitInfoList } from '../utils/portraits';
 import { Shield, Sparkles, BookOpen, Compass, Sword, Landmark, Hammer, Coins, Trophy, DollarSign, Image, Eye, User, Star, Flame, Droplet, Snowflake, Zap, Wind, Mountain, Leaf, Check, Layers } from 'lucide-react';
-import { ElementType, WeaponType, Weapon, Artifact, ArtifactSlot, ArtifactSet } from '../types';
+import { ElementType, WeaponType, Weapon, Artifact, ArtifactSlot, ArtifactSet, CharacterRole } from '../types';
 import { ARTIFACT_SETS, ARTIFACT_NAMES, getArtifactMainStat } from '../data/artifacts';
 import { LanguageType, t } from '../utils/i18n';
 import { ELEMENTAL_REACTIONS } from '../data/elementalReactions';
 import { ALL_STORY_MEMORIES } from '../data/story';
+import { getCharacterKit } from '../utils/characterKits';
+import CharacterRoleBadge from './CharacterRoleBadge';
 
 import aureliaBanner from '../../assets/aurelia_banner.jpg';
 import kaelenBanner from '../../assets/kaelen_banner.jpg';
@@ -107,6 +109,7 @@ export default function GDDViewer({
   const [charOwnershipFilter, setCharOwnershipFilter] = useState<'all' | 'owned' | 'unowned'>('all');
   const [charRarityFilter, setCharRarityFilter] = useState<'all' | 5 | 4 | 3>('all');
   const [charElementFilter, setCharElementFilter] = useState<'all' | ElementType>('all');
+  const [charRoleFilter, setCharRoleFilter] = useState<'all' | CharacterRole>('all');
   const [weapOwnershipFilter, setWeapOwnershipFilter] = useState<'all' | 'owned' | 'unowned'>('all');
   const [weapRarityFilter, setWeapRarityFilter] = useState<'all' | 5 | 4 | 3>('all');
   const [artSetFilter, setArtSetFilter] = useState<'all' | ArtifactSet>('all');
@@ -171,6 +174,7 @@ export default function GDDViewer({
   };
 
   const selectedChar = PLAYABLE_CHARACTERS.find(c => c.id === selectedCharacterId) || PLAYABLE_CHARACTERS[0];
+  const selectedKit = getCharacterKit(selectedChar.id);
   const selectedNation = GDD_DATA.nations.find(n => n.name === selectedNationName) || GDD_DATA.nations[0];
   const unlockedCampaignMemories = ALL_STORY_MEMORIES.filter(
     (entry) => entry.category === 'campaign' && unlockedLoreEntries.includes(entry.id),
@@ -553,6 +557,25 @@ export default function GDDViewer({
                       );
                     })}
                   </div>
+                  {/* Role filter row */}
+                  <div className="grid grid-cols-5 gap-1 mt-1.5 pt-1.5 border-t border-white/5">
+                    {(['all', 'dps', 'sub-dps', 'support', 'tank'] as const).map((roleOpt) => (
+                      <button
+                        key={roleOpt}
+                        onClick={() => {
+                          setCharRoleFilter(roleOpt);
+                          AetheriaAudioEngine.playClick();
+                        }}
+                        className={`min-w-0 px-1 py-1 text-[7px] font-black uppercase rounded border transition-colors ${
+                          charRoleFilter === roleOpt
+                            ? 'bg-violet-500/20 border-violet-400/50 text-violet-200'
+                            : 'bg-slate-900/40 border-white/5 text-slate-500 hover:text-slate-200'
+                        }`}
+                      >
+                        {roleOpt === 'all' ? 'All' : roleOpt === 'sub-dps' ? 'Sub' : roleOpt}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 {(() => {
                   const filtered = PLAYABLE_CHARACTERS.filter(char => {
@@ -564,12 +587,14 @@ export default function GDDViewer({
                     const matchesRarity = charRarityFilter === 'all' || char.rarity === charRarityFilter;
 
                     const matchesElement = charElementFilter === 'all' || char.element === charElementFilter;
+
+                    const matchesRole = charRoleFilter === 'all' || char.role === charRoleFilter;
  
                     const matchesSearch = char.name.toLowerCase().includes(charSearch.toLowerCase()) ||
                       char.element.toLowerCase().includes(charSearch.toLowerCase()) ||
                       char.weaponType.toLowerCase().includes(charSearch.toLowerCase());
  
-                    return matchesOwnership && matchesRarity && matchesElement && matchesSearch;
+                    return matchesOwnership && matchesRarity && matchesElement && matchesRole && matchesSearch;
                   });
                   // Sort by rarity descending
                   const sorted = [...filtered].sort((a, b) => b.rarity - a.rarity);
@@ -597,7 +622,7 @@ export default function GDDViewer({
                           <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-slate-950 font-black text-xs ${char.avatarPlaceholder}`}>
                             {char.name.charAt(0)}
                           </div>
-                          <div>
+                          <div className="min-w-0">
                             <div className="font-bold text-xs flex items-center gap-1">
                               {char.name}
                               {char.rarity === 5 && <Star className="w-2.5 h-2.5 text-amber-400 fill-amber-400 inline" />}
@@ -605,6 +630,7 @@ export default function GDDViewer({
                             <div className={`text-[9px] font-semibold ${colors?.text}`}>
                               {char.element} • {char.weaponType}
                             </div>
+                            <CharacterRoleBadge role={char.role} compact className="mt-1" />
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
@@ -639,15 +665,17 @@ export default function GDDViewer({
                         {selectedChar.name.charAt(0)}
                       </div>
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <h3 className="text-xl font-bold text-slate-100">{selectedChar.name}</h3>
                           <div className="flex gap-0.5">
                             {Array.from({ length: selectedChar.rarity }).map((_, i) => (
                               <Star key={i} className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
                             ))}
                           </div>
+                          <CharacterRoleBadge role={selectedChar.role} />
                         </div>
                         <p className="text-xs text-slate-400 mt-1 italic">"{selectedChar.title}"</p>
+                        {selectedKit && <p className="mt-1 max-w-2xl text-[10px] leading-relaxed text-slate-300">{selectedKit.identity}</p>}
                       </div>
                     </div>
 
@@ -757,8 +785,8 @@ export default function GDDViewer({
                           <span className="text-[10px] bg-slate-800 text-slate-300 font-bold px-1.5 py-0.5 rounded">BASIC ATK</span>
                           <span className="text-[10px] text-slate-500">Multi: x{(selectedChar.skills.basic.damageMultiplier * 100).toFixed(0)}%</span>
                         </div>
-                        <h5 className="text-xs font-bold text-slate-200">{selectedChar.skills.basic.name}</h5>
-                        <p className="text-[10px] text-slate-400 leading-relaxed">{selectedChar.skills.basic.desc}</p>
+                        <h5 className="text-xs font-bold text-slate-200">{selectedKit?.normalAttack.name ?? selectedChar.skills.basic.name}</h5>
+                        <p className="text-[10px] text-slate-400 leading-relaxed">{selectedKit?.normalAttack.description ?? selectedChar.skills.basic.desc}</p>
                       </div>
 
                       {/* Skill */}
@@ -767,8 +795,8 @@ export default function GDDViewer({
                           <span className="text-[10px] bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-bold px-1.5 py-0.5 rounded">ELEMENTAL SKILL (E)</span>
                           <span className="text-[10px] text-indigo-400">CD: {selectedChar.skills.skill.cooldown}s</span>
                         </div>
-                        <h5 className="text-xs font-bold text-indigo-300">{selectedChar.skills.skill.name}</h5>
-                        <p className="text-[10px] text-slate-400 leading-relaxed">{selectedChar.skills.skill.desc}</p>
+                        <h5 className="text-xs font-bold text-indigo-300">{selectedKit?.skill.name ?? selectedChar.skills.skill.name}</h5>
+                        <p className="text-[10px] text-slate-400 leading-relaxed">{selectedKit?.skill.description ?? selectedChar.skills.skill.desc}</p>
                       </div>
 
                       {/* Ultimate */}
@@ -777,8 +805,8 @@ export default function GDDViewer({
                           <span className="text-[10px] bg-amber-500/10 text-amber-500 border border-amber-500/20 font-bold px-1.5 py-0.5 rounded">CELESTIAL ULTIMATE (Q)</span>
                           <span className="text-[10px] text-amber-400">Energy: 80</span>
                         </div>
-                        <h5 className="text-xs font-bold text-amber-300">{selectedChar.skills.ultimate.name}</h5>
-                        <p className="text-[10px] text-slate-400 leading-relaxed">{selectedChar.skills.ultimate.desc}</p>
+                        <h5 className="text-xs font-bold text-amber-300">{selectedKit?.burst.name ?? selectedChar.skills.ultimate.name}</h5>
+                        <p className="text-[10px] text-slate-400 leading-relaxed">{selectedKit?.burst.description ?? selectedChar.skills.ultimate.desc}</p>
                       </div>
                     </div>
                   </div>

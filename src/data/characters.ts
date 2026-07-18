@@ -8,6 +8,7 @@ import { PlayableCharacter } from '../types';
 export const PLAYABLE_CHARACTERS: PlayableCharacter[] = [
   {
     id: 'aurelia',
+    role: 'dps',
     name: 'Aurelia Sunflare',
     title: 'Sun Warden of Solaris',
     rarity: 5,
@@ -48,6 +49,7 @@ export const PLAYABLE_CHARACTERS: PlayableCharacter[] = [
   },
   {
     id: 'ignis',
+    role: 'tank',
     name: 'Ignis Hearthward',
     title: 'Grand Flameforger',
     rarity: 4,
@@ -88,6 +90,7 @@ export const PLAYABLE_CHARACTERS: PlayableCharacter[] = [
   },
   {
     id: 'kaelen',
+    role: 'sub-dps',
     name: 'Kaelen Tidebound',
     title: 'Pearl Fleet High Admiral',
     rarity: 5,
@@ -128,6 +131,7 @@ export const PLAYABLE_CHARACTERS: PlayableCharacter[] = [
   },
   {
     id: 'maelis',
+    role: 'support',
     name: 'Maelis Verdantveil',
     title: 'Rootbound Prince of the Canopy',
     rarity: 5,
@@ -168,6 +172,7 @@ export const PLAYABLE_CHARACTERS: PlayableCharacter[] = [
   },
   {
     id: 'veyra',
+    role: 'dps',
     name: 'Veyra Stormglass',
     title: 'Prism Archer of Thunder Spires',
     rarity: 5,
@@ -208,6 +213,7 @@ export const PLAYABLE_CHARACTERS: PlayableCharacter[] = [
   },
   {
     id: 'marina',
+    role: 'support',
     name: 'Marina Dewdrop',
     title: 'Oceanic Cartographer',
     rarity: 4,
@@ -248,6 +254,7 @@ export const PLAYABLE_CHARACTERS: PlayableCharacter[] = [
   },
   {
     id: 'lyra',
+    role: 'dps',
     name: 'Lyra Frostbloom',
     title: 'Rime Princess of Glacia',
     rarity: 5,
@@ -288,6 +295,7 @@ export const PLAYABLE_CHARACTERS: PlayableCharacter[] = [
   },
   {
     id: 'varek',
+    role: 'tank',
     name: 'Varek Ironfist',
     title: 'Obsidian Prison Warden',
     rarity: 4,
@@ -328,6 +336,7 @@ export const PLAYABLE_CHARACTERS: PlayableCharacter[] = [
   },
   {
     id: 'zephyr',
+    role: 'sub-dps',
     name: 'Zephyr Gale',
     title: 'Skyward Windrider',
     rarity: 5,
@@ -368,6 +377,7 @@ export const PLAYABLE_CHARACTERS: PlayableCharacter[] = [
   },
   {
     id: 'seraphina',
+    role: 'support',
     name: 'Seraphina Skyward',
     title: 'Sky Temple Librarian',
     rarity: 4,
@@ -408,6 +418,7 @@ export const PLAYABLE_CHARACTERS: PlayableCharacter[] = [
   },
   {
     id: 'goliath',
+    role: 'tank',
     name: 'Goliath Stoneguard',
     title: 'Iron Peak Behemoth',
     rarity: 5,
@@ -448,6 +459,7 @@ export const PLAYABLE_CHARACTERS: PlayableCharacter[] = [
   },
   {
     id: 'tessa',
+    role: 'sub-dps',
     name: 'Tessa Shardweaver',
     title: 'Geode Archaeologist',
     rarity: 4,
@@ -488,6 +500,7 @@ export const PLAYABLE_CHARACTERS: PlayableCharacter[] = [
   },
   {
     id: 'raijin',
+    role: 'dps',
     name: 'Raijin Volt',
     title: 'Crimson Lightning Ronin',
     rarity: 5,
@@ -528,6 +541,7 @@ export const PLAYABLE_CHARACTERS: PlayableCharacter[] = [
   },
   {
     id: 'luna',
+    role: 'sub-dps',
     name: 'Luna Spark',
     title: 'Electric Sparkbox Inventor',
     rarity: 4,
@@ -568,6 +582,7 @@ export const PLAYABLE_CHARACTERS: PlayableCharacter[] = [
   },
   {
     id: 'verdant',
+    role: 'sub-dps',
     name: 'Verdant Thorn',
     title: 'Flora Sage of Canopy Wilderness',
     rarity: 4,
@@ -608,6 +623,7 @@ export const PLAYABLE_CHARACTERS: PlayableCharacter[] = [
   },
   {
     id: 'flora',
+    role: 'support',
     name: 'Flora Bloom',
     title: 'Myconid Cultivator',
     rarity: 4,
@@ -648,6 +664,7 @@ export const PLAYABLE_CHARACTERS: PlayableCharacter[] = [
   },
   {
     id: 'valerie',
+    role: 'dps',
     name: 'Valerie Crimson',
     title: 'Solaris Inquisitor',
     rarity: 4,
@@ -688,6 +705,7 @@ export const PLAYABLE_CHARACTERS: PlayableCharacter[] = [
   },
   {
     id: 'nero',
+    role: 'sub-dps',
     name: 'Nero Leviathan',
     title: 'Gale-Sea Privateer Captain',
     rarity: 4,
@@ -728,6 +746,7 @@ export const PLAYABLE_CHARACTERS: PlayableCharacter[] = [
   },
   {
     id: 'cynthia',
+    role: 'dps',
     name: 'Cynthia Shadowfrost',
     title: 'Glacian Shadow-Blade',
     rarity: 4,
@@ -768,6 +787,7 @@ export const PLAYABLE_CHARACTERS: PlayableCharacter[] = [
   },
   {
     id: 'aero',
+    role: 'sub-dps',
     name: 'Aero Storm',
     title: 'High Spires Gale Runner',
     rarity: 4,
@@ -808,6 +828,7 @@ export const PLAYABLE_CHARACTERS: PlayableCharacter[] = [
   },
   {
     id: 'kira',
+    role: 'support',
     name: 'Kira Goldwise',
     title: 'Imperial Golden Scale CEO',
     rarity: 4,
@@ -848,6 +869,7 @@ export const PLAYABLE_CHARACTERS: PlayableCharacter[] = [
   },
   {
     id: 'sylvia',
+    role: 'support',
     name: 'Sylvia Rootbound',
     title: 'Botanical Archivist',
     rarity: 4,
@@ -888,6 +910,7 @@ export const PLAYABLE_CHARACTERS: PlayableCharacter[] = [
   },
   {
     id: 'arthur',
+    role: 'dps',
     name: 'Arthur Novice',
     title: 'Aspiring Adventurer',
     rarity: 3,
@@ -907,6 +930,7 @@ export const PLAYABLE_CHARACTERS: PlayableCharacter[] = [
   },
   {
     id: 'chloe',
+    role: 'support',
     name: 'Chloe Carrier',
     title: 'Water Well Attendant',
     rarity: 3,
@@ -926,6 +950,7 @@ export const PLAYABLE_CHARACTERS: PlayableCharacter[] = [
   },
   {
     id: 'hans',
+    role: 'tank',
     name: 'Hans Frostminer',
     title: 'Glacian Coal Worker',
     rarity: 3,
@@ -945,6 +970,7 @@ export const PLAYABLE_CHARACTERS: PlayableCharacter[] = [
   },
   {
     id: 'stella',
+    role: 'sub-dps',
     name: 'Stella Gust',
     title: 'Zephyrian Courier',
     rarity: 3,
@@ -964,6 +990,7 @@ export const PLAYABLE_CHARACTERS: PlayableCharacter[] = [
   },
   {
     id: 'brock',
+    role: 'tank',
     name: 'Brock Quarryguard',
     title: 'Iron Peak Quarry Sentry',
     rarity: 3,
@@ -983,6 +1010,7 @@ export const PLAYABLE_CHARACTERS: PlayableCharacter[] = [
   },
   {
     id: 'tesla',
+    role: 'sub-dps',
     name: 'Tesla Apprentice',
     title: 'Steam Workshop Helper',
     rarity: 3,
@@ -1002,6 +1030,7 @@ export const PLAYABLE_CHARACTERS: PlayableCharacter[] = [
   },
   {
     id: 'ivy',
+    role: 'support',
     name: 'Ivy Bower',
     title: 'Canopy Gatherer',
     rarity: 3,
@@ -1021,6 +1050,7 @@ export const PLAYABLE_CHARACTERS: PlayableCharacter[] = [
   },
   {
     id: 'skip',
+    role: 'dps',
     name: 'Skip Boltwood',
     title: 'Electro Lumberjack',
     rarity: 3,
@@ -1040,6 +1070,7 @@ export const PLAYABLE_CHARACTERS: PlayableCharacter[] = [
   },
   {
     id: 'dusty',
+    role: 'tank',
     name: 'Dusty Nomad',
     title: 'Peak Sand-Rider',
     rarity: 3,
@@ -1059,6 +1090,7 @@ export const PLAYABLE_CHARACTERS: PlayableCharacter[] = [
   },
   {
     id: 'river',
+    role: 'sub-dps',
     name: 'River Torrent',
     title: 'Fisherman Speargaurd',
     rarity: 3,

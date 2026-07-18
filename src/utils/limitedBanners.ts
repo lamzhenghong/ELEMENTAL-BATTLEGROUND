@@ -29,7 +29,7 @@ export const LIMITED_CHARACTER_BANNERS: LimitedCharacterBanner[] = [
   {
     title: 'Solar Crucible Dawning',
     subtitle: 'LIMITED BANNER',
-    desc: 'Unleash the ultimate power of solar flames! Greatly enhanced drop-rates for 5★ Aurelia Sunflare. Commands lightning fast Sword slashes.',
+    desc: 'Featured 5-star Aurelia Sunflare, an on-field Pyro DPS whose branded targets are consumed by a massive solar detonation.',
     type: 'character',
     featured5Star: 'Aurelia Sunflare',
     featured5StarId: 'aurelia',
@@ -37,12 +37,12 @@ export const LIMITED_CHARACTER_BANNERS: LimitedCharacterBanner[] = [
     tag: 'LIMITED BANNER',
     themeColor: 'border-orange-500/50 shadow-[0_0_20px_rgba(244,63,94,0.15)]',
     gradientStyle: 'from-orange-950/70 via-[#100d1c] to-[#08070f]',
-    details: '5★ Rate: 50% chance to summon Aurelia Sunflare [EVENT LIMITED]. If not, any other standard 5★ character.'
+    details: '5-star result: 50% chance to summon Aurelia Sunflare [EVENT LIMITED]. Otherwise, receive a standard 5-star character.'
   },
   {
     title: 'Drifting Sea-Mist Tempest',
     subtitle: 'LIMITED BANNER',
-    desc: 'Brave the crushing waves and chilling blizzards! Uprated chance for 5★ Kaelen Tidebound. Controls powerful field elemental catalysts.',
+    desc: 'Featured 5-star Kaelen Tidebound, a Hydro Sub DPS who slows entire formations and draws them into an abyssal whirlpool.',
     type: 'character',
     featured5Star: 'Kaelen Tidebound',
     featured5StarId: 'kaelen',
@@ -50,12 +50,12 @@ export const LIMITED_CHARACTER_BANNERS: LimitedCharacterBanner[] = [
     tag: 'LIMITED BANNER',
     themeColor: 'border-cyan-500/50 shadow-[0_0_20px_rgba(6,182,212,0.15)]',
     gradientStyle: 'from-cyan-950/70 via-[#0d152a] to-[#050811]',
-    details: '5★ Rate: 50% chance to summon Kaelen Tidebound [EVENT LIMITED]. If not, any other standard 5★ character.'
+    details: '5-star result: 50% chance to summon Kaelen Tidebound [EVENT LIMITED]. Otherwise, receive a standard 5-star character.'
   },
   {
     title: 'Verdant Oath of the Deepwood',
     subtitle: 'LIMITED BANNER',
-    desc: 'Call forth 5★ Maelis Verdantveil, a male Dendro claymore sentinel who carves living root sigils into the battlefield.',
+    desc: 'Featured 5-star Maelis Verdantveil, a Dendro Support who shields the party and turns a battlefield zone into a reaction nexus.',
     type: 'character',
     featured5Star: 'Maelis Verdantveil',
     featured5StarId: 'maelis',
@@ -63,12 +63,12 @@ export const LIMITED_CHARACTER_BANNERS: LimitedCharacterBanner[] = [
     tag: 'LIMITED BANNER',
     themeColor: 'border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.18)]',
     gradientStyle: 'from-emerald-950/70 via-[#0c1a14] to-[#050f0a]',
-    details: '5★ Rate: 50% chance to summon Maelis Verdantveil [EVENT LIMITED]. If not, any other standard 5★ character.'
+    details: '5-star result: 50% chance to summon Maelis Verdantveil [EVENT LIMITED]. Otherwise, receive a standard 5-star character.'
   },
   {
     title: 'Stormglass Nocturne',
     subtitle: 'LIMITED BANNER',
-    desc: 'Aim through the midnight prism with 5★ Veyra Stormglass, a female Electro archer who fractures thunder into crystal arrows.',
+    desc: 'Featured 5-star Veyra Stormglass, an Electro DPS who stuns priority targets and commands a mobile storm field.',
     type: 'character',
     featured5Star: 'Veyra Stormglass',
     featured5StarId: 'veyra',
@@ -76,7 +76,7 @@ export const LIMITED_CHARACTER_BANNERS: LimitedCharacterBanner[] = [
     tag: 'LIMITED BANNER',
     themeColor: 'border-violet-500/50 shadow-[0_0_20px_rgba(139,92,246,0.18)]',
     gradientStyle: 'from-violet-950/70 via-[#100d24] to-[#060711]',
-    details: '5★ Rate: 50% chance to summon Veyra Stormglass [EVENT LIMITED]. If not, any other standard 5★ character.'
+    details: '5-star result: 50% chance to summon Veyra Stormglass [EVENT LIMITED]. Otherwise, receive a standard 5-star character.'
   }
 ];
 

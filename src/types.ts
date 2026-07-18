@@ -6,6 +6,7 @@
 export type ElementType = 'Pyro' | 'Hydro' | 'Cryo' | 'Electro' | 'Anemo' | 'Geo' | 'Dendro';
 export type WeaponType = 'Sword' | 'Claymore' | 'Bow' | 'Catalyst' | 'Polearm';
 export type UiThemeId = 'Blue' | 'Crimson' | 'Emerald' | 'Gold' | 'Void';
+export type CharacterRole = 'dps' | 'sub-dps' | 'support' | 'tank';
 
 export interface SkillDetails {
   name: string;
@@ -23,6 +24,7 @@ export interface CharacterRelation {
 
 export interface PlayableCharacter {
   id: string;
+  role: CharacterRole;
   name: string;
   title: string;
   rarity: 3 | 4 | 5;
@@ -73,6 +75,7 @@ export interface Artifact {
 
 export interface CombatCharacter {
   id: string; // Template ID
+  role?: CharacterRole;
   name: string;
   element: ElementType;
   weaponType: WeaponType;

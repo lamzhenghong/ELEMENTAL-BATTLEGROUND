@@ -19,6 +19,7 @@ import {
   getArtifactFusionRule,
   getEligibleFusionArtifacts
 } from '../utils/artifactFusion';
+import CharacterRoleBadge from './CharacterRoleBadge';
 
 export function getUpgradedWeaponStats(weapon: Weapon) {
   const lvl = weapon.level || 1;
@@ -843,6 +844,7 @@ export default function InventoryManager({
                               <span className="font-extrabold text-sm uppercase tracking-tight text-white truncate max-w-[125px] font-display">
                                 {c.name}
                               </span>
+                              <CharacterRoleBadge role={c.role} compact />
                               <div className="flex shrink-0 gap-0.5">
                                 {Array.from({ length: c.rarity }).map((_, i) => (
                                   <Star key={i} className="w-2.5 h-2.5 text-amber-400 fill-amber-400 shrink-0" />
@@ -1399,8 +1401,11 @@ export default function InventoryManager({
               <div className={`w-16 h-16 rounded-xl flex items-center justify-center text-3xl font-black text-slate-955 shadow-[0_0_20px_rgba(0,0,0,0.6)] ring-2 ring-white/10 ${selectedChar.avatarPlaceholder}`}>
                 {selectedChar.name.charAt(0)}
               </div>
-              <div>
-                <h3 className="text-xl font-black text-slate-100 uppercase tracking-widest font-display">{selectedChar.name}</h3>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-xl font-black text-slate-100 uppercase tracking-widest font-display">{selectedChar.name}</h3>
+                  <CharacterRoleBadge role={selectedChar.role} />
+                </div>
                 <div className="text-xs text-slate-300 flex flex-wrap items-center gap-3 mt-1.5 uppercase font-[#95a5a6] font-mono">
                   <span className="font-extrabold text-amber-400 bg-amber-400/10 px-2 py-0.5 border border-amber-400/20 rounded">{selectedChar.rarity}★</span>
                   <span>•</span>

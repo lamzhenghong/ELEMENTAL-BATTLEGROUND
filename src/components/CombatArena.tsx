@@ -25,6 +25,7 @@ import {
 } from '../utils/specialUltimates';
 import MobileJoystick from './MobileJoystick';
 import MobileControls from './MobileControls';
+import CharacterRoleBadge from './CharacterRoleBadge';
 import { getStageSpec, getStoryModifier } from '../data/storyStages';
 import type { StoryChoiceSelections } from '../data/story';
 import StoryRewards from './StoryRewards';
@@ -58,6 +59,37 @@ import {
   isNormalWeather,
   rollNextWeather
 } from '../utils/combatPolish';
+import {
+  applyRoleStatModifiers,
+  getRoleAdjustedCooldown,
+  getRoleNormalAttackSpeedMultiplier
+} from '../utils/characterRoles';
+import { getCharacterKit, getKitEffect, type CharacterKitEffect } from '../utils/characterKits';
+import {
+  canTriggerElementalReaction,
+  createReactionContext,
+  type ReactionTriggerContext
+} from '../utils/reactionSources';
+import {
+  applyCombatStatus,
+  getStatusMovementMultiplier,
+  getStatusOutgoingDamageMultiplier,
+  isTargetStunned,
+  tickCombatStatuses,
+  type CombatStatusEffect,
+  type CombatTargetClass
+} from '../utils/combatStatusEffects';
+import {
+  activateVeyraDominion,
+  addMaelisShield,
+  addReactionField,
+  addWhirlpool,
+  clearPartyEffects,
+  consumePartyShield,
+  createPartyEffectState,
+  getReactionFieldModifiers,
+  tickPartyEffects
+} from '../utils/combatPartyEffects';
 
 const WORLD_WIDTH = 2000;
 const WORLD_HEIGHT = 2000;
@@ -529,6 +561,7 @@ export default function CombatArena({
       if (comboPulseTimerRef.current) clearTimeout(comboPulseTimerRef.current);
       specialUltimateTimeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
       AetheriaAudioEngine.stopSpecialUltimateTheme(false);
+      partyEffectsRef.current = clearPartyEffects(partyEffectsRef.current);
     };
   }, []);
 
@@ -574,8 +607,11 @@ export default function CombatArena({
   const [parryCd, setParryCd] = useState(0);
   const dodgeCdRef = useRef(0);
   const parryCdRef = useRef(0);
+  const basicAttackCooldownRef = useRef(0);
   const [shieldActive, setShieldActive] = useState<ElementType | null>(null);
   const [shieldWeight, setShieldWeight] = useState(0);
+  const partyEffectsRef = useRef(createPartyEffectState());
+  const [, setPartyEffectRevision] = useState(0);
 
   // Time metrics inside arena
   const [timeDisordered, setTimeDisordered] = useState(0); // perfect dodge bullet time frame left
@@ -1014,6 +1050,94 @@ export default function CombatArena({
     };
   }, [combatParty, activePartyIndex, isParrying, isDashing, shieldActive, shieldWeight, dimensions, timeDisordered, activeChar, isPaused, isGameOver, battleStarted, countdownValue, fpsLimit, dungeonBuffs, dungeonMode, storyMode, isUltCutsceneActive, currentWave, gameScore, waveClearMessage, storyVictory, dungeonVictory, isArtifactGrindMode, activeResonances]);
 
+  const getEnemyTargetClass = (enemy: any): CombatTargetClass =>
+    enemy.type === 'Boss' ? 'boss' : enemy.type === 'Elite' ? 'elite' : 'normal';
+
+  const updatePartyEffects = (nextState: ReturnType<typeof createPartyEffectState>) => {
+    partyEffectsRef.current = nextState;
+    setPartyEffectRevision(revision => revision + 1);
+  };
+
+  const applyKitStatusEffect = (
+    enemy: any,
+    effect: CharacterKitEffect,
+    sourceCharacterId: string,
+    sourceAbility: 'normal-attack' | 'skill',
+    snapshotAtk: number
+  ) => {
+    const targetClass = getEnemyTargetClass(enemy);
+    const fieldModifiers = getReactionFieldModifiers(partyEffectsRef.current, enemy.x, enemy.y);
+    let status: CombatStatusEffect | null = null;
+
+    if (effect.kind === 'burn') {
+      status = {
+        id: `burn:${sourceCharacterId}:${sourceAbility}`,
+        type: 'burn',
+        sourceCharacterId,
+        sourceAbility,
+        duration: effect.duration,
+        remainingDuration: effect.duration,
+        strength: effect.attackMultiplier,
+        stackBehavior: 'refresh',
+        visualKind: 'burning',
+        tickInterval: effect.tickInterval,
+        timeUntilNextTick: effect.tickInterval,
+        snapshotAtk
+      };
+    } else if (effect.kind === 'slow') {
+      status = {
+        id: `slow:${sourceCharacterId}:${sourceAbility}`,
+        type: 'slow',
+        sourceCharacterId,
+        sourceAbility,
+        duration: effect.duration * fieldModifiers.crowdControlDurationMultiplier,
+        remainingDuration: effect.duration * fieldModifiers.crowdControlDurationMultiplier,
+        strength: effect.strength,
+        stackBehavior: 'refresh',
+        visualKind: 'slow'
+      };
+    } else if (effect.kind === 'damage-down') {
+      if (Math.random() >= effect.procChance) return;
+      status = {
+        id: `damage-down:${sourceCharacterId}:${sourceAbility}`,
+        type: 'damage-down',
+        sourceCharacterId,
+        sourceAbility,
+        duration: effect.duration,
+        remainingDuration: effect.duration,
+        strength: effect.strength,
+        stackBehavior: 'strongest',
+        visualKind: 'weakened'
+      };
+    } else if (effect.kind === 'stun') {
+      if (effect.procChance !== undefined && Math.random() >= effect.procChance) return;
+      const baseDuration = targetClass === 'elite' ? effect.eliteDuration : effect.normalDuration;
+      status = {
+        id: `stun:${sourceCharacterId}:${sourceAbility}`,
+        type: 'stun',
+        sourceCharacterId,
+        sourceAbility,
+        duration: baseDuration * fieldModifiers.crowdControlDurationMultiplier,
+        remainingDuration: baseDuration * fieldModifiers.crowdControlDurationMultiplier,
+        strength: 1,
+        stackBehavior: 'refresh',
+        visualKind: 'stunned'
+      };
+    }
+
+    if (!status) return;
+    const currentStatuses = (enemy.statusEffects ??= []) as CombatStatusEffect[];
+    const result = applyCombatStatus(currentStatuses, status, targetClass);
+    enemy.statusEffects = result.statuses;
+    if (result.immune && 'bossesImmune' in effect && effect.bossesImmune) {
+      const now = performance.now();
+      if (!enemy.lastKitImmuneFeedbackAt || now - enemy.lastKitImmuneFeedbackAt > 900) {
+        enemy.lastKitImmuneFeedbackAt = now;
+        spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 42, 'IMMUNE', '#f8fafc', 11, true);
+      }
+    }
+  };
+
   // Start music loop once battle starts
   useEffect(() => {
     if (battleStarted) {
@@ -1281,6 +1405,11 @@ export default function CombatArena({
           }
         }
 
+        const roleStats = applyRoleStatModifiers({ atk: baseAtk, hp: baseHp, def: baseDef }, charTemplate.role);
+        baseAtk = roleStats.atk;
+        baseHp = roleStats.hp;
+        baseDef = roleStats.def;
+
         // Determine starting health (persisted if dungeon mode)
         const startingHp = dungeonMode && dungeonPartyHp[charTemplate.id] !== undefined
           ? dungeonPartyHp[charTemplate.id]
@@ -1295,6 +1424,7 @@ export default function CombatArena({
 
         list.push({
           id: charTemplate.id,
+          role: charTemplate.role,
           name: charTemplate.name,
           element: charTemplate.element,
           weaponType: charTemplate.weaponType,
@@ -1365,6 +1495,9 @@ export default function CombatArena({
     setCurrentWave(waveNum);
     setIsGameOver(false);
     setIsPaused(false);
+    if (waveNum === 1) {
+      updatePartyEffects(clearPartyEffects(partyEffectsRef.current));
+    }
     
     // Reposition player to the center of the world at wave start
     playerRef.current.x = WORLD_WIDTH / 2;
@@ -1622,7 +1755,7 @@ export default function CombatArena({
       }
     }
 
-    enemiesRef.current = list;
+    enemiesRef.current = list.map(enemy => ({ ...enemy, statusEffects: [] as CombatStatusEffect[] }));
     shardsRef.current = [];
     particlesRef.current = [];
     bossProjectilesRef.current = [];
@@ -1892,6 +2025,9 @@ export default function CombatArena({
     const px = playerRef.current.x;
     const py = playerRef.current.y;
     const pColor = getElementColorHex(currentActiveChar.element);
+    const skillKit = getCharacterKit(currentActiveChar.id);
+    const skillDealsDirectDamage = skillKit?.skill.directDamage ?? true;
+    const skillReactionContext = createReactionContext('elemental-skill', skillDealsDirectDamage);
 
     // Dynamic Skill animations and radial hit registration
     for (let i = 0; i < 35; i++) {
@@ -1900,21 +2036,40 @@ export default function CombatArena({
 
     spawnFloatingDamageText(px, py - 55, `Skill: ${currentActiveChar.skills.skill.name}!`, pColor, 14);
 
-    // Calculate Hit circle range
-    const skillRadius = 150;
-    enemiesRef.current.forEach(enemy => {
-      if (enemy.hp <= 0) return;
-      const dx = enemy.x - px;
-      const dy = enemy.y - py;
-      const dist = Math.hypot(dx, dy);
+    const shieldEffect = skillKit ? getKitEffect(skillKit.skill, 'party-shield') : undefined;
+    if (shieldEffect?.kind === 'party-shield') {
+      partyEffectsRef.current = addMaelisShield(partyEffectsRef.current, shieldEffect.amount, shieldEffect.cap);
+      setPartyEffectRevision(revision => revision + 1);
+      spawnFloatingDamageText(px, py - 78, `PARTY SHIELD ${partyEffectsRef.current.shield?.currentHp}/${shieldEffect.cap}`, '#4ade80', 13, true);
+    }
 
-      if (dist < skillRadius + enemy.radius) {
-        applySkillDamage(enemy, getStatScaledAttackDamage(currentActiveChar.atk, currentActiveChar.skills.skill.damageMultiplier), currentActiveChar.element, false, false, 'skill');
-      }
-    });
+    const skillRadius = skillKit?.skill.shape === 'full-aoe'
+      ? Number.POSITIVE_INFINITY
+      : 150 * (skillKit?.skill.rangeMultiplier ?? 1);
+    if (skillDealsDirectDamage) {
+      enemiesRef.current.forEach(enemy => {
+        if (enemy.hp <= 0) return;
+        const dist = Math.hypot(enemy.x - px, enemy.y - py);
+        if (dist >= skillRadius + enemy.radius) return;
+
+        applySkillDamage(
+          enemy,
+          getStatScaledAttackDamage(currentActiveChar.atk, currentActiveChar.skills.skill.damageMultiplier),
+          currentActiveChar.element,
+          skillReactionContext,
+          false,
+          false
+        );
+        skillKit?.skill.effects.forEach(effect => {
+          if (effect.kind !== 'party-shield') {
+            applyKitStatusEffect(enemy, effect, currentActiveChar.id, 'skill', currentActiveChar.atk);
+          }
+        });
+      });
+    }
 
     const echo = activeAetherEchoRef.current;
-    if (echo) {
+    if (echo && skillDealsDirectDamage) {
       const echoPos = getAetherEchoPosition();
       spawnAetherEchoPulse(`Echo Skill x${echo.damageMultiplier}`, echo, 11);
       enemiesRef.current.forEach(enemy => {
@@ -1924,7 +2079,7 @@ export default function CombatArena({
         const dist = Math.hypot(dx, dy);
 
         if (dist < skillRadius + enemy.radius) {
-          applySkillDamage(enemy, getStatScaledAttackDamage(currentActiveChar.atk, currentActiveChar.skills.skill.damageMultiplier, echo.damageMultiplier), currentActiveChar.element, false, false, 'skill');
+          applySkillDamage(enemy, getStatScaledAttackDamage(currentActiveChar.atk, currentActiveChar.skills.skill.damageMultiplier, echo.damageMultiplier), currentActiveChar.element, skillReactionContext, false, false);
           spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 35, `ECHO x${echo.damageMultiplier}`, echo.auraColor, 10, echo.rarity === 'Legendary');
         }
       });
@@ -1943,7 +2098,8 @@ export default function CombatArena({
         if (hasSearingBlade) cdMultiplier *= 0.80;
         if (c.cooldownReduction) cdMultiplier *= (1 - c.cooldownReduction);
 
-        const skillCdMax = 10.0 * cdMultiplier;
+        const roleAdjustedCooldown = getRoleAdjustedCooldown(c.skills.skill.cooldown, c.role ?? 'sub-dps', 'skill');
+        const skillCdMax = roleAdjustedCooldown * cdMultiplier;
 
         const has2Hydro = loopStateRef.current.activeResonances.some(r => r.key === 'hydro');
         const resonanceEnergyMult = has2Hydro ? 1.20 : 1.0;
@@ -2018,6 +2174,10 @@ export default function CombatArena({
       const px = playerRef.current.x;
       const py = playerRef.current.y;
       const pColor = getElementColorHex(currentActiveChar.element);
+      const burstReactionContext = createReactionContext('elemental-burst', true);
+      const burstKit = getCharacterKit(currentActiveChar.id);
+      const largeExplosion = burstKit ? getKitEffect(burstKit.burst, 'large-explosion') : undefined;
+      const burstRadius = largeExplosion ? 650 : Number.POSITIVE_INFINITY;
 
       // Massive cinematic circle lines
       for (let i = 0; i < 70; i++) {
@@ -2044,7 +2204,8 @@ export default function CombatArena({
       // Mega damage across all targets
       enemiesRef.current.forEach(enemy => {
          if (enemy.hp <= 0) return;
-         applySkillDamage(enemy, getStatScaledAttackDamage(currentActiveChar.atk, currentActiveChar.skills.ultimate.damageMultiplier), currentActiveChar.element, true, false, 'ultimate');
+         if (Math.hypot(enemy.x - px, enemy.y - py) >= burstRadius + enemy.radius) return;
+         applySkillDamage(enemy, getStatScaledAttackDamage(currentActiveChar.atk, currentActiveChar.skills.ultimate.damageMultiplier), currentActiveChar.element, burstReactionContext, true, false);
       });
 
       const echo = activeAetherEchoRef.current;
@@ -2052,9 +2213,29 @@ export default function CombatArena({
         spawnAetherEchoPulse(`Echo Ultimate x${echo.damageMultiplier}`, echo, echo.rarity === 'Legendary' ? 13 : 11);
         enemiesRef.current.forEach(enemy => {
           if (enemy.hp <= 0) return;
-          applySkillDamage(enemy, getStatScaledAttackDamage(currentActiveChar.atk, currentActiveChar.skills.ultimate.damageMultiplier, echo.damageMultiplier), currentActiveChar.element, true, false, 'ultimate');
+          if (Math.hypot(enemy.x - px, enemy.y - py) >= burstRadius + enemy.radius) return;
+          applySkillDamage(enemy, getStatScaledAttackDamage(currentActiveChar.atk, currentActiveChar.skills.ultimate.damageMultiplier, echo.damageMultiplier), currentActiveChar.element, burstReactionContext, true, false);
           spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 45, `ECHO ULT x${echo.damageMultiplier}`, echo.auraColor, 11, echo.rarity === 'Legendary');
         });
+      }
+
+      burstKit?.burst.effects.forEach(effect => {
+        if (effect.kind === 'whirlpool') {
+          partyEffectsRef.current = addWhirlpool(partyEffectsRef.current, { x: px, y: py });
+        } else if (effect.kind === 'reaction-field') {
+          partyEffectsRef.current = addReactionField(partyEffectsRef.current, { x: px, y: py });
+        } else if (effect.kind === 'dominion-field') {
+          partyEffectsRef.current = activateVeyraDominion(partyEffectsRef.current, {
+            x: px,
+            y: py,
+            snapshotAtk: currentActiveChar.atk
+          });
+        }
+      });
+      if (burstKit?.burst.effects.some(effect =>
+        effect.kind === 'whirlpool' || effect.kind === 'reaction-field' || effect.kind === 'dominion-field'
+      )) {
+        setPartyEffectRevision(revision => revision + 1);
       }
     };
 
@@ -2095,6 +2276,7 @@ export default function CombatArena({
     }
 
     const combo = available.combo;
+    const specialUltimateReactionContext = createReactionContext('special-ultimate', true);
     const participantIds = new Set(combo.requiredCharacterIds);
     const participants = currentParty.filter(c => participantIds.has(c.id));
     const specialDamage = getSpecialUltimateStatDamage(currentActiveChar.atk, participants.map(c => c.atk), combo.damageMultiplier);
@@ -2123,7 +2305,7 @@ export default function CombatArena({
 
       enemiesRef.current.forEach(enemy => {
         if (enemy.hp <= 0) return;
-        applySkillDamage(enemy, specialDamage, combo.damageElement, true, true, 'ultimate');
+        applySkillDamage(enemy, specialDamage, combo.damageElement, specialUltimateReactionContext, true, true);
         spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 58, combo.impactText, impactColor, 13, true);
       });
 
@@ -2187,6 +2369,13 @@ export default function CombatArena({
     const { combatParty: currentParty, activePartyIndex: currentPartyIndex } = loopStateRef.current;
     const currentActiveChar = currentParty[currentPartyIndex] || null;
     if (!currentActiveChar) return;
+    if (basicAttackCooldownRef.current > 0) return;
+    basicAttackCooldownRef.current = 0.18 / getRoleNormalAttackSpeedMultiplier(currentActiveChar.role ?? 'sub-dps');
+    const normalAttackReactionContext = createReactionContext('normal-attack', true, false);
+    const normalAttackKit = getCharacterKit(currentActiveChar.id);
+    const activeDominion = partyEffectsRef.current.effects.find(effect =>
+      effect.kind === 'veyra-dominion' && effect.sourceCharacterId === currentActiveChar.id
+    );
 
     // Play SFX
     AetheriaAudioEngine.playSlash();
@@ -2215,8 +2404,11 @@ export default function CombatArena({
 
     // Check hit collision
     let hitSomething = false;
-    const basicAttackRange = currentActiveChar.equippedWeaponName?.includes('Calamity Blaze') ? 60 :
-                             currentActiveChar.equippedWeaponName?.includes('Solar Wind Bow') ? 100 : 40;
+    const baseAttackRange = currentActiveChar.equippedWeaponName?.includes('Calamity Blaze') ? 60 :
+                            currentActiveChar.equippedWeaponName?.includes('Solar Wind Bow') ? 100 : 40;
+    const basicAttackRange = baseAttackRange
+      * (normalAttackKit?.normalAttack.rangeMultiplier ?? 1)
+      * (activeDominion?.kind === 'veyra-dominion' ? activeDominion.normalAttackRangeMultiplier : 1);
 
     enemiesRef.current.forEach(enemy => {
       if (enemy.hp <= 0) return;
@@ -2244,7 +2436,14 @@ export default function CombatArena({
         }
 
         const crit = Math.random() < charCritRate;
-        let baseDmg = getStatScaledAttackDamage(currentActiveChar.atk, currentActiveChar.skills.basic.damageMultiplier);
+        let baseDmg = getStatScaledAttackDamage(
+          currentActiveChar.atk,
+          currentActiveChar.skills.basic.damageMultiplier,
+          normalAttackKit?.normalAttack.damageMultiplier ?? 1
+        );
+        if (activeDominion?.kind === 'veyra-dominion') {
+          baseDmg *= activeDominion.normalAttackDamageMultiplier;
+        }
 
         // White Tassel passive: +24% Normal Attack damage
         if (currentActiveChar.equippedWeaponName?.includes('White Tassel')) {
@@ -2269,16 +2468,21 @@ export default function CombatArena({
           }
         }
 
-        applySkillDamage(enemy, baseDmg, currentActiveChar.element, false, crit, 'basic');
+        applySkillDamage(enemy, baseDmg, currentActiveChar.element, normalAttackReactionContext, false, crit);
+        normalAttackKit?.normalAttack.effects.forEach(effect => {
+          if (effect.kind !== 'damage-multiplier') {
+            applyKitStatusEffect(enemy, effect, currentActiveChar.id, 'normal-attack', currentActiveChar.atk);
+          }
+        });
 
         if (echo && enemy.hp > 0) {
-          applySkillDamage(enemy, baseDmg * echo.damageMultiplier, currentActiveChar.element, false, crit, 'basic');
+          applySkillDamage(enemy, baseDmg * echo.damageMultiplier, currentActiveChar.element, normalAttackReactionContext, false, crit);
           spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 35, `ECHO x${echo.damageMultiplier}`, echo.auraColor, 10, echo.rarity === 'Legendary');
         }
 
         // Primordial Jade Spear double strike combo
         if (currentActiveChar.equippedWeaponName?.includes('Primordial Jade') && (!currentActiveChar.spearDoubleCd || currentActiveChar.spearDoubleCd <= 0)) {
-          applySkillDamage(enemy, baseDmg * 0.75, currentActiveChar.element, false, crit, 'basic');
+          applySkillDamage(enemy, baseDmg * 0.75, currentActiveChar.element, normalAttackReactionContext, false, crit);
           currentActiveChar.spearDoubleCd = 30; // 0.5s cd
           spawnTextRef.current(enemy.x + 10, enemy.y - 20, '⚔️ Dual Strike!', '#eab308', 10);
         }
@@ -2287,7 +2491,7 @@ export default function CombatArena({
         if (currentActiveChar.equippedWeaponName?.includes('Abyssal Ocean Scepter') && (!currentActiveChar.scepterBubbleCd || currentActiveChar.scepterBubbleCd <= 0)) {
           enemiesRef.current.forEach(other => {
             if (other.hp > 0 && Math.hypot(other.x - enemy.x, other.y - enemy.y) < 90) {
-              applySkillDamage(other, currentActiveChar.atk * 0.40, 'Hydro', false, false, 'basic');
+              applySkillDamage(other, currentActiveChar.atk * 0.40, 'Hydro', normalAttackReactionContext, false, false);
             }
           });
           for (let k = 0; k < 12; k++) {
@@ -2301,7 +2505,7 @@ export default function CombatArena({
         if (currentActiveChar.equippedWeaponName?.includes('Debate Club') && currentActiveChar.debateClubTimer > 0 && (!currentActiveChar.debateClubCd || currentActiveChar.debateClubCd <= 0)) {
           enemiesRef.current.forEach(other => {
             if (other.hp > 0 && Math.hypot(other.x - enemy.x, other.y - enemy.y) < 75) {
-              applySkillDamage(other, currentActiveChar.atk * 0.60, currentActiveChar.element, false, false, 'basic');
+              applySkillDamage(other, currentActiveChar.atk * 0.60, currentActiveChar.element, normalAttackReactionContext, false, false);
             }
           });
           for (let k = 0; k < 10; k++) {
@@ -2347,6 +2551,7 @@ export default function CombatArena({
     waveResolvingRef.current = true;
 
     if (combatState.storyMode) {
+      updatePartyEffects(clearPartyEffects(partyEffectsRef.current));
       const elapsed = Math.round((Date.now() - (battleStartTimeRef.current || Date.now())) / 1000);
       let stars = 1;
       if (characterDeathsRef.current === 0) stars++;
@@ -2362,6 +2567,7 @@ export default function CombatArena({
     }
 
     if (combatState.dungeonMode) {
+      updatePartyEffects(clearPartyEffects(partyEffectsRef.current));
       setDungeonVictory(true);
       AetheriaAudioEngine.playWaveClear();
       spawnTextRef.current(400, 200, 'ROOM CLEANSED!', '#10b981', 20, true, false);
@@ -2404,15 +2610,27 @@ export default function CombatArena({
     }, 2200);
   };
 
-  const applySkillDamage = (enemy: any, baseDmg: number, type: ElementType, isUlt: boolean = false, isCrit: boolean = false, source: 'basic' | 'skill' | 'ultimate' = 'skill') => {
+  const applySkillDamage = (
+    enemy: any,
+    baseDmg: number,
+    type: ElementType,
+    reactionContext: ReactionTriggerContext,
+    isUlt: boolean = false,
+    isCrit: boolean = false
+  ) => {
     const { combatParty: currentParty, activePartyIndex: currentPartyIndex, shieldWeight: currentShieldWeight } = loopStateRef.current;
     const currentActiveChar = currentParty[currentPartyIndex] || null;
     if (!currentActiveChar) return;
 
     let finalDmg = baseDmg;
+    const source = reactionContext.source;
+    const usesActiveAttackerModifiers = source !== 'damage-over-time'
+      && source !== 'persistent-field'
+      && source !== 'reaction'
+      && source !== 'environment';
 
     // Apply Widsith theme song buff
-    if (currentActiveChar.widsithBuffTimer && currentActiveChar.widsithBuffTimer > 0) {
+    if (usesActiveAttackerModifiers && currentActiveChar.widsithBuffTimer && currentActiveChar.widsithBuffTimer > 0) {
       if (currentActiveChar.widsithBuffAtk && currentActiveChar.widsithBuffAtk > 0) {
         finalDmg *= (1 + currentActiveChar.widsithBuffAtk);
       }
@@ -2422,87 +2640,95 @@ export default function CombatArena({
     }
 
     // Apply Thrilling Tales buff
-    if (currentActiveChar.swapBuffTimer && currentActiveChar.swapBuffTimer > 0 && currentActiveChar.swapBuffAtk) {
+    if (usesActiveAttackerModifiers && currentActiveChar.swapBuffTimer && currentActiveChar.swapBuffTimer > 0 && currentActiveChar.swapBuffAtk) {
       finalDmg *= (1 + currentActiveChar.swapBuffAtk);
     }
 
     // Apply Solar Searing Blade (+10% elemental damage)
-    if (currentActiveChar.equippedWeaponName?.includes('Solar Searing Blade')) {
+    if (usesActiveAttackerModifiers && currentActiveChar.equippedWeaponName?.includes('Solar Searing Blade')) {
       finalDmg *= 1.10;
     }
 
     // Apply 4 Unique element resonance (+15% DMG)
     const has4Unique = loopStateRef.current.activeResonances.some(r => r.key === 'unique');
-    if (has4Unique) {
+    if (usesActiveAttackerModifiers && has4Unique) {
       finalDmg *= 1.15;
     }
 
     // Apply 2 Geo resonance (+15% DMG when protected by a shield)
     const has2Geo = loopStateRef.current.activeResonances.some(r => r.key === 'geo');
-    if (has2Geo && currentShieldWeight > 0) {
+    if (usesActiveAttackerModifiers && has2Geo && currentShieldWeight > 0) {
       finalDmg *= 1.15;
     }
 
     let reactionName = '';
     let damageColor = getElementColorHex(type) || '#ffffff';
+    const reactionEligible = canTriggerElementalReaction(reactionContext);
+    const weatherDamageSource = source === 'normal-attack'
+      ? 'basic'
+      : source === 'elemental-skill'
+        ? 'skill'
+        : 'ultimate';
 
-    finalDmg *= getWeatherDamageMultiplier(weatherRef.current, source, type);
+    if (usesActiveAttackerModifiers) {
+      finalDmg *= getWeatherDamageMultiplier(weatherRef.current, weatherDamageSource, type);
+    }
 
-    if (perfectDodgeDamageBuffRef.current > 0) {
+    if (usesActiveAttackerModifiers && perfectDodgeDamageBuffRef.current > 0) {
       perfectDodgeDamageBuffRef.current = Math.max(0, perfectDodgeDamageBuffRef.current - 1);
       finalDmg *= 1.5;
       spawnTextRef.current(playerRef.current.x, playerRef.current.y - 62, 'PERFECT DODGE STRIKE +50%', '#bfdbfe', 12, true);
     }
 
     // Apply element reaction engine
-    const activeDebuffs = enemy.activeElements as ElementType[];
+    const activeDebuffs = (enemy.activeElements ??= []) as ElementType[];
 
     // --- APPLY CONDITIONAL WEAPON DAMAGE MODIFIERS ---
     // Cool Steel (+12% DMG against Hydro/Cryo affected targets)
-    if (currentActiveChar.equippedWeaponName?.includes('Cool Steel') && 
+    if (usesActiveAttackerModifiers && currentActiveChar.equippedWeaponName?.includes('Cool Steel') &&
         (activeDebuffs.includes('Hydro') || activeDebuffs.includes('Cryo') || enemy.isFrozen > 0)) {
       finalDmg *= 1.12;
     }
 
     // Bloodtainted Greatsword (+16% DMG against Pyro/Electro affected targets)
-    if (currentActiveChar.equippedWeaponName?.includes('Bloodtainted Greatsword') && 
+    if (usesActiveAttackerModifiers && currentActiveChar.equippedWeaponName?.includes('Bloodtainted Greatsword') &&
         (activeDebuffs.includes('Pyro') || activeDebuffs.includes('Electro'))) {
       finalDmg *= 1.16;
     }
 
     // Raven Bow (+12% DMG against Pyro/Hydro affected targets)
-    if (currentActiveChar.equippedWeaponName?.includes('Raven Bow') && 
+    if (usesActiveAttackerModifiers && currentActiveChar.equippedWeaponName?.includes('Raven Bow') &&
         (activeDebuffs.includes('Pyro') || activeDebuffs.includes('Hydro'))) {
       finalDmg *= 1.12;
     }
 
     // Magic Guide (+12% DMG against Hydro/Electro affected targets)
-    if (currentActiveChar.equippedWeaponName?.includes('Magic Guide') && 
+    if (usesActiveAttackerModifiers && currentActiveChar.equippedWeaponName?.includes('Magic Guide') &&
         (activeDebuffs.includes('Hydro') || activeDebuffs.includes('Electro'))) {
       finalDmg *= 1.12;
     }
 
     // Dragon's Bane (+20% DMG against Hydro/Pyro affected targets)
-    if (currentActiveChar.equippedWeaponName?.includes('Dragon\'s Bane') && 
+    if (usesActiveAttackerModifiers && currentActiveChar.equippedWeaponName?.includes('Dragon\'s Bane') &&
         (activeDebuffs.includes('Hydro') || activeDebuffs.includes('Pyro'))) {
       finalDmg *= 1.20;
     }
 
     // Black Tassel (+40% DMG against slimes)
-    if (currentActiveChar.equippedWeaponName?.includes('Black Tassel') && 
+    if (usesActiveAttackerModifiers && currentActiveChar.equippedWeaponName?.includes('Black Tassel') &&
         enemy.name?.toLowerCase().includes('slime')) {
       finalDmg *= 1.40;
     }
 
     // Calamity Blaze staggered knockback
-    if (currentActiveChar.equippedWeaponName?.includes('Calamity Blaze')) {
+    if (usesActiveAttackerModifiers && currentActiveChar.equippedWeaponName?.includes('Calamity Blaze')) {
       const pushAngle = Math.atan2(enemy.y - playerRef.current.y, enemy.x - playerRef.current.x);
       enemy.x = Math.max(50, Math.min(WORLD_WIDTH - 50, enemy.x + Math.cos(pushAngle) * 35));
       enemy.y = Math.max(50, Math.min(WORLD_HEIGHT - 50, enemy.y + Math.sin(pushAngle) * 35));
     }
 
     // Favonius Windfall energy generation
-    if (isCrit && currentActiveChar.equippedWeaponName?.includes('Favonius') && Math.random() < 0.60) {
+    if (usesActiveAttackerModifiers && isCrit && currentActiveChar.equippedWeaponName?.includes('Favonius') && Math.random() < 0.60) {
       setCombatParty(pList => pList.map((c, i) => {
         if (i === currentPartyIndex) {
           return { ...c, ultimateEnergy: Math.min(c.ultimateMaxEnergy, c.ultimateEnergy + 6) };
@@ -2513,7 +2739,7 @@ export default function CombatArena({
     }
 
     // Sacrificial Cooldown Reset
-    if (source === 'skill' && currentActiveChar.equippedWeaponName?.includes('Sacrificial') && (!currentActiveChar.sacrificialCooldown || currentActiveChar.sacrificialCooldown <= 0)) {
+    if (usesActiveAttackerModifiers && source === 'elemental-skill' && currentActiveChar.equippedWeaponName?.includes('Sacrificial') && (!currentActiveChar.sacrificialCooldown || currentActiveChar.sacrificialCooldown <= 0)) {
       if (Math.random() < 0.40) {
         setCombatParty(pList => pList.map((c, i) => {
           if (i === currentPartyIndex) {
@@ -2525,10 +2751,10 @@ export default function CombatArena({
       }
     }
     const index = activeDebuffs.indexOf(type);
-    const reactionOutcome = getReactionDamageOutcome(activeDebuffs, type, finalDmg);
+    const reactionOutcome = reactionEligible ? getReactionDamageOutcome(activeDebuffs, type, finalDmg) : null;
     
     // Check Shatter Combo (Frozen State broken by heavy elemental strikes)
-    if (enemy.isFrozen > 0 && (type === 'Anemo' || type === 'Geo' || type === 'Pyro' || type === 'Electro')) {
+    if (reactionEligible && enemy.isFrozen > 0 && (type === 'Anemo' || type === 'Geo' || type === 'Pyro' || type === 'Electro')) {
       finalDmg = Math.round(finalDmg * 2.6);
       enemy.isFrozen = 0; // shatter breaks freeze
       reactionName = '🌀❄️ TRIPLE HYPER-BLIZZARD SHATTER! ❄️🌀';
@@ -2554,7 +2780,7 @@ export default function CombatArena({
         }
       });
     }
-    else if (activeDebuffs.length > 0 && !activeDebuffs.includes(type)) {
+    else if (reactionEligible && activeDebuffs.length > 0 && !activeDebuffs.includes(type)) {
       // Hydro + Pyro = Vaporize (2x damage)
       if ((activeDebuffs.includes('Hydro') && type === 'Pyro') || (activeDebuffs.includes('Pyro') && type === 'Hydro')) {
         finalDmg = reactionOutcome?.finalDamage ?? Math.round(finalDmg * 2);
@@ -2566,7 +2792,8 @@ export default function CombatArena({
       }
       // Hydro + Cryo = Frozen (Freeze 3.5s)
       else if ((activeDebuffs.includes('Hydro') && type === 'Cryo') || (activeDebuffs.includes('Cryo') && type === 'Hydro')) {
-        enemy.isFrozen = 200; // freeze timer frames
+        const fieldModifiers = getReactionFieldModifiers(partyEffectsRef.current, enemy.x, enemy.y);
+        enemy.isFrozen = Math.round(200 * fieldModifiers.crowdControlDurationMultiplier); // freeze timer frames
         finalDmg = reactionOutcome?.finalDamage ?? Math.round(finalDmg * 1.1);
         reactionName = '🎨 FROZEN! 🎨';
         damageColor = '#38bdf8';
@@ -2725,9 +2952,14 @@ export default function CombatArena({
 
         enemy.activeElements = []; // consume swirled element
       }
-    } else if (!activeDebuffs.includes(type) && source !== 'basic') {
+    } else if (reactionEligible && !activeDebuffs.includes(type)) {
       // Only skills and ultimates apply element statuses — basic attacks do not stack new debuffs
       enemy.activeElements.push(type);
+    }
+
+    if (reactionName) {
+      const fieldModifiers = getReactionFieldModifiers(partyEffectsRef.current, enemy.x, enemy.y);
+      finalDmg *= fieldModifiers.reactionMultiplier;
     }
 
     // Trigger screen shake on reactions
@@ -2754,7 +2986,7 @@ export default function CombatArena({
     }
     
     // Apply Vampiric Grace dungeon healing buff (3% of damage)
-    if (loopStateRef.current.dungeonMode && loopStateRef.current.dungeonBuffs.includes('Vampiric Grace')) {
+    if (usesActiveAttackerModifiers && loopStateRef.current.dungeonMode && loopStateRef.current.dungeonBuffs.includes('Vampiric Grace')) {
       const healAmount = Math.round(finalDmg * 0.03 * getWeatherHealingMultiplier(weatherRef.current));
       if (healAmount > 0) {
         const { activePartyIndex: currentPartyIndex } = loopStateRef.current;
@@ -2771,13 +3003,13 @@ export default function CombatArena({
     // Differentiate basic attack (left click), E skill, and Ultimate
     let dmgText = '';
     let textFontSize = 14;
-    if (source === 'basic') {
+    if (source === 'normal-attack') {
       dmgText = `${isCrit ? 'CRIT ' : ''}Click ${finalDmg}`;
       textFontSize = isCrit ? 16 : 13;
-    } else if (source === 'skill') {
+    } else if (source === 'elemental-skill') {
       dmgText = `${isCrit ? 'CRIT ' : ''}Skill ${finalDmg}`;
       textFontSize = isCrit ? 20 : 16;
-    } else if (source === 'ultimate') {
+    } else if (source === 'elemental-burst' || source === 'special-ultimate') {
       dmgText = `${isCrit ? 'CRIT ' : ''}ULT ${finalDmg}`;
       textFontSize = isCrit ? 26 : 20;
     } else {
@@ -2850,11 +3082,13 @@ export default function CombatArena({
 
           setStoryStarsEarned(stars);
           setStoryElapsedSecs(elapsed);
+          updatePartyEffects(clearPartyEffects(partyEffectsRef.current));
           setStoryVictory(true);
           AetheriaAudioEngine.playWaveClear();
           AetheriaAudioEngine.setBossFightActive(false);
           spawnTextRef.current(450, 250, '🏆 STAGE SECURED! 🏆', '#f59e0b', 22, true, false);
         } else if (dungeonMode) {
+          updatePartyEffects(clearPartyEffects(partyEffectsRef.current));
           setDungeonVictory(true);
           AetheriaAudioEngine.playWaveClear();
           spawnTextRef.current(400, 200, '🏆 ROOM CLEANSED! 🏆', '#10b981', 20, true, false);
@@ -3123,6 +3357,25 @@ export default function CombatArena({
         parryCdRef.current = Math.max(0, parryCdRef.current - 0.016 * combatSpeed);
         setParryCd(parryCdRef.current);
       }
+      if (basicAttackCooldownRef.current > 0) {
+        basicAttackCooldownRef.current = Math.max(0, basicAttackCooldownRef.current - 0.016 * combatSpeed);
+      }
+
+      const frameSeconds = Math.min(0.05, Math.max(0.001, delta / 1000)) * combatSpeed;
+      const partyEffectTick = tickPartyEffects(
+        partyEffectsRef.current,
+        frameSeconds,
+        { [currentActiveChar.id]: { x: playerRef.current.x, y: playerRef.current.y } }
+      );
+      partyEffectsRef.current = partyEffectTick.state;
+      partyEffectTick.events.forEach(event => {
+        const sourceElement = currentParty.find(character => character.id === event.sourceCharacterId)?.element ?? 'Electro';
+        enemiesRef.current.forEach(enemy => {
+          if (enemy.hp <= 0 || Math.hypot(enemy.x - event.position.x, enemy.y - event.position.y) > event.radius + enemy.radius) return;
+          applySkillDamage(enemy, event.damage, sourceElement, event.reactionContext, false, false);
+          spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 30, 'STORM FIELD', '#c084fc', 9, false);
+        });
+      });
 
       // Clear Screen
       ctx.clearRect(0, 0, currentDimensions.width, currentDimensions.height);
@@ -3176,6 +3429,33 @@ export default function CombatArena({
         ctx.fillStyle = sunGrad;
         ctx.fillRect(camX, camY, currentDimensions.width, currentDimensions.height);
       }
+
+      partyEffectsRef.current.effects.forEach(effect => {
+        ctx.save();
+        if (effect.kind === 'reaction-field') {
+          ctx.fillStyle = 'rgba(34, 197, 94, 0.08)';
+          ctx.strokeStyle = 'rgba(74, 222, 128, 0.7)';
+          ctx.setLineDash([10, 8]);
+        } else if (effect.kind === 'whirlpool') {
+          ctx.fillStyle = 'rgba(14, 165, 233, 0.10)';
+          ctx.strokeStyle = 'rgba(56, 189, 248, 0.85)';
+          ctx.setLineDash([4, 7]);
+        } else if (effect.kind === 'electric-field') {
+          ctx.fillStyle = 'rgba(168, 85, 247, 0.10)';
+          ctx.strokeStyle = 'rgba(192, 132, 252, 0.8)';
+          ctx.setLineDash([3, 5]);
+        } else {
+          ctx.fillStyle = 'rgba(216, 180, 254, 0.05)';
+          ctx.strokeStyle = 'rgba(216, 180, 254, 0.45)';
+          ctx.setLineDash([8, 10]);
+        }
+        ctx.lineWidth = effect.kind === 'whirlpool' ? 3 : 2;
+        ctx.beginPath();
+        ctx.arc(effect.x, effect.y, effect.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      });
 
       // --- PLAYER MOVEMENT CONTROL ---
       let dx = 0;
@@ -3512,6 +3792,27 @@ export default function CombatArena({
       enemiesRef.current.forEach(enemy => {
         if (enemy.hp <= 0) return;
 
+        const statusTick = tickCombatStatuses((enemy.statusEffects ??= []), frameSeconds);
+        enemy.statusEffects = statusTick.statuses;
+        statusTick.events.forEach(event => {
+          const sourceElement = currentParty.find(character => character.id === event.sourceCharacterId)?.element ?? 'Pyro';
+          applySkillDamage(enemy, event.damage, sourceElement, event.reactionContext, false, false);
+        });
+        if (enemy.hp <= 0) return;
+
+        const targetStunned = isTargetStunned(enemy.statusEffects);
+        const statusMovementMultiplier = getStatusMovementMultiplier(enemy.statusEffects);
+        partyEffectsRef.current.effects.forEach(effect => {
+          if (effect.kind !== 'whirlpool' || enemy.type === 'Boss') return;
+          const dx = effect.x - enemy.x;
+          const dy = effect.y - enemy.y;
+          const distance = Math.hypot(dx, dy);
+          if (distance <= 34 || distance > effect.radius) return;
+          const pullDistance = Math.min(distance - 34, 3.2 * combatSpeed);
+          enemy.x += (dx / distance) * pullDistance;
+          enemy.y += (dy / distance) * pullDistance;
+        });
+
         // --- REAL BOSS MECHANICS AI STEP ---
         if (enemy.type === 'Boss') {
           // Detect phase transitions
@@ -3813,17 +4114,19 @@ export default function CombatArena({
         // Apply a global 0.6x speed slowdown to make overall wave enemies slower as requested
         const globalWaveEnemySlowerMultiplier = 0.6;
         const weatherEnemySpeed = getWeatherEnemySpeedMultiplier(weatherRef.current);
-        enemy.x += Math.cos(angleToPlayer) * enemy.speed * weatherEnemySpeed * speedModifier * globalWaveEnemySlowerMultiplier * combatSpeed;
-        enemy.y += Math.sin(angleToPlayer) * enemy.speed * weatherEnemySpeed * speedModifier * globalWaveEnemySlowerMultiplier * combatSpeed;
+        if (!targetStunned) {
+          enemy.x += Math.cos(angleToPlayer) * enemy.speed * weatherEnemySpeed * speedModifier * globalWaveEnemySlowerMultiplier * statusMovementMultiplier * combatSpeed;
+          enemy.y += Math.sin(angleToPlayer) * enemy.speed * weatherEnemySpeed * speedModifier * globalWaveEnemySlowerMultiplier * statusMovementMultiplier * combatSpeed;
+        }
 
         // Increase Telegraph Attack counter metrics
-        enemy.telegraphTimer++;
+        if (!targetStunned) enemy.telegraphTimer++;
         if (enemy.telegraphTimer > 120) {
           enemy.telegraphTimer = 0; // reset
         }
 
         // --- RENDER DANGER RED TELEGRAPH THREATS (smaller enemy ranges) ---
-        if (enemy.telegraphTimer > 60) {
+        if (!targetStunned && enemy.telegraphTimer > 60) {
           ctx.save();
           ctx.globalAlpha = 0.25;
           ctx.fillStyle = '#ef4444';
@@ -3849,7 +4152,7 @@ export default function CombatArena({
 
         // Check simple physical collision with active player frame
         const physDist = Math.hypot(playerRef.current.x - enemy.x, playerRef.current.y - enemy.y);
-        if (physDist < playerRef.current.radius + enemy.radius) {
+        if (!targetStunned && physDist < playerRef.current.radius + enemy.radius) {
           // Continuous micro collision damage ticks
           if (Math.random() < 0.05) {
             handlePlayerHit(enemy, 35);
@@ -3864,6 +4167,39 @@ export default function CombatArena({
         ctx.shadowBlur = 10;
         ctx.shadowColor = enemy.color;
         ctx.fill();
+
+        const enemyStatuses = (enemy.statusEffects ?? []) as CombatStatusEffect[];
+        if (enemyStatuses.some(status => status.type === 'burn')) {
+          ctx.strokeStyle = '#fb923c';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(enemy.x, enemy.y, enemy.radius + 5, Math.PI * 0.1, Math.PI * 1.55);
+          ctx.stroke();
+        }
+        if (enemyStatuses.some(status => status.type === 'slow')) {
+          ctx.strokeStyle = '#7dd3fc';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([3, 4]);
+          ctx.beginPath();
+          ctx.arc(enemy.x, enemy.y, enemy.radius + 9, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+        if (enemyStatuses.some(status => status.type === 'stun')) {
+          ctx.fillStyle = '#fef08a';
+          ctx.font = 'bold 13px "Space Grotesk", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('STUN', enemy.x, enemy.y - enemy.radius - 27);
+        }
+        if (enemyStatuses.some(status => status.type === 'damage-down')) {
+          ctx.strokeStyle = '#4ade80';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(enemy.x - 8, enemy.y + enemy.radius + 8);
+          ctx.lineTo(enemy.x, enemy.y + enemy.radius + 15);
+          ctx.lineTo(enemy.x + 8, enemy.y + enemy.radius + 8);
+          ctx.stroke();
+        }
 
         // Draw HP bar above enemy
         ctx.fillStyle = '#ef4444';
@@ -3909,6 +4245,16 @@ export default function CombatArena({
         ctx.strokeStyle = getElementColorHex(currentShieldActive);
         ctx.lineWidth = 2.5;
         ctx.stroke();
+      }
+
+      if (partyEffectsRef.current.shield && partyEffectsRef.current.shield.currentHp > 0) {
+        ctx.beginPath();
+        ctx.arc(playerRef.current.x, playerRef.current.y, playerRef.current.radius + 16, 0, Math.PI * 2);
+        ctx.strokeStyle = '#4ade80';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([6, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
       }
 
       // If active Shield Parry stance is toggled on screen
@@ -4263,7 +4609,13 @@ export default function CombatArena({
       return;
     }
 
-    const adjustedAmount = Math.round(amount * getWeatherIncomingDamageMultiplier(weatherRef.current));
+    let adjustedAmount = Math.round(amount * getWeatherIncomingDamageMultiplier(weatherRef.current));
+    if (enemy) {
+      adjustedAmount = Math.round(adjustedAmount * getStatusOutgoingDamageMultiplier(enemy.statusEffects ?? []));
+      adjustedAmount = Math.round(
+        adjustedAmount * getReactionFieldModifiers(partyEffectsRef.current, enemy.x, enemy.y).enemyDamageMultiplier
+      );
+    }
 
     // If parry is active precisely
     if (currentIsParrying) {
@@ -4275,13 +4627,29 @@ export default function CombatArena({
       
       // Detonate counter-strike damage reflected back on enemy
       const reflect = 750;
-      applySkillDamage(enemy, reflect, currentActiveChar.element, false, true);
+      applySkillDamage(enemy, reflect, currentActiveChar.element, createReactionContext('environment', true, false), false, true);
       
       spawnFloatingDamageText(px, py - 40, '🛡️ PERFECT PARRY COUNTER! 🛡️', '#06b6d4', 15, true);
       for (let i = 0; i < 20; i++) {
         particlesRef.current.push(new CombatParticle(px, py, '#06b6d4', 3.5));
       }
       return;
+    }
+
+    const sharedShieldHit = consumePartyShield(partyEffectsRef.current, adjustedAmount);
+    if (sharedShieldHit.absorbedDamage > 0) {
+      partyEffectsRef.current = sharedShieldHit.state;
+      setPartyEffectRevision(revision => revision + 1);
+      spawnFloatingDamageText(
+        playerRef.current.x,
+        playerRef.current.y - 42,
+        `CANOPY ABSORBED ${sharedShieldHit.absorbedDamage}`,
+        '#4ade80',
+        11,
+        false
+      );
+      adjustedAmount = sharedShieldHit.remainingDamage;
+      if (adjustedAmount <= 0) return;
     }
 
     // If shield absorbs damage first
@@ -4330,6 +4698,7 @@ export default function CombatArena({
       const anyAlive = updatedParty.some(c => c.currentHp > 0);
       if (!anyAlive) {
         resetCombatPolishState(false);
+        updatePartyEffects(clearPartyEffects(partyEffectsRef.current));
         setIsGameOver(true);
         setWaveAetherEcho(null);
         setActiveEchoNotification(null);
@@ -4443,6 +4812,7 @@ export default function CombatArena({
     setActiveEchoNotification(null);
     setWaveAetherEcho(null);
     resetCombatPolishState(true);
+    updatePartyEffects(clearPartyEffects(partyEffectsRef.current));
     
     setCombatParty(pList => pList.map(c => ({
       ...c,
@@ -5146,6 +5516,7 @@ export default function CombatArena({
                           } else if (act === 'end_run') {
                             setIsPaused(false);
                             resetCombatPolishState(true);
+                            updatePartyEffects(clearPartyEffects(partyEffectsRef.current));
                             setCombatParty(pList => pList.map(c => ({
                               ...c,
                               currentHp: 0
@@ -5156,9 +5527,11 @@ export default function CombatArena({
                             AetheriaAudioEngine.playGameOver();
                           } else if (act === 'home') {
                             setIsPaused(false);
+                            updatePartyEffects(clearPartyEffects(partyEffectsRef.current));
                             onBackToMenu?.();
                           } else if (act === 'wiki') {
                             setIsPaused(false);
+                            updatePartyEffects(clearPartyEffects(partyEffectsRef.current));
                             onExitToWiki?.();
                           }
                         }}
@@ -5274,6 +5647,7 @@ export default function CombatArena({
                       <button
                         onClick={() => {
                           AetheriaAudioEngine.playClick();
+                          updatePartyEffects(clearPartyEffects(partyEffectsRef.current));
                           if (onExitToWiki) {
                             onExitToWiki();
                           } else {
@@ -5532,6 +5906,15 @@ export default function CombatArena({
           onPointerMove={handleCanvasPointerMove}
         />
 
+        {partyEffectsRef.current.shield && partyEffectsRef.current.shield.currentHp > 0 && (
+          <div className="absolute left-1/2 top-[4.5rem] z-40 -translate-x-1/2 rounded-md border border-emerald-400/40 bg-emerald-950/85 px-3 py-1.5 text-center shadow-[0_0_18px_rgba(74,222,128,0.2)] pointer-events-none">
+            <div className="text-[9px] font-black uppercase tracking-[0.18em] text-emerald-300">Protective Canopy</div>
+            <div className="text-[11px] font-mono font-black text-white">
+              {partyEffectsRef.current.shield.currentHp} / {partyEffectsRef.current.shield.maxHp}
+            </div>
+          </div>
+        )}
+
         {/* Fixed Mini-Map HUD Overlay */}
         <canvas 
           ref={minimapCanvasRef} 
@@ -5569,10 +5952,13 @@ export default function CombatArena({
                       <span className="font-extrabold truncate max-w-[85px] text-slate-200 uppercase tracking-tight">{c.name}</span>
                       <span className="font-black text-amber-400 font-mono text-[11px]">L.{c.level}</span>
                     </div>
-                    <div className="flex gap-0.5 select-none">
-                      {Array.from({ length: starCount }).map((_, sIdx) => (
-                        <Star key={sIdx} className="w-3.5 h-3.5 text-amber-400 fill-amber-400 shrink-0" />
-                      ))}
+                    <div className="flex items-center justify-between gap-2 select-none">
+                      <div className="flex gap-0.5">
+                        {Array.from({ length: starCount }).map((_, sIdx) => (
+                          <Star key={sIdx} className="w-3.5 h-3.5 text-amber-400 fill-amber-400 shrink-0" />
+                        ))}
+                      </div>
+                      <CharacterRoleBadge role={c.role ?? charTemplate?.role ?? 'sub-dps'} compact />
                     </div>
                   </div>
                   <div className="bg-black/50 h-2 rounded overflow-hidden mt-2">

@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import GemsShop, { DAMAGE_SKINS } from './components/GemsShop';
-import { SaveState, Weapon, Artifact, InventoryItem, Quest, ElementType, ArtifactSlot, UiThemeId } from './types';
+import { SaveState, Weapon, Artifact, InventoryItem, Quest, ElementType, ArtifactSlot, UiThemeId, CharacterRole } from './types';
 import { t, LanguageType } from './utils/i18n';
 import { PLAYABLE_CHARACTERS } from './data/characters';
 import { ARTIFACT_SETS } from './data/artifacts';
@@ -16,6 +16,7 @@ import LoginRewardModal from './components/LoginRewardModal';
 import ElementalReactionsModal from './components/ElementalReactionsModal';
 import SquadronQuestLedger from './components/SquadronQuestLedger';
 import GameHome from './components/GameHome';
+import CharacterRoleBadge from './components/CharacterRoleBadge';
 import { 
   Shield, Sparkles, Coins, HelpCircle, History, RefreshCw, Star, 
   BookOpen, Compass, Sword, Landmark, Hammer, Trophy, DollarSign, 
@@ -314,6 +315,7 @@ export default function App() {
   const [partyElementFilter, setPartyElementFilter] = useState<'All' | ElementType>('All');
   const [partyWeaponFilter, setPartyWeaponFilter] = useState<'All' | 'Sword' | 'Claymore' | 'Polearm' | 'Bow' | 'Catalyst'>('All');
   const [partyRarityFilter, setPartyRarityFilter] = useState<'All' | 3 | 4 | 5>('All');
+  const [partyRoleFilter, setPartyRoleFilter] = useState<'All' | CharacterRole>('All');
 
   const partyResonances = React.useMemo(() => {
     const activeChars = PLAYABLE_CHARACTERS.filter(c => saveState.partyIds.includes(c.id));
@@ -3337,6 +3339,28 @@ export default function App() {
                           })}
                         </div>
                       </div>
+
+                      <div className="space-y-2 w-full xl:w-auto">
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block font-mono">Filter by Role:</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {(['All', 'dps', 'sub-dps', 'support', 'tank'] as const).map(role => (
+                            <button
+                              key={role}
+                              onClick={() => {
+                                AetheriaAudioEngine.playClick();
+                                setPartyRoleFilter(role);
+                              }}
+                              className={`px-3 py-1.5 text-[10px] font-black uppercase rounded-lg border transition-all cursor-pointer ${
+                                partyRoleFilter === role
+                                  ? 'bg-emerald-500/80 border-emerald-300 text-slate-950'
+                                  : 'bg-slate-900/50 border-white/5 text-slate-400 hover:text-slate-200'
+                              }`}
+                            >
+                              {role === 'All' ? 'All' : role === 'sub-dps' ? 'Sub DPS' : role.toUpperCase()}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                     )}
 
@@ -3677,7 +3701,8 @@ export default function App() {
                           const matchesElement = partyElementFilter === 'All' || c.element === partyElementFilter;
                           const matchesWeapon = partyWeaponFilter === 'All' || c.weaponType === partyWeaponFilter;
                           const matchesRarity = partyRarityFilter === 'All' || c.rarity === partyRarityFilter;
-                          return matchesQuery && matchesElement && matchesWeapon && matchesRarity;
+                          const matchesRole = partyRoleFilter === 'All' || c.role === partyRoleFilter;
+                          return matchesQuery && matchesElement && matchesWeapon && matchesRarity && matchesRole;
                         });
 
                         if (filteredCharacters.length === 0) {
@@ -3734,6 +3759,7 @@ export default function App() {
                                     <Star key={i} className="w-2.5 h-2.5 text-amber-400 fill-amber-400 shrink-0" />
                                   ))}
                                 </div>
+                                <CharacterRoleBadge role={c.role} compact className="mt-2" />
                               </div>
 
                               <div className="mt-4 border-t border-white/5 pt-2 flex flex-col gap-0.5">
@@ -3873,6 +3899,7 @@ export default function App() {
                             <Star key={i} className="w-2.5 h-2.5 text-amber-400 fill-amber-400 shrink-0" />
                           ))}
                         </div>
+                        <CharacterRoleBadge role={c.role} compact className="mt-1.5" />
                       </div>
 
                       <div className="mt-2.5 border-t border-white/5 pt-1.5 flex flex-col gap-0.5">

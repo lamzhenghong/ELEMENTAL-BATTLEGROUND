@@ -13,6 +13,7 @@ import { AetheriaAudioEngine } from '../utils/audio';
 import { normalizeStoryProgress } from '../data/story/progress';
 import { applyStoryChoice } from '../storyChoiceRules';
 import StoryMemoryArchive from './StoryMemoryArchive';
+import CharacterRoleBadge from './CharacterRoleBadge';
 
 interface StoryModeProps {
   saveState: SaveState;
@@ -545,6 +546,7 @@ export default function StoryMode({
                         </div>
                         <div>
                           <div className="font-extrabold text-xs block">{char.name}</div>
+                          <CharacterRoleBadge role={char.role} compact className="mt-1" />
                           <span className="text-[8.5px] font-mono block opacity-80 uppercase text-amber-400">
                             Acts Cleared: {completedCount}/3
                           </span>
@@ -572,9 +574,12 @@ export default function StoryMode({
                 return (
                   <div className="glass-hud p-6 rounded-2xl border border-white/10 space-y-6">
                     <div>
-                      <h3 className="text-xl font-black text-white font-display uppercase tracking-wide">
-                        {char.name}'s Character Story Acts
-                      </h3>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-xl font-black text-white font-display uppercase tracking-wide">
+                          {char.name}'s Character Story Acts
+                        </h3>
+                        <CharacterRoleBadge role={char.role} />
+                      </div>
                       <p className="text-xs text-slate-400">
                         Fight through a character's memories for Mora and Gems.
                       </p>
