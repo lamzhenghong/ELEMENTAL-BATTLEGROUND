@@ -103,7 +103,7 @@
 ### Task 6: Database Migration and Types
 
 **Files:**
-- Create: `supabase/migrations/20260720000000_create_game_saves.sql`
+- Create: `supabase/migrations/20260719172056_create_game_saves.sql`
 - Create: `src/cloud/database.types.ts`
 
 **Interfaces:**
@@ -126,4 +126,3 @@
 - [ ] Configure Supabase URL and publishable key in local/Vercel environments.
 - [ ] Commit the complete change, push it to GitHub, merge/push `main`, and wait for Supabase and Vercel deployment.
 - [ ] Verify the production URL, database migration, auth logs, and post-deployment runtime health.
-

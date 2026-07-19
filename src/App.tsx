@@ -17,10 +17,12 @@ import ElementalReactionsModal from './components/ElementalReactionsModal';
 import SquadronQuestLedger from './components/SquadronQuestLedger';
 import GameHome from './components/GameHome';
 import CharacterRoleBadge from './components/CharacterRoleBadge';
+import CloudAccountModal from './components/CloudAccountModal';
+import CloudSaveConflictModal from './components/CloudSaveConflictModal';
 import { 
   Shield, Sparkles, Coins, HelpCircle, History, RefreshCw, Star, 
   BookOpen, Compass, Sword, Landmark, Hammer, Trophy, DollarSign, 
-  Info, Skull, LayoutGrid, CheckCircle2, Circle, Volume2, VolumeX, X, Play, LogOut, Award, Maximize2, Minimize2, Users, Lock, BarChart2
+  Info, Skull, LayoutGrid, CheckCircle2, Circle, Volume2, VolumeX, X, Play, LogOut, Award, Maximize2, Minimize2, Users, Lock, BarChart2, Cloud
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AetheriaAudioEngine } from './utils/audio';
@@ -36,6 +38,7 @@ import { getStageSpec, getStageDialogue, getCharacterStoryScript, getStoryScene 
 import type { StoryChoiceSelections, StoryScene } from './data/story';
 import { mergeUnlockedStoryMemories } from './data/story/memories';
 import { createDefaultStoryProgress, normalizeStoryProgress } from './data/story/progress';
+import { useCloudAccount } from './cloud/useCloudAccount';
 
 const GDDViewer = React.lazy(() => import('./components/GDDViewer'));
 const GachaSimulator = React.lazy(() => import('./components/GachaSimulator'));
@@ -164,6 +167,89 @@ const INITIAL_SAVE_STATE: SaveState = {
 
 const getInitialSaveState = (): SaveState => JSON.parse(JSON.stringify(INITIAL_SAVE_STATE));
 
+const normalizeLoadedSaveState = (parsed: Partial<SaveState>): SaveState => {
+  const defaultState = getInitialSaveState();
+  const merged: SaveState = {
+    ...defaultState,
+    ...parsed,
+    bannerPity5Star: { ...defaultState.bannerPity5Star, ...(parsed.bannerPity5Star || {}) },
+    bannerPity4Star: { ...defaultState.bannerPity4Star, ...(parsed.bannerPity4Star || {}) },
+    bannerGuaranteed5Star: { ...defaultState.bannerGuaranteed5Star, ...(parsed.bannerGuaranteed5Star || {}) },
+    stats: { ...defaultState.stats, ...(parsed.stats || {}) },
+    characterLevels: { ...defaultState.characterLevels, ...(parsed.characterLevels || {}) },
+    characterPortraits: { ...defaultState.characterPortraits, ...(parsed.characterPortraits || {}) },
+    characterHp: { ...defaultState.characterHp, ...(parsed.characterHp || {}) },
+    characterEquippedWeapon: { ...defaultState.characterEquippedWeapon, ...(parsed.characterEquippedWeapon || {}) },
+    inventoryArtifacts: parsed.inventoryArtifacts || [],
+    characterEquippedArtifacts: parsed.characterEquippedArtifacts || {},
+    storyProgress: normalizeStoryProgress(parsed.storyProgress)
+  };
+
+  merged.inventoryItems = (merged.inventoryItems || []).map(item => {
+    if (item.type === 'char_xp' || item.id === 'wit_exp') return { ...item, rarity: 3 };
+    if (item.type === 'ascension' || item.id === 'ore_exp') return { ...item, rarity: 4 };
+    return item;
+  });
+
+  if (!merged.bannerPity5Star?.char_banner_1 && merged.gachaPity5Star) {
+    merged.bannerPity5Star = {
+      char_banner_1: merged.gachaPity5Star,
+      char_banner_2: merged.gachaPity5Star,
+      weapon_banner_1: 0,
+      weapon_banner_2: 0
+    };
+  }
+  if (!merged.bannerPity4Star?.char_banner_1 && merged.gachaPity4Star) {
+    merged.bannerPity4Star = {
+      char_banner_1: merged.gachaPity4Star,
+      char_banner_2: merged.gachaPity4Star,
+      weapon_banner_1: 0,
+      weapon_banner_2: 0
+    };
+  }
+
+  if (!merged.activeQuests || merged.activeQuests.length < 30) {
+    const completedIds = merged.completedQuestIds || [];
+    merged.activeQuests = INITIAL_50_QUESTS.filter(quest => !completedIds.includes(quest.id));
+  } else {
+    merged.activeQuests = merged.activeQuests.map(quest => {
+      const template = INITIAL_50_QUESTS.find(candidate => candidate.id === quest.id);
+      return template
+        ? {
+            ...template,
+            currentValue: quest.currentValue ?? 0,
+            completed: quest.completed ?? false
+          }
+        : quest;
+    });
+  }
+
+  merged.loginRewardClaimedDays = merged.loginRewardClaimedDays || [];
+  const validSkins = ['Default', 'Ice', 'Void', 'Celestial'];
+  const savedSkins = Array.isArray(merged.unlockedDamageSkins) ? merged.unlockedDamageSkins : ['Default'];
+  merged.unlockedDamageSkins = Array.from(new Set(['Default', ...savedSkins.filter(skin => validSkins.includes(skin))]));
+  if (!merged.activeDamageSkin || !validSkins.includes(merged.activeDamageSkin)) merged.activeDamageSkin = 'Default';
+
+  const loadedPartyIds = Array.isArray(parsed.partyIds) ? parsed.partyIds : defaultState.partyIds;
+  merged.partyIds = loadedPartyIds
+    .filter(characterId => merged.unlockedCharacterIds.includes(characterId))
+    .slice(0, 4);
+  if (merged.partyIds.length === 0) {
+    merged.partyIds = defaultState.partyIds.filter(characterId => merged.unlockedCharacterIds.includes(characterId));
+  }
+
+  merged.characterEquippedWeapon = normalizeUniqueEquippedWeapons(merged.characterEquippedWeapon || {});
+  merged.activeUiTheme = normalizeUiTheme(merged.activeUiTheme, merged.playerLevel || 1);
+  merged.lastShopRefreshHour ??= 0;
+  merged.purchasedShopItemIds ||= [];
+  merged.unlockedDaysCount ??= 1;
+  merged.nextRewardUnlockTime ??= 0;
+  merged.lastLoginDateStr ??= '';
+  merged.stats.longestLoginStreak ??= 1;
+  merged.stats.currentLoginStreak ??= 1;
+  return merged;
+};
+
 const formatPlayTime = (seconds: number = 0) => {
   const hrs = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
@@ -179,6 +265,9 @@ const formatPlayTime = (seconds: number = 0) => {
 
 export default function App() {
   const [saveState, setSaveState] = useState<SaveState>(getInitialSaveState());
+  const [localSaveReady, setLocalSaveReady] = useState(false);
+  const [localSaveExistedAtLaunch, setLocalSaveExistedAtLaunch] = useState(false);
+  const [enteredSimulationThisSession, setEnteredSimulationThisSession] = useState(false);
 
   // PWA installation states
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -630,6 +719,7 @@ export default function App() {
       }
 
       const stored = localStorage.getItem('aetheria_rpg_save_v3');
+      setLocalSaveExistedAtLaunch(Boolean(stored));
       if (stored) {
         const parsed = JSON.parse(stored);
         const defaultState = getInitialSaveState();
@@ -772,12 +862,14 @@ export default function App() {
           }
         }
 
-        // Initialize play time refs from the loaded save
-        basePlayTimeRef.current = merged.stats?.playTime || 0;
-        sessionStartRef.current = Date.now();
-        setDisplayPlayTime(merged.stats?.playTime || 0);
+        const normalized = normalizeLoadedSaveState(merged);
 
-        setSaveState(merged);
+        // Initialize play time refs from the loaded save
+        basePlayTimeRef.current = normalized.stats?.playTime || 0;
+        sessionStartRef.current = Date.now();
+        setDisplayPlayTime(normalized.stats?.playTime || 0);
+
+        setSaveState(normalized);
       }
 
       const storedHistory = localStorage.getItem('aetheria_pull_history');
@@ -786,8 +878,29 @@ export default function App() {
       }
     } catch (e) {
       console.warn("Could not load save state on local drive, initializing default.", e);
+    } finally {
+      setLocalSaveReady(true);
     }
   }, []);
+
+  const applyCloudBundle = useCallback((bundle: { saveState: SaveState; pullHistory: { name: string; rarity: number; time: string }[] }) => {
+    const normalized = normalizeLoadedSaveState(bundle.saveState);
+    localStorage.setItem('aetheria_rpg_save_v3', JSON.stringify(normalized));
+    localStorage.setItem('aetheria_pull_history', JSON.stringify(bundle.pullHistory.slice(0, 100)));
+    basePlayTimeRef.current = normalized.stats?.playTime || 0;
+    sessionStartRef.current = Date.now();
+    setDisplayPlayTime(normalized.stats?.playTime || 0);
+    setSaveState(normalized);
+    setPullHistory(bundle.pullHistory.slice(0, 100));
+  }, []);
+
+  const cloudAccount = useCloudAccount({
+    saveState,
+    pullHistory,
+    localSaveReady,
+    hasLocalProgress: localSaveExistedAtLaunch || enteredSimulationThisSession,
+    applyCloudBundle
+  });
 
   // Check and refresh shop hourly
   useEffect(() => {
@@ -1997,6 +2110,7 @@ export default function App() {
   const handleStartSimulation = () => {
     AetheriaAudioEngine.resume();
     AetheriaAudioEngine.playClick();
+    setEnteredSimulationThisSession(true);
     setActiveScreen('home');
 
     const todayStr = new Date().toDateString();
@@ -2129,6 +2243,14 @@ export default function App() {
 
   // Reset Engine inside settings
   const executeEngineWipe = () => {
+    if (cloudAccount.user) {
+      showInGameAlert(
+        "Sign out before erasing local progress.",
+        "This protects your cloud save from being replaced by a new game.",
+        "error"
+      );
+      return;
+    }
     localStorage.removeItem('aetheria_rpg_save_v3');
     localStorage.removeItem('aetheria_pull_history');
     setSaveState(getInitialSaveState());
@@ -2148,7 +2270,7 @@ export default function App() {
   };
 
   // Save progress toast feedback
-  const handleSaveProgress = () => {
+  const handleSaveProgress = async () => {
     try {
       const currentPlayTime = getCurrentPlayTime();
       const stateToSave = {
@@ -2156,9 +2278,14 @@ export default function App() {
         stats: { ...saveState.stats, playTime: currentPlayTime }
       };
       localStorage.setItem('aetheria_rpg_save_v3', JSON.stringify(stateToSave));
+      if (cloudAccount.user) {
+        await cloudAccount.manualSync();
+      }
       showInGameAlert(
         "State synchronization completed!",
-        "Successfully saved character status, gems, mora level, unlocked weapons, and quest logs to cache.",
+        cloudAccount.user
+          ? "Progress is saved on this device and synchronized with your cloud account."
+          : "Progress is saved safely on this device. Sign in to enable cross-device saves.",
         "success"
       );
       AetheriaAudioEngine.playSkill();
@@ -2170,6 +2297,48 @@ export default function App() {
       );
     }
   };
+
+  const cloudSyncLabel = cloudAccount.syncStatus === 'synced'
+    ? 'SYNCED'
+    : cloudAccount.syncStatus === 'saving'
+      ? 'SAVING'
+      : cloudAccount.syncStatus === 'offline'
+        ? 'OFFLINE'
+        : cloudAccount.syncStatus === 'conflict'
+          ? 'ACTION REQUIRED'
+          : cloudAccount.user
+            ? 'CHECKING'
+            : 'LOCAL ONLY';
+
+  const cloudAccountOverlays = (
+    <>
+      <CloudAccountModal
+        isOpen={cloudAccount.accountModalOpen}
+        mode={cloudAccount.authMode}
+        error={cloudAccount.authError}
+        message={cloudAccount.authMessage}
+        submitting={cloudAccount.authSubmitting}
+        configured={cloudAccount.configured}
+        userEmail={cloudAccount.user?.email ?? null}
+        syncStatus={cloudAccount.syncStatus}
+        lastSyncedAt={cloudAccount.lastSyncedAt}
+        onClose={cloudAccount.closeAccountModal}
+        onModeChange={cloudAccount.setAuthMode}
+        onSignIn={cloudAccount.submitSignIn}
+        onSignUp={cloudAccount.submitSignUp}
+        onPasswordReset={cloudAccount.submitPasswordReset}
+        onNewPassword={cloudAccount.submitNewPassword}
+        onManualSync={cloudAccount.manualSync}
+        onSignOut={cloudAccount.signOut}
+      />
+      <CloudSaveConflictModal
+        conflict={cloudAccount.conflict}
+        busy={cloudAccount.syncStatus === 'saving'}
+        onUseCloud={cloudAccount.useCloudVersion}
+        onUseDevice={cloudAccount.useDeviceVersion}
+      />
+    </>
+  );
 
   if (isMobile && mobileFullscreenGateOpen) {
     return (
@@ -2352,6 +2521,29 @@ export default function App() {
               <span>START SIMULATION</span>
             </button>
 
+            <button
+              type="button"
+              onClick={() => {
+                cloudAccount.openAccountModal();
+                AetheriaAudioEngine.playClick();
+              }}
+              className="flex min-h-14 items-center gap-3 rounded-xl border border-cyan-400/25 bg-slate-950/80 px-4 py-3 text-left shadow-[0_0_22px_rgba(34,211,238,0.08)] transition-all hover:border-cyan-300/50 hover:bg-slate-900 active:scale-[0.98]"
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-cyan-400/25 bg-cyan-400/10">
+                <Cloud className="h-4 w-4 text-cyan-300" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[10px] font-black uppercase tracking-wider text-white">CLOUD ACCOUNT</span>
+                <span className="mt-0.5 block truncate font-mono text-[8px] uppercase tracking-wider text-slate-400">
+                  {cloudAccount.user?.email ?? 'Sign in for cross-device saves'}
+                </span>
+              </span>
+              <span className={`shrink-0 rounded border px-2 py-1 font-mono text-[7px] font-black uppercase tracking-wider ${
+                cloudAccount.user ? 'border-cyan-400/25 bg-cyan-400/10 text-cyan-300' : 'border-white/10 bg-white/5 text-slate-500'
+              }`}>
+                {cloudSyncLabel}
+              </span>
+            </button>
 
             <button
               onClick={() => {
@@ -2567,6 +2759,7 @@ export default function App() {
             </motion.div>
           )}
         </AnimatePresence>
+        {cloudAccountOverlays}
       </div>
     );
   }
@@ -4198,9 +4391,15 @@ export default function App() {
                   <div className="flex justify-between items-center border-b border-white/5 pb-3">
                     <div>
                       <span className="text-[11px] text-slate-300 uppercase font-bold block">Auto-Save</span>
-                      <span className="text-[9px] text-slate-500">Automatically syncs progress every 30s</span>
+                      <span className="text-[9px] text-slate-500">
+                        Saves locally immediately{cloudAccount.user ? ' and uploads after changes' : ''}
+                      </span>
                     </div>
-                    <span className="text-[10px] font-black text-emerald-400 bg-emerald-900/20 border border-emerald-500/20 px-2 py-1 rounded uppercase tracking-wider">ACTIVE</span>
+                    <span className={`text-[10px] font-black px-2 py-1 rounded border uppercase tracking-wider ${
+                      cloudAccount.user
+                        ? 'text-cyan-300 bg-cyan-900/20 border-cyan-500/20'
+                        : 'text-emerald-400 bg-emerald-900/20 border-emerald-500/20'
+                    }`}>{cloudSyncLabel}</span>
                   </div>
 
                   {/* Performance Mode / FPS Limit */}
@@ -4246,6 +4445,53 @@ export default function App() {
                   <div className="flex justify-between items-center">
                     <span className="text-[11px] text-slate-300 uppercase font-bold">Display Mode</span>
                     <span className="text-[10px] font-black text-sky-400 bg-sky-900/20 border border-sky-500/20 px-2 py-1 rounded uppercase tracking-wider">DARK</span>
+                  </div>
+                </div>
+
+                {/* ACCOUNT & CLOUD SAVE */}
+                <div className="rounded-xl border border-cyan-400/15 bg-slate-950 p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[9px] font-mono tracking-wider text-cyan-300 uppercase font-bold">ACCOUNT & CLOUD SAVE</span>
+                    <span className="rounded border border-cyan-400/20 bg-cyan-400/10 px-2 py-1 font-mono text-[8px] font-black uppercase text-cyan-300">
+                      {cloudSyncLabel}
+                    </span>
+                  </div>
+                  <div className="rounded-lg border border-white/5 bg-black/30 p-3">
+                    <span className="block truncate text-[10px] font-black text-slate-200">
+                      {cloudAccount.user?.email ?? 'Guest device save'}
+                    </span>
+                    <span className="mt-1 block text-[8px] font-mono uppercase leading-relaxed text-slate-500">
+                      {cloudAccount.user
+                        ? 'Automatic cloud backup and cross-device progress are active.'
+                        : 'Create an account or sign in to continue on another device.'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={() => cloudAccount.openAccountModal()}
+                      className="min-h-11 rounded-lg border border-cyan-400/25 bg-cyan-950/30 px-3 text-[9px] font-black uppercase tracking-wider text-cyan-100 transition-colors hover:bg-cyan-950/50 active:scale-[0.98]"
+                    >
+                      {cloudAccount.user ? 'MANAGE ACCOUNT' : 'SIGN IN'}
+                    </button>
+                    {cloudAccount.user ? (
+                      <button
+                        type="button"
+                        onClick={() => void cloudAccount.manualSync()}
+                        disabled={cloudAccount.syncStatus === 'saving' || cloudAccount.syncStatus === 'checking' || cloudAccount.syncStatus === 'conflict'}
+                        className="min-h-11 rounded-lg border border-white/10 bg-[#0e1628] px-3 text-[9px] font-black uppercase tracking-wider text-slate-200 disabled:opacity-45 active:scale-[0.98]"
+                      >
+                        SYNC NOW
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => cloudAccount.openAccountModal('sign-up')}
+                        className="min-h-11 rounded-lg bg-cyan-400 px-3 text-[9px] font-black uppercase tracking-wider text-slate-950 active:scale-[0.98]"
+                      >
+                        CREATE ACCOUNT
+                      </button>
+                    )}
                   </div>
                 </div>
  
@@ -4471,6 +4717,7 @@ export default function App() {
           <span>Developer Mode Active</span>
         </div>
       )}
+      {cloudAccountOverlays}
     </div>
   );
 }
