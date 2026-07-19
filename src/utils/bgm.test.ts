@@ -11,8 +11,8 @@ import {
   type BgmTrackId
 } from './bgm';
 
-assert.equal(Object.keys(BGM_TRACK_URLS).length, 10);
-assert.equal(new Set(Object.values(BGM_TRACK_URLS)).size, 10);
+assert.equal(Object.keys(BGM_TRACK_URLS).length, 13);
+assert.equal(new Set(Object.values(BGM_TRACK_URLS)).size, 13);
 for (const url of Object.values(BGM_TRACK_URLS)) {
   assert.match(url, /\.mp3(?:$|\?)/i);
   assert.equal(existsSync(fileURLToPath(url)), true, `${url} must exist`);
@@ -25,9 +25,10 @@ for (const screen of ['home', 'party', 'quest', 'shop']) {
 assert.equal(getScreenBgmTrack('story'), 'story-map');
 assert.equal(getScreenBgmTrack('arena'), 'combat-arena');
 assert.equal(getScreenBgmTrack('dungeon'), 'rogue-exploration');
-for (const screen of ['wish', 'inventory', 'wiki', 'unknown']) {
-  assert.equal(getScreenBgmTrack(screen), null);
-}
+assert.equal(getScreenBgmTrack('wish'), 'celestial-summons');
+assert.equal(getScreenBgmTrack('inventory'), 'forge-ascension');
+assert.equal(getScreenBgmTrack('wiki'), 'god-lore-wiki');
+assert.equal(getScreenBgmTrack('unknown'), null);
 
 assert.equal(getCombatBgmTrack({ storyMode: true, dungeonMode: false, artifactGrindMode: true }), 'story-battle');
 assert.equal(getCombatBgmTrack({ storyMode: false, dungeonMode: true, artifactGrindMode: true }), 'rogue-battle');

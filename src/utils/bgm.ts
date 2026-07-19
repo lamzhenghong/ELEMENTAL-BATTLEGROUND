@@ -1,6 +1,9 @@
 export type BgmTrackId =
   | 'main-menu'
   | 'home-hub'
+  | 'celestial-summons'
+  | 'forge-ascension'
+  | 'god-lore-wiki'
   | 'story-map'
   | 'character-stories-memories'
   | 'story-battle'
@@ -13,6 +16,9 @@ export type BgmTrackId =
 export const BGM_TRACK_URLS: Record<BgmTrackId, string> = {
   'main-menu': new URL('../../assets/bgm/MAIN MENU BGM.mp3', import.meta.url).href,
   'home-hub': new URL('../../assets/bgm/Home Hub BGM (Used for Home, Party Setup, Quest Log and Gems Shop).mp3', import.meta.url).href,
+  'celestial-summons': new URL('../../assets/bgm/Celestial Summons BGM.mp3', import.meta.url).href,
+  'forge-ascension': new URL('../../assets/bgm/Forge and Ascension BGM.mp3', import.meta.url).href,
+  'god-lore-wiki': new URL('../../assets/bgm/god and lore wiki bgm.mp3', import.meta.url).href,
   'story-map': new URL('../../assets/bgm/STORY BGM.mp3', import.meta.url).href,
   'character-stories-memories': new URL('../../assets/bgm/Character Stories and Memories BGM.mp3', import.meta.url).href,
   'story-battle': new URL('../../assets/bgm/Story Battles BGM.mp3', import.meta.url).href,
@@ -46,6 +52,9 @@ export const getScreenBgmTrack = (screen: string): BgmTrackId | null => {
     case 'story': return 'story-map';
     case 'arena': return 'combat-arena';
     case 'dungeon': return 'rogue-exploration';
+    case 'wish': return 'celestial-summons';
+    case 'inventory': return 'forge-ascension';
+    case 'wiki': return 'god-lore-wiki';
     default: return null;
   }
 };
