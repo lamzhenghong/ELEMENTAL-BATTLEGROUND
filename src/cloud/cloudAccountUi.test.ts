@@ -1,9 +1,16 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 const accountSource = readFileSync(new URL('../components/CloudAccountModal.tsx', import.meta.url), 'utf8');
 const conflictSource = readFileSync(new URL('../components/CloudSaveConflictModal.tsx', import.meta.url), 'utf8');
 const appSource = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
+const copyButtonUrl = new URL('../components/CopyValueButton.tsx', import.meta.url);
+const usernameSettingsUrl = new URL('../components/UsernameSettingsPanel.tsx', import.meta.url);
+
+assert.ok(existsSync(copyButtonUrl), 'CopyValueButton component should exist');
+assert.ok(existsSync(usernameSettingsUrl), 'UsernameSettingsPanel component should exist');
+const copyButtonSource = readFileSync(copyButtonUrl, 'utf8');
+const usernameSettingsSource = readFileSync(usernameSettingsUrl, 'utf8');
 
 assert.match(accountSource, /createPortal/);
 assert.match(accountSource, /fixed inset-0/);
@@ -29,6 +36,9 @@ assert.match(accountSource, />Email</);
 assert.match(accountSource, /profileStatus === 'loading'/);
 assert.match(accountSource, /profileError/);
 assert.match(accountSource, /break-all/);
+assert.match(accountSource, /CopyValueButton/);
+assert.match(accountSource, /label="Copy username"/);
+assert.match(accountSource, /label="Copy player ID"/);
 assert.match(accountSource, /autoComplete=\{mode === 'sign-in' \? 'current-password' : 'new-password'\}/);
 assert.match(accountSource, /autoComplete="new-password"/);
 assert.match(accountSource, /disabled=\{submitting\}/);
@@ -47,5 +57,24 @@ assert.match(
   appSource,
   /CLOUD ACCOUNT<\/span>[\s\S]*cloudAccount\.profile\?\.username[\s\S]*cloudAccount\.user\?\.email/
 );
+assert.match(appSource, /UsernameSettingsPanel/);
+assert.match(appSource, /onChangeUsername=\{cloudAccount\.changeUsername\}/);
+assert.match(appSource, /mutationStatus=\{cloudAccount\.profileMutationStatus\}/);
+
+assert.match(copyButtonSource, /navigator\.clipboard\.writeText/);
+assert.match(copyButtonSource, /document\.execCommand\('copy'\)/);
+assert.match(copyButtonSource, /type="button"/);
+assert.match(copyButtonSource, /aria-label=\{label\}/);
+assert.match(copyButtonSource, /min-h-10/);
+assert.match(copyButtonSource, /COPIED/);
+
+assert.match(usernameSettingsSource, /getUsernameChangeRemainingMs/);
+assert.match(usernameSettingsSource, /getUsernameChangeAvailableAt/);
+assert.match(usernameSettingsSource, /CopyValueButton/);
+assert.match(usernameSettingsSource, /autoComplete="username"/);
+assert.match(usernameSettingsSource, /pattern="\[A-Za-z0-9_\]\{3,20\}"/);
+assert.match(usernameSettingsSource, /CHANGE USERNAME/);
+assert.match(usernameSettingsSource, /24 hours/);
+assert.match(usernameSettingsSource, /grid-cols-1[\s\S]*sm:grid-cols/);
 
 console.log('cloud account responsive UI contract ok');

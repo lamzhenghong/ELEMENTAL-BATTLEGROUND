@@ -12,7 +12,13 @@ assert.equal(
 assert.equal(formatCloudAccountError(new Error('Invalid login credentials')), 'Email or password is incorrect.');
 assert.equal(formatCloudAccountError(new Error('Email not confirmed')), 'Confirm your email before signing in.');
 assert.equal(formatCloudAccountError(new Error('User already registered')), 'An account already exists for this email.');
-assert.equal(formatCloudAccountError(new Error('username_taken')), 'That username is already taken.');
+assert.equal(formatCloudAccountError(new Error('username_taken')), 'That username is already in use.');
+assert.equal(formatCloudAccountError({ message: 'username_taken' }), 'That username is already in use.');
+assert.equal(
+  formatCloudAccountError({ message: 'username_change_cooldown', details: '2026-07-21 12:00:00+00' }),
+  'You can change your username once every 24 hours.'
+);
+assert.equal(formatCloudAccountError({ message: 'username_unchanged' }), 'Choose a different username.');
 assert.equal(
   formatCloudAccountError(new Error('invalid_username')),
   'Username can only use 3 to 20 letters, numbers, or underscores.'

@@ -19,6 +19,7 @@ import GameHome from './components/GameHome';
 import CharacterRoleBadge from './components/CharacterRoleBadge';
 import CloudAccountModal from './components/CloudAccountModal';
 import CloudSaveConflictModal from './components/CloudSaveConflictModal';
+import { UsernameSettingsPanel } from './components/UsernameSettingsPanel';
 import { 
   Shield, Sparkles, Coins, HelpCircle, History, RefreshCw, Star, 
   BookOpen, Compass, Sword, Landmark, Hammer, Trophy, DollarSign, 
@@ -4414,25 +4415,32 @@ export default function App() {
                       {cloudSyncLabel}
                     </span>
                   </div>
-                  <div className="rounded-lg border border-white/5 bg-black/30 p-3">
-                    {cloudAccount.user ? (
-                      <>
-                        <span className="block truncate text-[10px] font-black text-cyan-100">
-                          {cloudAccount.profile?.username ?? (cloudAccount.profileStatus === 'loading' ? 'Loading player...' : 'Profile unavailable')}
-                        </span>
-                        <span className="mt-2 block break-all font-mono text-[8px] text-slate-400">
-                          {cloudAccount.user?.email}
-                        </span>
-                      </>
-                    ) : (
-                      <span className="block truncate text-[10px] font-black text-slate-200">Guest device save</span>
-                    )}
-                    <span className="mt-1 block text-[8px] font-mono uppercase leading-relaxed text-slate-500">
-                      {cloudAccount.user
-                        ? 'Automatic cloud backup and cross-device progress are active.'
-                        : 'Create an account or sign in to continue on another device.'}
-                    </span>
-                  </div>
+                  {cloudAccount.user && cloudAccount.profile ? (
+                    <UsernameSettingsPanel
+                      profile={cloudAccount.profile}
+                      email={cloudAccount.user.email ?? ''}
+                      mutationStatus={cloudAccount.profileMutationStatus}
+                      mutationMessage={cloudAccount.profileMutationMessage}
+                      mutationError={cloudAccount.profileMutationError}
+                      onChangeUsername={cloudAccount.changeUsername}
+                    />
+                  ) : (
+                    <div className="rounded-lg border border-white/5 bg-black/30 p-3">
+                      <span className="block truncate text-[10px] font-black text-slate-200">
+                        {cloudAccount.user
+                          ? cloudAccount.profileStatus === 'loading' ? 'Loading player...' : 'Profile unavailable'
+                          : 'Guest device save'}
+                      </span>
+                      {cloudAccount.user?.email && (
+                        <span className="mt-2 block break-all font-mono text-[8px] text-slate-400">{cloudAccount.user.email}</span>
+                      )}
+                      <span className="mt-1 block font-mono text-[8px] uppercase leading-relaxed text-slate-500">
+                        {cloudAccount.user
+                          ? 'Automatic cloud backup and cross-device progress are active.'
+                          : 'Create an account or sign in to continue on another device.'}
+                      </span>
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <button
                       type="button"

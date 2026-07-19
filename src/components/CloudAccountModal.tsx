@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowLeft, AtSign, Cloud, Loader2, LockKeyhole, Mail, ShieldCheck, X } from 'lucide-react';
 import type { CloudAuthMode, CloudProfileStatus, CloudSyncStatus } from '../cloud/useCloudAccount';
+import { CopyValueButton } from './CopyValueButton';
 
 interface CloudAccountModalProps {
   isOpen: boolean;
@@ -120,13 +121,19 @@ export default function CloudAccountModal({
               )}
               {profileStatus === 'ready' && username && playerId && (
                 <>
-                  <div className="min-w-0">
-                    <span className="block font-mono text-[9px] font-black uppercase tracking-widest text-slate-500">Username</span>
-                    <span className="mt-1 block break-all text-base font-black text-white">{username}</span>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <div className="min-w-0 flex-1">
+                      <span className="block font-mono text-[9px] font-black uppercase tracking-widest text-slate-500">Username</span>
+                      <span className="mt-1 block break-all text-base font-black text-white">{username}</span>
+                    </div>
+                    <CopyValueButton value={username} label="Copy username" />
                   </div>
-                  <div className="min-w-0 border-t border-white/5 pt-3">
-                    <span className="block font-mono text-[9px] font-black uppercase tracking-widest text-slate-500">Player ID</span>
-                    <span className="mt-1 block break-all font-mono text-xs font-black tracking-wider text-cyan-200">{playerId}</span>
+                  <div className="flex min-w-0 items-center gap-2 border-t border-white/5 pt-3">
+                    <div className="min-w-0 flex-1">
+                      <span className="block font-mono text-[9px] font-black uppercase tracking-widest text-slate-500">Player ID</span>
+                      <span className="mt-1 block break-all font-mono text-xs font-black tracking-wider text-cyan-200">{playerId}</span>
+                    </div>
+                    <CopyValueButton value={playerId} label="Copy player ID" />
                   </div>
                 </>
               )}

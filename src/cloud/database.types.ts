@@ -46,6 +46,7 @@ export type Database = {
           updated_at: string;
           user_id: string;
           username: string;
+          username_changed_at: string | null;
         };
         Insert: {
           created_at?: string;
@@ -53,6 +54,7 @@ export type Database = {
           updated_at?: string;
           user_id: string;
           username: string;
+          username_changed_at?: string | null;
         };
         Update: {
           created_at?: string;
@@ -60,12 +62,30 @@ export type Database = {
           updated_at?: string;
           user_id?: string;
           username?: string;
+          username_changed_at?: string | null;
         };
         Relationships: [];
       };
     };
     Views: { [_ in never]: never };
     Functions: {
+      change_username: {
+        Args: { candidate: string };
+        Returns: {
+          created_at: string;
+          public_id: string;
+          updated_at: string;
+          user_id: string;
+          username: string;
+          username_changed_at: string | null;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'player_profiles';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       is_username_available: {
         Args: { candidate: string };
         Returns: boolean;

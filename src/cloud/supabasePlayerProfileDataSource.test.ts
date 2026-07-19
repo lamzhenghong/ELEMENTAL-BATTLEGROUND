@@ -9,7 +9,8 @@ const profileRow: Database['public']['Tables']['player_profiles']['Row'] = {
   username: 'Aether_Hero',
   public_id: 'AETH-ABCDEF123456',
   created_at: '2026-07-20T00:00:00.000Z',
-  updated_at: '2026-07-20T00:00:00.000Z'
+  updated_at: '2026-07-20T00:00:00.000Z',
+  username_changed_at: null
 };
 
 const query = {
@@ -34,6 +35,16 @@ const client = {
   },
   async rpc(name: string, args: { candidate: string }) {
     calls.push(['rpc', name, args]);
+    if (name === 'change_username') {
+      return {
+        data: {
+          ...profileRow,
+          username: args.candidate,
+          username_changed_at: '2026-07-20T12:00:00.000Z'
+        },
+        error: null
+      };
+    }
     return { data: args.candidate === 'Free_Name', error: null };
   }
 } as unknown as SupabaseClient<Database>;
@@ -44,15 +55,25 @@ assert.deepEqual(await dataSource.fetch('user-123'), {
   username: 'Aether_Hero',
   publicId: 'AETH-ABCDEF123456',
   createdAt: '2026-07-20T00:00:00.000Z',
-  updatedAt: '2026-07-20T00:00:00.000Z'
+  updatedAt: '2026-07-20T00:00:00.000Z',
+  usernameChangedAt: null
 });
 assert.equal(await dataSource.isUsernameAvailable('Free_Name'), true);
+assert.deepEqual(await dataSource.changeUsername('New_Aether'), {
+  userId: 'user-123',
+  username: 'New_Aether',
+  publicId: 'AETH-ABCDEF123456',
+  createdAt: '2026-07-20T00:00:00.000Z',
+  updatedAt: '2026-07-20T00:00:00.000Z',
+  usernameChangedAt: '2026-07-20T12:00:00.000Z'
+});
 assert.deepEqual(calls, [
   ['from', 'player_profiles'],
   ['select', '*'],
   ['eq', 'user_id', 'user-123'],
   ['maybeSingle'],
-  ['rpc', 'is_username_available', { candidate: 'Free_Name' }]
+  ['rpc', 'is_username_available', { candidate: 'Free_Name' }],
+  ['rpc', 'change_username', { candidate: 'New_Aether' }]
 ]);
 
 console.log('Supabase player profile data source contract ok');

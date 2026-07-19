@@ -19,7 +19,12 @@ import {
   type CloudSaveRecord
 } from './cloudSaveModel';
 import { CloudRevisionConflictError, createCloudSaveRepository } from './cloudSaveRepository';
-import { normalizeUsername, validateUsername, type PlayerProfile } from './playerProfile';
+import {
+  getUsernameChangeRemainingMs,
+  normalizeUsername,
+  validateUsername,
+  type PlayerProfile
+} from './playerProfile';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { createSupabaseCloudSaveDataSource } from './supabaseCloudSaveDataSource';
 import { createSupabasePlayerProfileDataSource } from './supabasePlayerProfileDataSource';
@@ -39,6 +44,7 @@ export type CloudSyncStatus =
 
 export type CloudAuthMode = 'sign-in' | 'sign-up' | 'forgot-password' | 'update-password';
 export type CloudProfileStatus = 'idle' | 'loading' | 'ready' | 'error';
+export type CloudProfileMutationStatus = 'idle' | 'saving' | 'success' | 'error';
 
 export interface CloudSaveConflict {
   remote: CloudSaveRecord<SaveState>;
@@ -80,6 +86,9 @@ export const useCloudAccount = ({
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [profileStatus, setProfileStatus] = useState<CloudProfileStatus>('idle');
   const [profileError, setProfileError] = useState('');
+  const [profileMutationStatus, setProfileMutationStatus] = useState<CloudProfileMutationStatus>('idle');
+  const [profileMutationMessage, setProfileMutationMessage] = useState('');
+  const [profileMutationError, setProfileMutationError] = useState('');
 
   const currentBundle = useMemo<CloudSaveBundle<SaveState>>(() => ({
     saveState,
@@ -284,6 +293,9 @@ export const useCloudAccount = ({
         setProfile(null);
         setProfileStatus('idle');
         setProfileError('');
+        setProfileMutationStatus('idle');
+        setProfileMutationMessage('');
+        setProfileMutationError('');
         setSyncStatus('guest');
       }
     });
@@ -300,6 +312,9 @@ export const useCloudAccount = ({
       setProfile(null);
       setProfileStatus('idle');
       setProfileError('');
+      setProfileMutationStatus('idle');
+      setProfileMutationMessage('');
+      setProfileMutationError('');
       return;
     }
 
@@ -307,6 +322,9 @@ export const useCloudAccount = ({
     setProfile(null);
     setProfileStatus('loading');
     setProfileError('');
+    setProfileMutationStatus('idle');
+    setProfileMutationMessage('');
+    setProfileMutationError('');
     void profileDataSource.fetch(userId).then((nextProfile) => {
       if (!active) return;
       if (!nextProfile) throw new Error('Player profile is missing.');
@@ -420,7 +438,7 @@ export const useCloudAccount = ({
     try {
       const available = await profileDataSource.isUsernameAvailable(normalizedUsername);
       if (!available) {
-        setAuthError('That username is already taken.');
+        setAuthError('That username is already in use.');
         return;
       }
       const { data, error } = await supabase.auth.signUp({
@@ -445,6 +463,50 @@ export const useCloudAccount = ({
       setAuthSubmitting(false);
     }
   }, []);
+
+  const changeUsername = useCallback(async (username: string) => {
+    setProfileMutationMessage('');
+    setProfileMutationError('');
+    if (!profileDataSource || !profile) {
+      setProfileMutationStatus('error');
+      setProfileMutationError('Player profile is not ready. Sign out and try again.');
+      return false;
+    }
+
+    const validation = validateUsername(username);
+    if (validation) {
+      setProfileMutationStatus('error');
+      setProfileMutationError(validation);
+      return false;
+    }
+
+    const normalizedUsername = normalizeUsername(username);
+    if (normalizedUsername.toLowerCase() === profile.username.toLowerCase()) {
+      setProfileMutationStatus('error');
+      setProfileMutationError('Choose a different username.');
+      return false;
+    }
+    if (getUsernameChangeRemainingMs(profile) > 0) {
+      setProfileMutationStatus('error');
+      setProfileMutationError('You can change your username once every 24 hours.');
+      return false;
+    }
+
+    setProfileMutationStatus('saving');
+    try {
+      const available = await profileDataSource.isUsernameAvailable(normalizedUsername);
+      if (!available) throw new Error('username_taken');
+      const updatedProfile = await profileDataSource.changeUsername(normalizedUsername);
+      setProfile(updatedProfile);
+      setProfileMutationStatus('success');
+      setProfileMutationMessage('Username changed successfully.');
+      return true;
+    } catch (error) {
+      setProfileMutationStatus('error');
+      setProfileMutationError(formatCloudAccountError(error));
+      return false;
+    }
+  }, [profile]);
 
   const submitPasswordReset = useCallback(async (email: string) => {
     if (!supabase) return setAuthError('Cloud services are not configured.');
@@ -493,6 +555,9 @@ export const useCloudAccount = ({
     setProfile(null);
     setProfileStatus('idle');
     setProfileError('');
+    setProfileMutationStatus('idle');
+    setProfileMutationMessage('');
+    setProfileMutationError('');
     setSyncStatus('guest');
   }, []);
 
@@ -542,6 +607,9 @@ export const useCloudAccount = ({
     profile,
     profileStatus,
     profileError,
+    profileMutationStatus,
+    profileMutationMessage,
+    profileMutationError,
     setAuthMode,
     openAccountModal,
     closeAccountModal,
@@ -549,6 +617,7 @@ export const useCloudAccount = ({
     submitSignUp,
     submitPasswordReset,
     submitNewPassword,
+    changeUsername,
     signOut,
     manualSync: requestUpload,
     useCloudVersion,

@@ -12,11 +12,21 @@ export const validateCloudCredentials = (
 };
 
 export const formatCloudAccountError = (error: unknown) => {
-  const message = error instanceof Error ? error.message.toLowerCase() : '';
-  if (message.includes('username_taken')) return 'That username is already taken.';
+  const rawMessage = error instanceof Error
+    ? error.message
+    : typeof error === 'object' && error !== null && 'message' in error
+      ? String(error.message)
+      : '';
+  const message = rawMessage.toLowerCase();
+  if (message.includes('username_taken')) return 'That username is already in use.';
+  if (message.includes('username_change_cooldown')) {
+    return 'You can change your username once every 24 hours.';
+  }
+  if (message.includes('username_unchanged')) return 'Choose a different username.';
   if (message.includes('invalid_username')) {
     return 'Username can only use 3 to 20 letters, numbers, or underscores.';
   }
+  if (message.includes('profile_missing')) return 'Player profile could not be found. Sign out and try again.';
   if (message.includes('invalid login credentials')) return 'Email or password is incorrect.';
   if (message.includes('email not confirmed')) return 'Confirm your email before signing in.';
   if (message.includes('already registered') || message.includes('already exists')) {
