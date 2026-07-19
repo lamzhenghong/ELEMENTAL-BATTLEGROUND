@@ -2263,6 +2263,10 @@ export default function App() {
         submitting={cloudAccount.authSubmitting}
         configured={cloudAccount.configured}
         userEmail={cloudAccount.user?.email ?? null}
+        username={cloudAccount.profile?.username ?? null}
+        playerId={cloudAccount.profile?.publicId ?? null}
+        profileStatus={cloudAccount.profileStatus}
+        profileError={cloudAccount.profileError}
         syncStatus={cloudAccount.syncStatus}
         lastSyncedAt={cloudAccount.lastSyncedAt}
         onClose={cloudAccount.closeAccountModal}
@@ -2477,9 +2481,20 @@ export default function App() {
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-[10px] font-black uppercase tracking-wider text-white">CLOUD ACCOUNT</span>
-                <span className="mt-0.5 block truncate font-mono text-[8px] uppercase tracking-wider text-slate-400">
-                  {cloudAccount.user?.email ?? 'Sign in for cross-device saves'}
-                </span>
+                {cloudAccount.user ? (
+                  <>
+                    <span className="mt-1 block truncate text-[9px] font-black text-cyan-100">
+                      {cloudAccount.profile?.username ?? (cloudAccount.profileStatus === 'loading' ? 'Loading player...' : 'Profile unavailable')}
+                    </span>
+                    <span className="mt-1 block truncate font-mono text-[8px] tracking-wider text-slate-400">
+                      {cloudAccount.user?.email}
+                    </span>
+                  </>
+                ) : (
+                  <span className="mt-1 block truncate font-mono text-[8px] uppercase tracking-wider text-slate-400">
+                    Sign in for cross-device saves
+                  </span>
+                )}
               </span>
               <span className={`shrink-0 rounded border px-2 py-1 font-mono text-[7px] font-black uppercase tracking-wider ${
                 cloudAccount.user ? 'border-cyan-400/25 bg-cyan-400/10 text-cyan-300' : 'border-white/10 bg-white/5 text-slate-500'
@@ -4400,9 +4415,18 @@ export default function App() {
                     </span>
                   </div>
                   <div className="rounded-lg border border-white/5 bg-black/30 p-3">
-                    <span className="block truncate text-[10px] font-black text-slate-200">
-                      {cloudAccount.user?.email ?? 'Guest device save'}
-                    </span>
+                    {cloudAccount.user ? (
+                      <>
+                        <span className="block truncate text-[10px] font-black text-cyan-100">
+                          {cloudAccount.profile?.username ?? (cloudAccount.profileStatus === 'loading' ? 'Loading player...' : 'Profile unavailable')}
+                        </span>
+                        <span className="mt-2 block break-all font-mono text-[8px] text-slate-400">
+                          {cloudAccount.user?.email}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="block truncate text-[10px] font-black text-slate-200">Guest device save</span>
+                    )}
                     <span className="mt-1 block text-[8px] font-mono uppercase leading-relaxed text-slate-500">
                       {cloudAccount.user
                         ? 'Automatic cloud backup and cross-device progress are active.'

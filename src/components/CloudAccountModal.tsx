@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowLeft, Cloud, Loader2, LockKeyhole, Mail, ShieldCheck, X } from 'lucide-react';
-import type { CloudAuthMode, CloudSyncStatus } from '../cloud/useCloudAccount';
+import { ArrowLeft, AtSign, Cloud, Loader2, LockKeyhole, Mail, ShieldCheck, X } from 'lucide-react';
+import type { CloudAuthMode, CloudProfileStatus, CloudSyncStatus } from '../cloud/useCloudAccount';
 
 interface CloudAccountModalProps {
   isOpen: boolean;
@@ -11,12 +11,16 @@ interface CloudAccountModalProps {
   submitting: boolean;
   configured: boolean;
   userEmail: string | null;
+  username: string | null;
+  playerId: string | null;
+  profileStatus: CloudProfileStatus;
+  profileError: string;
   syncStatus: CloudSyncStatus;
   lastSyncedAt: string | null;
   onClose: () => void;
   onModeChange: (mode: CloudAuthMode) => void;
   onSignIn: (email: string, password: string) => Promise<void>;
-  onSignUp: (email: string, password: string, confirmation: string) => Promise<void>;
+  onSignUp: (username: string, email: string, password: string, confirmation: string) => Promise<void>;
   onPasswordReset: (email: string) => Promise<void>;
   onNewPassword: (password: string, confirmation: string) => Promise<void>;
   onManualSync: () => Promise<void>;
@@ -31,6 +35,10 @@ export default function CloudAccountModal({
   submitting,
   configured,
   userEmail,
+  username,
+  playerId,
+  profileStatus,
+  profileError,
   syncStatus,
   lastSyncedAt,
   onClose,
@@ -42,6 +50,7 @@ export default function CloudAccountModal({
   onManualSync,
   onSignOut
 }: CloudAccountModalProps) {
+  const [usernameInput, setUsernameInput] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
@@ -64,7 +73,7 @@ export default function CloudAccountModal({
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (mode === 'sign-up') return onSignUp(email, password, confirmation);
+    if (mode === 'sign-up') return onSignUp(usernameInput, email, password, confirmation);
     if (mode === 'forgot-password') return onPasswordReset(email);
     if (mode === 'update-password') return onNewPassword(password, confirmation);
     return onSignIn(email, password);
@@ -100,9 +109,31 @@ export default function CloudAccountModal({
             </button>
           </header>
           <div className="space-y-4 p-4 sm:p-6">
-            <div className="rounded-lg border border-white/10 bg-black/30 p-4">
-              <span className="block font-mono text-[9px] font-black uppercase tracking-widest text-slate-500">Signed In</span>
-              <span className="mt-1 block break-all text-sm font-black text-white">{userEmail}</span>
+            <div className="min-w-0 space-y-3 rounded-lg border border-white/10 bg-black/30 p-4">
+              {profileStatus === 'loading' && (
+                <div className="flex items-center gap-2 text-xs font-black uppercase text-cyan-100">
+                  <Loader2 className="h-4 w-4 animate-spin text-cyan-300" /> Loading player identity
+                </div>
+              )}
+              {profileStatus === 'error' && (
+                <p role="alert" className="text-xs font-bold leading-relaxed text-rose-200">{profileError}</p>
+              )}
+              {profileStatus === 'ready' && username && playerId && (
+                <>
+                  <div className="min-w-0">
+                    <span className="block font-mono text-[9px] font-black uppercase tracking-widest text-slate-500">Username</span>
+                    <span className="mt-1 block break-all text-base font-black text-white">{username}</span>
+                  </div>
+                  <div className="min-w-0 border-t border-white/5 pt-3">
+                    <span className="block font-mono text-[9px] font-black uppercase tracking-widest text-slate-500">Player ID</span>
+                    <span className="mt-1 block break-all font-mono text-xs font-black tracking-wider text-cyan-200">{playerId}</span>
+                  </div>
+                </>
+              )}
+              <div className="min-w-0 border-t border-white/5 pt-3">
+                <span className="block font-mono text-[9px] font-black uppercase tracking-widest text-slate-500">Email</span>
+                <span className="mt-1 block break-all text-sm font-black text-slate-200">{userEmail}</span>
+              </div>
             </div>
             <div className="flex items-center justify-between gap-4 rounded-lg border border-cyan-400/20 bg-cyan-950/20 p-4">
               <div>
@@ -193,6 +224,30 @@ export default function CloudAccountModal({
           )}
 
           <form className="space-y-4" onSubmit={submit}>
+            {mode === 'sign-up' && (
+              <label className="block space-y-1.5">
+                <span className="font-mono text-[9px] font-black uppercase tracking-widest text-slate-400">Username</span>
+                <span className="relative block">
+                  <AtSign className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                  <input
+                    type="text"
+                    value={usernameInput}
+                    onChange={(event) => setUsernameInput(event.target.value)}
+                    autoComplete="username"
+                    inputMode="text"
+                    minLength={3}
+                    maxLength={20}
+                    pattern="[A-Za-z0-9_]{3,20}"
+                    spellCheck={false}
+                    required
+                    placeholder="Aether_Hero"
+                    className={fieldClass}
+                  />
+                </span>
+                <span className="block font-mono text-[8px] leading-relaxed text-slate-500">3-20 letters, numbers, or underscores.</span>
+              </label>
+            )}
+
             {mode !== 'update-password' && (
               <label className="block space-y-1.5">
                 <span className="font-mono text-[9px] font-black uppercase tracking-widest text-slate-400">Email</span>

@@ -6,6 +6,15 @@ const source = readFileSync(new URL('./useCloudAccount.ts', import.meta.url), 'u
 assert.match(source, /onAuthStateChange/);
 assert.match(source, /PASSWORD_RECOVERY/);
 assert.match(source, /signUp\(/);
+assert.match(source, /createSupabasePlayerProfileDataSource/);
+assert.match(source, /validateUsername/);
+assert.match(source, /normalizeUsername/);
+assert.match(source, /profileDataSource\.isUsernameAvailable\(normalizedUsername\)/);
+assert.match(source, /data:\s*\{\s*username:\s*normalizedUsername\s*\}/);
+assert.match(source, /profileDataSource\.fetch\(userId\)/);
+assert.match(source, /setProfile\(null\)/);
+assert.match(source, /profileStatus/);
+assert.match(source, /profileError/);
 assert.match(source, /signInWithPassword/);
 assert.match(source, /resetPasswordForEmail/);
 assert.match(source, /updateUser\(\{\s*password/);

@@ -13,6 +13,10 @@ export const validateCloudCredentials = (
 
 export const formatCloudAccountError = (error: unknown) => {
   const message = error instanceof Error ? error.message.toLowerCase() : '';
+  if (message.includes('username_taken')) return 'That username is already taken.';
+  if (message.includes('invalid_username')) {
+    return 'Username can only use 3 to 20 letters, numbers, or underscores.';
+  }
   if (message.includes('invalid login credentials')) return 'Email or password is incorrect.';
   if (message.includes('email not confirmed')) return 'Confirm your email before signing in.';
   if (message.includes('already registered') || message.includes('already exists')) {

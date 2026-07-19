@@ -19,8 +19,10 @@ import {
   type CloudSaveRecord
 } from './cloudSaveModel';
 import { CloudRevisionConflictError, createCloudSaveRepository } from './cloudSaveRepository';
+import { normalizeUsername, validateUsername, type PlayerProfile } from './playerProfile';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { createSupabaseCloudSaveDataSource } from './supabaseCloudSaveDataSource';
+import { createSupabasePlayerProfileDataSource } from './supabasePlayerProfileDataSource';
 
 export const AUTOSAVE_DELAY_MS = 3000;
 export const SAFETY_SYNC_INTERVAL_MS = 30000;
@@ -36,6 +38,7 @@ export type CloudSyncStatus =
   | 'error';
 
 export type CloudAuthMode = 'sign-in' | 'sign-up' | 'forgot-password' | 'update-password';
+export type CloudProfileStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 export interface CloudSaveConflict {
   remote: CloudSaveRecord<SaveState>;
@@ -53,6 +56,7 @@ interface UseCloudAccountOptions {
 const repository = supabase
   ? createCloudSaveRepository<SaveState>(createSupabaseCloudSaveDataSource(supabase))
   : null;
+const profileDataSource = supabase ? createSupabasePlayerProfileDataSource(supabase) : null;
 
 const isBrowserOnline = () => typeof navigator === 'undefined' || navigator.onLine !== false;
 
@@ -73,6 +77,9 @@ export const useCloudAccount = ({
   const [authError, setAuthError] = useState('');
   const [authMessage, setAuthMessage] = useState('');
   const [authSubmitting, setAuthSubmitting] = useState(false);
+  const [profile, setProfile] = useState<PlayerProfile | null>(null);
+  const [profileStatus, setProfileStatus] = useState<CloudProfileStatus>('idle');
+  const [profileError, setProfileError] = useState('');
 
   const currentBundle = useMemo<CloudSaveBundle<SaveState>>(() => ({
     saveState,
@@ -274,6 +281,9 @@ export const useCloudAccount = ({
         initialSyncUserRef.current = null;
         initialSyncCompleteRef.current = false;
         setConflict(null);
+        setProfile(null);
+        setProfileStatus('idle');
+        setProfileError('');
         setSyncStatus('guest');
       }
     });
@@ -283,6 +293,36 @@ export const useCloudAccount = ({
       listener.subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    const userId = session?.user.id;
+    if (!profileDataSource || !userId) {
+      setProfile(null);
+      setProfileStatus('idle');
+      setProfileError('');
+      return;
+    }
+
+    let active = true;
+    setProfile(null);
+    setProfileStatus('loading');
+    setProfileError('');
+    void profileDataSource.fetch(userId).then((nextProfile) => {
+      if (!active) return;
+      if (!nextProfile) throw new Error('Player profile is missing.');
+      setProfile(nextProfile);
+      setProfileStatus('ready');
+    }).catch(() => {
+      if (!active) return;
+      setProfile(null);
+      setProfileStatus('error');
+      setProfileError('Player profile could not be loaded. Sign out and try again.');
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [session?.user.id]);
 
   useEffect(() => {
     if (!authResolved || !localSaveReady) return;
@@ -362,24 +402,42 @@ export const useCloudAccount = ({
     }
   }, []);
 
-  const submitSignUp = useCallback(async (email: string, password: string, confirmation: string) => {
-    if (!supabase) return setAuthError('Cloud services are not configured.');
+  const submitSignUp = useCallback(async (
+    username: string,
+    email: string,
+    password: string,
+    confirmation: string
+  ) => {
+    if (!supabase || !profileDataSource) return setAuthError('Cloud services are not configured.');
+    const usernameValidation = validateUsername(username);
+    if (usernameValidation) return setAuthError(usernameValidation);
     const validation = validateCloudCredentials(email, password, confirmation);
     if (validation) return setAuthError(validation);
+    const normalizedUsername = normalizeUsername(username);
     setAuthSubmitting(true);
     setAuthError('');
     setAuthMessage('');
     try {
+      const available = await profileDataSource.isUsernameAvailable(normalizedUsername);
+      if (!available) {
+        setAuthError('That username is already taken.');
+        return;
+      }
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
-        options: { emailRedirectTo: window.location.origin }
+        options: {
+          emailRedirectTo: window.location.origin,
+          data: { username: normalizedUsername }
+        }
       });
       if (error) throw error;
       if (data.session) {
         setAccountModalOpen(false);
       } else {
-        setAuthMessage('Account created. Check your email to confirm it, then sign in.');
+        setAuthMessage(
+          'Check your email to confirm your account. If you already have an account, sign in or reset your password.'
+        );
       }
     } catch (error) {
       setAuthError(formatCloudAccountError(error));
@@ -432,6 +490,9 @@ export const useCloudAccount = ({
     if (typeof window !== 'undefined') clearCloudLocalMetadata(window.localStorage);
     setSession(null);
     setConflict(null);
+    setProfile(null);
+    setProfileStatus('idle');
+    setProfileError('');
     setSyncStatus('guest');
   }, []);
 
@@ -478,6 +539,9 @@ export const useCloudAccount = ({
     authError,
     authMessage,
     authSubmitting,
+    profile,
+    profileStatus,
+    profileError,
     setAuthMode,
     openAccountModal,
     closeAccountModal,

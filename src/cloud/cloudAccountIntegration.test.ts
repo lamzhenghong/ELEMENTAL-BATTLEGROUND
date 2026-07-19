@@ -29,5 +29,9 @@ assert.doesNotMatch(appSource, /handleSaveProgress/);
 assert.match(appSource, /CloudAccountModal/);
 assert.match(appSource, /CloudSaveConflictModal/);
 assert.match(appSource, /cloudAccount\.syncStatus/);
+const hookSource = readFileSync(new URL('./useCloudAccount.ts', import.meta.url), 'utf8');
+assert.match(hookSource, /submitSignUp = useCallback\(async \([\s\S]*username: string,[\s\S]*email: string/);
+assert.match(hookSource, /options:\s*\{[\s\S]*emailRedirectTo:[\s\S]*data:\s*\{\s*username:\s*normalizedUsername\s*\}/);
+assert.match(hookSource, /If you already have an account, sign in or reset your password\./);
 
 console.log('cloud account App integration contract ok');
