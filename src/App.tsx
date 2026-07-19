@@ -2241,63 +2241,6 @@ export default function App() {
     });
   };
 
-  // Reset Engine inside settings
-  const executeEngineWipe = () => {
-    if (cloudAccount.user) {
-      showInGameAlert(
-        "Sign out before erasing local progress.",
-        "This protects your cloud save from being replaced by a new game.",
-        "error"
-      );
-      return;
-    }
-    localStorage.removeItem('aetheria_rpg_save_v3');
-    localStorage.removeItem('aetheria_pull_history');
-    setSaveState(getInitialSaveState());
-    setPullHistory([]);
-    // Reset play time tracking
-    basePlayTimeRef.current = 0;
-    sessionStartRef.current = Date.now();
-    setDisplayPlayTime(0);
-    setActiveScreen('menu'); // back to menu
-    setShowSettingsModal(false);
-    
-    showInGameAlert(
-      "Local save files completely wiped!",
-      "Restarted campaign configurations from factory level 1. Launch a new simulation from the main menu!",
-      "info"
-    );
-  };
-
-  // Save progress toast feedback
-  const handleSaveProgress = async () => {
-    try {
-      const currentPlayTime = getCurrentPlayTime();
-      const stateToSave = {
-        ...saveState,
-        stats: { ...saveState.stats, playTime: currentPlayTime }
-      };
-      localStorage.setItem('aetheria_rpg_save_v3', JSON.stringify(stateToSave));
-      if (cloudAccount.user) {
-        await cloudAccount.manualSync();
-      }
-      showInGameAlert(
-        "State synchronization completed!",
-        cloudAccount.user
-          ? "Progress is saved on this device and synchronized with your cloud account."
-          : "Progress is saved safely on this device. Sign in to enable cross-device saves.",
-        "success"
-      );
-      AetheriaAudioEngine.playSkill();
-    } catch (e) {
-      showInGameAlert(
-        "Could not synchronize state to disk.",
-        "Check browser local storage permissions in settings.",
-        "error"
-      );
-    }
-  };
-
   const cloudSyncLabel = cloudAccount.syncStatus === 'synced'
     ? 'SYNCED'
     : cloudAccount.syncStatus === 'saving'
@@ -2518,7 +2461,7 @@ export default function App() {
               className="py-3.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs uppercase tracking-widest rounded-xl transition-all cursor-pointer shadow-lg shadow-amber-400/10 flex items-center justify-center gap-2 hover:scale-105 active:scale-95"
             >
               <Play className="w-4 h-4 fill-slate-950 text-slate-95" />
-              <span>START SIMULATION</span>
+              <span>START GAME</span>
             </button>
 
             <button
@@ -2563,7 +2506,7 @@ export default function App() {
               className="py-3 bg-red-950/80 hover:bg-red-900 text-rose-200 border border-red-500/60 hover:border-red-400 text-xs font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(239,68,68,0.15)] backdrop-blur-sm"
             >
               <LogOut className="w-4 h-4 text-rose-500" />
-              <span>LEAVE WEBPAGE</span>
+              <span>LEAVE GAME</span>
             </button>
           </div>
         </main>
@@ -4497,16 +4440,9 @@ export default function App() {
  
                 {/* CORE ENGINE OPTIONS */}
                 <div className="bg-slate-950 p-4 rounded-xl border border-white/5 space-y-3">
-                  <span className="text-[9px] font-mono tracking-wider text-indigo-350 uppercase font-bold block">SAVESTATE ARCHIVE MANAGER</span>
-                  
-                  <div className="grid grid-cols-1 gap-2">
-                    <button
-                      onClick={handleSaveProgress}
-                      className="py-2.5 bg-[#0e1628] hover:bg-slate-900 text-slate-300 border border-white/10 hover:border-indigo-550 rounded-lg text-[10px] font-black uppercase tracking-wider active:scale-95 transition-all cursor-pointer text-center block"
-                    >
-                      💾 Synchronize Save State
-                    </button>
+                  <span className="text-[9px] font-mono tracking-wider text-indigo-350 uppercase font-bold block">GAME SESSION</span>
 
+                  <div className="grid grid-cols-1 gap-2">
                     <button
                       onClick={() => {
                         setShowSettingsModal(false);
@@ -4529,15 +4465,6 @@ export default function App() {
                       🔌 Return to Main Menu
                     </button>
                   </div>
-                </div>
-
-                <div className="pt-3 border-t border-white/5">
-                  <button
-                    onClick={executeEngineWipe}
-                    className="w-full py-3 bg-red-950/20 hover:bg-red-950/45 text-rose-300 border border-red-500/20 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer text-center"
-                  >
-                    ⚠️ ERASE ALL CACHED SAVE PROGRESS
-                  </button>
                 </div>
               </div>
             </motion.div>

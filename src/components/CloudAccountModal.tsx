@@ -49,7 +49,8 @@ export default function CloudAccountModal({
   useEffect(() => {
     setPassword('');
     setConfirmation('');
-  }, [mode]);
+    if (mode === 'forgot-password' && userEmail) setEmail(userEmail);
+  }, [mode, userEmail]);
 
   if (!isOpen || typeof document === 'undefined') return null;
 
@@ -71,7 +72,7 @@ export default function CloudAccountModal({
 
   const fieldClass = 'min-h-12 w-full rounded-lg border border-white/10 bg-slate-950/90 px-10 pr-3 text-sm font-semibold text-slate-100 outline-none transition-colors placeholder:text-slate-600 focus:border-cyan-400/70';
 
-  if (userEmail && mode !== 'update-password') {
+  if (userEmail && mode === 'sign-in') {
     const statusText = syncStatus === 'synced'
       ? 'Cloud save synchronized'
       : syncStatus === 'saving'
@@ -114,6 +115,9 @@ export default function CloudAccountModal({
             </div>
             <button type="button" onClick={() => void onManualSync()} disabled={syncStatus === 'saving' || syncStatus === 'checking' || syncStatus === 'conflict'} className="min-h-12 w-full rounded-lg bg-cyan-400 px-4 text-xs font-black uppercase tracking-wider text-slate-950 disabled:opacity-50">
               SYNCHRONIZE NOW
+            </button>
+            <button type="button" onClick={() => onModeChange('forgot-password')} className="min-h-12 w-full rounded-lg border border-cyan-400/30 bg-cyan-950/30 px-4 text-xs font-black uppercase tracking-wider text-cyan-100 hover:bg-cyan-950/50">
+              RESET PASSWORD
             </button>
             <button type="button" onClick={() => void onSignOut()} className="min-h-12 w-full rounded-lg border border-rose-400/30 bg-rose-950/35 px-4 text-xs font-black uppercase tracking-wider text-rose-100">
               SIGN OUT
@@ -270,9 +274,9 @@ export default function CloudAccountModal({
             <button
               type="button"
               onClick={() => onModeChange('forgot-password')}
-              className="w-full py-2 text-center text-[10px] font-black uppercase tracking-wider text-cyan-400 hover:text-cyan-300"
+              className="min-h-11 w-full rounded-lg border border-cyan-400/30 bg-cyan-950/25 px-4 text-center text-[10px] font-black uppercase tracking-wider text-cyan-200 transition-colors hover:bg-cyan-950/50 hover:text-white"
             >
-              FORGOT PASSWORD
+              FORGOT PASSWORD? RESET HERE
             </button>
           )}
 
