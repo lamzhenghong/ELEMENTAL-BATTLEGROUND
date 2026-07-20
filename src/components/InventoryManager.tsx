@@ -306,6 +306,62 @@ export default function InventoryManager({
     }
   });
 
+  const handleAutoEquip = () => {
+    if (!onEquipArtifact) return;
+
+    let targetSet: ArtifactSet = 'Vanguard';
+    const role = selectedChar.role;
+    if (role === 'dps') targetSet = 'Vanguard';
+    else if (role === 'tank') targetSet = 'Guardian';
+    else if (role === 'sub-dps') targetSet = 'Celestial';
+    else if (role === 'support') targetSet = 'Chrono';
+
+    let equippedCount = 0;
+
+    (['helmet', 'hands', 'leg', 'shoe'] as ArtifactSlot[]).forEach(slot => {
+      const slotArts = inventoryArtifacts.filter(a => a.slot === slot);
+      if (slotArts.length === 0) return;
+
+      const scored = slotArts.map(art => {
+        let score = art.rarity * 100;
+        if (art.set === targetSet) {
+          score += 1000;
+        }
+        if (art.equippedTo === selectedChar.id) {
+          score += 50;
+        } else if (art.equippedTo) {
+          score -= 200; // penalize stealing from other characters
+        }
+        return { art, score };
+      });
+
+      scored.sort((a, b) => b.score - a.score);
+      const bestArt = scored[0].art;
+      const currentArtId = equippedArtifactIds[slot];
+
+      if (bestArt.id !== currentArtId) {
+        onEquipArtifact(selectedChar.id, slot, bestArt.id);
+        equippedCount++;
+      }
+    });
+
+    AetheriaAudioEngine.playClick();
+
+    if (equippedCount > 0) {
+      onShowAlert(
+        "Artifact Set Auto-Equipped!",
+        `Auto-selected the highest value ${targetSet} set artifacts for ${selectedChar.name} (${selectedChar.role.toUpperCase()}).`,
+        "success"
+      );
+    } else {
+      onShowAlert(
+        "Already optimal!",
+        `${selectedChar.name} already has the best available ${targetSet} artifacts equipped.`,
+        "info"
+      );
+    }
+  };
+
   let artBonusHpPercent = 0;
   let artBonusDmgPercent = 0;
   let artBonusCritRate = 0;
@@ -1686,29 +1742,42 @@ export default function InventoryManager({
 
             {/* --- EQUIPPED ARTIFACTS SLOT INTERFACE --- */}
             <div className="mt-8 pt-6 border-t border-white/10 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 justify-between">
+                <div className="flex items-center gap-2 shrink-0">
                   <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
                   <h4 className="text-sm font-black text-white uppercase tracking-widest font-display">
                     Equipped Artifact Gear Slots
                   </h4>
                 </div>
-                {/* Active Set Bonuses Display */}
-                {equippedArts.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 justify-end">
-                    {Object.entries(setCounts).map(([setName, count]) => {
-                      if (count >= 2) {
-                        const countText = count >= 4 ? "4-PC" : "2-PC";
-                        return (
-                          <span key={setName} className="text-[8px] font-black uppercase text-amber-300 bg-amber-400/10 border border-amber-400/20 px-1.5 py-0.5 rounded font-mono">
-                            {setName} {countText}
-                          </span>
-                        );
-                      }
-                      return null;
-                    })}
-                  </div>
-                )}
+                <div className="flex items-center gap-2 flex-wrap justify-start sm:justify-end">
+                  {/* Auto-Equip button */}
+                  <button
+                    type="button"
+                    onClick={handleAutoEquip}
+                    title={`Auto-equip best artifacts for ${selectedChar.role} role`}
+                    className="bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-lg transition-all shadow-[0_0_12px_rgba(251,191,36,0.25)] cursor-pointer flex items-center gap-1.5 shrink-0"
+                  >
+                    <span>⚡</span>
+                    <span>Auto-Equip</span>
+                    <span className="text-[8px] opacity-70 font-mono normal-case capitalize hidden sm:inline">({selectedChar.role})</span>
+                  </button>
+                  {/* Active Set Bonuses Display */}
+                  {equippedArts.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 justify-end">
+                      {Object.entries(setCounts).map(([setName, count]) => {
+                        if (count >= 2) {
+                          const countText = count >= 4 ? "4-PC" : "2-PC";
+                          return (
+                            <span key={setName} className="text-[8px] font-black uppercase text-amber-300 bg-amber-400/10 border border-amber-400/20 px-1.5 py-0.5 rounded font-mono">
+                              {setName} {countText}
+                            </span>
+                          );
+                        }
+                        return null;
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
               <p className="text-xs text-slate-400 lowercase font-mono">
                 equip 4 artifacts (helmet, hands, leg, shoe) to receive HP, Damage, CRIT, and CD reductions.
