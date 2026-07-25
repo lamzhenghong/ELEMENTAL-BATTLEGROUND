@@ -19,6 +19,10 @@ import {
   getArtifactFusionRule,
   getEligibleFusionArtifacts
 } from '../utils/artifactFusion';
+import {
+  getRecommendedArtifactSet,
+  recommendArtifactsForCharacter
+} from '../utils/artifactAutoEquip';
 import CharacterRoleBadge from './CharacterRoleBadge';
 
 export function getUpgradedWeaponStats(weapon: Weapon) {
@@ -309,34 +313,17 @@ export default function InventoryManager({
   const handleAutoEquip = () => {
     if (!onEquipArtifact) return;
 
-    let targetSet: ArtifactSet = 'Vanguard';
-    const role = selectedChar.role;
-    if (role === 'dps') targetSet = 'Vanguard';
-    else if (role === 'tank') targetSet = 'Guardian';
-    else if (role === 'sub-dps') targetSet = 'Celestial';
-    else if (role === 'support') targetSet = 'Chrono';
-
+    const targetSet = getRecommendedArtifactSet(selectedChar.role);
+    const recommendations = recommendArtifactsForCharacter({
+      artifacts: inventoryArtifacts,
+      characterId: selectedChar.id,
+      role: selectedChar.role
+    });
     let equippedCount = 0;
 
     (['helmet', 'hands', 'leg', 'shoe'] as ArtifactSlot[]).forEach(slot => {
-      const slotArts = inventoryArtifacts.filter(a => a.slot === slot);
-      if (slotArts.length === 0) return;
-
-      const scored = slotArts.map(art => {
-        let score = art.rarity * 100;
-        if (art.set === targetSet) {
-          score += 1000;
-        }
-        if (art.equippedTo === selectedChar.id) {
-          score += 50;
-        } else if (art.equippedTo) {
-          score -= 200; // penalize stealing from other characters
-        }
-        return { art, score };
-      });
-
-      scored.sort((a, b) => b.score - a.score);
-      const bestArt = scored[0].art;
+      const bestArt = recommendations[slot];
+      if (!bestArt) return;
       const currentArtId = equippedArtifactIds[slot];
 
       if (bestArt.id !== currentArtId) {
