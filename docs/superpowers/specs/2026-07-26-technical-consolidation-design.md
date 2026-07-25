@@ -49,7 +49,7 @@ The release also reduces media payloads:
 
 ## Media Targets
 
-- MP3: LAME VBR quality 4, joint stereo, source sample rate preserved where possible.
+- MP3: LAME VBR quality 6, joint stereo, source sample rate preserved where possible. The source files already averaged roughly 190 kbps, so quality 6 provides a meaningful mobile download reduction while keeping the tracks in broadly compatible MP3 format.
 - MP4: H.264 CRF 26, `yuv420p`, no audio, `faststart`, maximum 1280x720 while preserving aspect ratio.
 - Verify every output with FFprobe, ensure nonzero duration, and require a smaller byte size before replacing the original.
 
