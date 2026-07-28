@@ -17,6 +17,8 @@ import ElementalReactionsModal from './components/ElementalReactionsModal';
 import SquadronQuestLedger from './components/SquadronQuestLedger';
 import GameHome from './components/GameHome';
 import MainMenu from './components/MainMenu';
+import MainMenuCreditsModal from './components/MainMenuCreditsModal';
+import MainMenuLeaveModal from './components/MainMenuLeaveModal';
 import MainMenuSettingsModal from './components/MainMenuSettingsModal';
 import CharacterRoleBadge from './components/CharacterRoleBadge';
 import CloudAccountModal from './components/CloudAccountModal';
@@ -367,6 +369,7 @@ export default function App() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showPlayerStatsOverlay, setShowPlayerStatsOverlay] = useState(false);
   const [showCreditsModal, setShowCreditsModal] = useState(false);
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [showLoginRewardsModal, setShowLoginRewardsModal] = useState(false);
   const [showReactionsModal, setShowReactionsModal] = useState(false);
   const [activeQuestTab, setActiveQuestTab] = useState<'daily' | 'weekly' | 'normal'>('daily');
@@ -1872,15 +1875,15 @@ export default function App() {
     AetheriaAudioEngine.resume();
     AetheriaAudioEngine.playClick();
     setMenuTransition('enter');
-    scheduleMenuTransitionStep(completeStartSimulation, 520);
-    scheduleMenuTransitionStep(() => setMenuTransition(null), 780);
+    scheduleMenuTransitionStep(completeStartSimulation, 620);
+    scheduleMenuTransitionStep(() => setMenuTransition(null), 1550);
     scheduleMenuTransitionStep(() => {
       showInGameAlert(
         `Welcome back, ${cloudAccount.profile?.username || 'Traveler'}.`,
         undefined,
         'success'
       );
-    }, 900);
+    }, 1620);
   };
 
   const handleReturnToMenu = () => {
@@ -1888,8 +1891,8 @@ export default function App() {
     AetheriaAudioEngine.playClick();
     setShowSettingsModal(false);
     setMenuTransition('return');
-    scheduleMenuTransitionStep(() => setActiveScreen('menu'), 520);
-    scheduleMenuTransitionStep(() => setMenuTransition(null), 780);
+    scheduleMenuTransitionStep(() => setActiveScreen('menu'), 620);
+    scheduleMenuTransitionStep(() => setMenuTransition(null), 1550);
   };
 
   const handleNavigateToDungeon = () => {
@@ -1971,10 +1974,16 @@ export default function App() {
             : 'LOCAL ONLY';
 
   const menuTransitionOverlay = menuTransition && (
-    <div className="aether-menu-transition" role="status" aria-live="polite">
-      <div className="aether-menu-transition__sigil" aria-hidden="true" />
-      <span>Dawning Core</span>
-      <strong>{menuTransition === 'enter' ? 'Synchronizing World' : 'Returning to Main Menu'}</strong>
+    <div key="aether-menu-transition" className="aether-menu-transition is-active" role="status" aria-live="polite">
+      <div className="aether-menu-transition__sigil" aria-hidden="true"><i /><b /></div>
+      <span>{menuTransition === 'enter' ? 'Dawning Core' : 'Aetheria Session'}</span>
+      <strong>
+        {menuTransition === 'enter' ? (
+          <><span>Synchronizing</span><span>World</span></>
+        ) : (
+          <><span>Returning To</span><span>Title</span></>
+        )}
+      </strong>
       <div className="aether-menu-transition__bar" aria-hidden="true"><i /></div>
     </div>
   );
@@ -2024,7 +2033,7 @@ export default function App() {
           />
           <div className="space-y-3">
             <p className="text-[9px] font-black uppercase tracking-[0.32em] text-amber-200">Dawning Core Mobile Client</p>
-            <h1 className="font-display text-3xl font-black uppercase tracking-[0.08em] text-white">Enter Aetheria</h1>
+            <h1 className="font-display text-3xl font-black uppercase tracking-[0.08em] text-white">Elemental Battleground</h1>
             <p className="text-xs font-semibold text-slate-400">Play in full screen before loading the game.</p>
           </div>
 
@@ -2112,7 +2121,10 @@ export default function App() {
             setShowCreditsModal(true);
             AetheriaAudioEngine.playClick();
           }}
-          onExit={() => setIsTerminated(true)}
+          onExit={() => {
+            setShowLeaveModal(true);
+            AetheriaAudioEngine.playClick();
+          }}
           onToggleBgm={() => {
             AetheriaAudioEngine.playClick();
             setMenuBgmEnabled(AetheriaAudioEngine.toggleMusic());
@@ -2223,60 +2235,6 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        {/* Dynamic Credits Modal popup */}
-        <AnimatePresence>
-          {showCreditsModal && (
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }} 
-              className="fixed inset-0 bg-slate-950/95 z-50 flex items-center justify-center p-4 backdrop-blur-md"
-              onClick={() => setShowCreditsModal(false)}
-            >
-              <motion.div 
-                initial={{ scale: 0.9, y: 20 }}
-                animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.9, y: -20 }}
-                className="bg-[#0b101e] max-w-sm w-full border border-white/10 rounded-2xl p-6 shadow-2xl relative space-y-4"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <h3 className="text-xs font-black text-slate-100 uppercase tracking-widest font-display flex items-center gap-2">
-                    <Award className="w-4 h-4 text-amber-400" />
-                    SIMULATOR DESIGN LAB
-                  </h3>
-                  <button 
-                    onClick={() => setShowCreditsModal(false)} 
-                    className="p-1 text-slate-400 hover:text-white cursor-pointer hover:bg-white/5 rounded"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="space-y-3.5 text-xs">
-                  <div className="rounded-lg border border-amber-300/35 bg-amber-400/10 p-4 text-center shadow-[0_0_28px_rgba(250,204,21,0.12)]">
-                    <span className="block text-[8.5px] font-semibold uppercase tracking-[0.2em] text-amber-200">Created By</span>
-                    <span className="mt-2 block font-display text-2xl font-black text-white">lamzhenghong</span>
-                    <span className="mt-1 block font-mono text-[8px] uppercase tracking-wider text-slate-400">Game Producer and Lead Architect</span>
-                  </div>
-                  <div className="p-2.5 bg-black/40 rounded border border-white/5">
-                    <span className="text-[8.5px] uppercase text-emerald-400 block font-semibold">Lead System Designer</span>
-                    <span className="font-extrabold text-slate-100 text-sm">LAM ZHENG HONG</span>
-                  </div>
-                  <div className="p-2.5 bg-black/40 rounded border border-white/5">
-                    <span className="text-[8.5px] uppercase text-rose-400 block font-semibold">Creative Director & Composer</span>
-                    <span className="font-extrabold text-slate-100 text-sm">LAM ZHENG HONG</span>
-                  </div>
-                </div>
-
-                <p className="text-[10px] text-slate-400 leading-normal font-sans text-center border-t border-white/5 pt-4">
-                  Constructed strictly using client-side React 18, Vite, and high contrast Tailwind CSS styles. All components are responsive.
-                </p>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        
         {/* First Load Loading Screen Overlay */}
         <AnimatePresence>
           {isFirstLoad && (
@@ -2362,6 +2320,18 @@ export default function App() {
           }}
           onScreenShakeChange={setScreenShakeEnabled}
           onSelectTheme={handleSelectUiTheme}
+        />
+        <MainMenuCreditsModal
+          open={showCreditsModal}
+          onClose={() => setShowCreditsModal(false)}
+        />
+        <MainMenuLeaveModal
+          open={showLeaveModal}
+          onClose={() => setShowLeaveModal(false)}
+          onConfirm={() => {
+            setShowLeaveModal(false);
+            setIsTerminated(true);
+          }}
         />
         {menuTransitionOverlay}
         {cloudAccountOverlays}

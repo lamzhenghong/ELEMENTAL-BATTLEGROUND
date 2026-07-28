@@ -75,6 +75,7 @@ export default function MainMenu({
         </div>
 
         <button type="button" className="aether-main-menu__start" onClick={onStart}>
+          <span className="aether-main-menu__start-glint" aria-hidden="true" />
           <Play />
           <span>START GAME</span>
         </button>
