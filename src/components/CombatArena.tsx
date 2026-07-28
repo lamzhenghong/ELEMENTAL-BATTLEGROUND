@@ -28,6 +28,7 @@ import MobileJoystick from './MobileJoystick';
 import MobileControls from './MobileControls';
 import CharacterRoleBadge from './CharacterRoleBadge';
 import { FloatingDamageTextDOM } from './combat/CombatVisuals';
+import { drawEnemyArchetypeEnemy } from './combat/enemyArchetypeVfx';
 import {
   BOSS_TEMPLATES,
   CombatParticle,
@@ -49,6 +50,22 @@ import {
   getRandomEnemyVisualVariant,
   sanitizeEnemyName
 } from '../utils/enemyVisuals';
+import {
+  applyEnemyArchetype,
+  applyRelicCarrierArchetype,
+  getBulwarkProtection,
+  getRelicCarrierReward,
+  shouldSpawnRelicCarrier,
+  type EnemyArchetypeId
+} from '../utils/enemyArchetypes';
+import {
+  chooseChannelerSupportAction,
+  getArchetypeMoveDirection,
+  getSiphonEnergyTransfer,
+  getStalkerAmbushPosition,
+  isAttackerFlanking,
+  isRelicCarrierAtExit
+} from '../utils/enemyArchetypeCombat';
 import {
   COMBO_TIMEOUT_FRAMES,
   CombatWeather,
@@ -339,6 +356,7 @@ export default function CombatArena({
   const activeAetherEchoRef = useRef<AetherEchoState | null>(null);
   const [activeEchoNotification, setActiveEchoNotification] = useState<string | null>(null);
   const bossProjectilesRef = useRef<any[]>([]);
+  const lastPlayerSkillRef = useRef<{ name: string; element: ElementType; damage: number } | null>(null);
   const hasRevivedRef = useRef<boolean>(false);
   const waveResolvingRef = useRef<boolean>(false);
 
@@ -1212,6 +1230,7 @@ export default function CombatArena({
     if (waveNum === 1) {
       updatePartyEffects(clearPartyEffects(partyEffectsRef.current));
     }
+    lastPlayerSkillRef.current = null;
     
     // Reposition player to the center of the world at wave start
     playerRef.current.x = WORLD_WIDTH / 2;
@@ -1226,7 +1245,7 @@ export default function CombatArena({
       const baseHp = 500 + Math.random() * 200;
       const hp = Math.round(baseHp * scale);
       const speed = 1.2 + Math.random() * 0.4;
-      return {
+      return applyEnemyArchetype({
         id,
         name: tpl.name,
         type: 'Normal' as const,
@@ -1241,7 +1260,7 @@ export default function CombatArena({
         telegraphTimer: 0,
         isFrozen: 0,
         burningTicks: 0
-      };
+      });
     };
 
     const createRandomElite = (id: string, scale: number) => {
@@ -1252,7 +1271,7 @@ export default function CombatArena({
       ];
       const tpl = eliteTypes[Math.floor(Math.random() * eliteTypes.length)];
       const hp = Math.round(tpl.baseHp * scale);
-      return {
+      return applyEnemyArchetype({
         id,
         name: tpl.name,
         type: 'Elite' as const,
@@ -1268,7 +1287,7 @@ export default function CombatArena({
         telegraphType: tpl.telegraphType,
         isFrozen: 0,
         burningTicks: 0
-      };
+      });
     };
 
     const spawnRandomBoss = (id: string, scale: number) => {
@@ -1345,7 +1364,7 @@ export default function CombatArena({
           const neutralName = sanitizeEnemyName(enemySpec.name);
           const tpl = eliteTypes.find(e => e.name === neutralName) || eliteTypes[0];
           const hp = Math.round(tpl.baseHp * scaleMultiplier * hpMultiplier);
-          list.push({
+          list.push(applyEnemyArchetype({
             id: enemyId,
             name: neutralName || tpl.name,
             type: 'Elite' as const,
@@ -1361,13 +1380,13 @@ export default function CombatArena({
             telegraphType: tpl.telegraphType,
             isFrozen: 0,
             burningTicks: 0
-          });
+          }));
         } else {
           const tpl = getRandomEnemyVisualVariant(ENEMY_VISUAL_VARIANTS.slice(0, 7));
           const baseHp = 500 + Math.random() * 200;
           const hp = Math.round(baseHp * scaleMultiplier * hpMultiplier);
           const speed = (1.2 + Math.random() * 0.4) * speedMultiplier;
-          list.push({
+          list.push(applyEnemyArchetype({
             id: enemyId,
             name: sanitizeEnemyName(enemySpec.name) || tpl.name,
             type: 'Normal' as const,
@@ -1382,7 +1401,7 @@ export default function CombatArena({
             telegraphTimer: 0,
             isFrozen: 0,
             burningTicks: 0
-          });
+          }));
         }
       });
       setBossHp(list.some(e => e.type === 'Boss') ? list.find(e => e.type === 'Boss').hp : null);
@@ -1467,6 +1486,32 @@ export default function CombatArena({
         }
         setBossHp(null);
       }
+    }
+
+    if (shouldSpawnRelicCarrier()) {
+      const strongestNonBossHp = Math.max(
+        0,
+        ...list
+          .filter(enemy => enemy.type !== 'Boss')
+          .map(enemy => enemy.maxHp)
+      );
+      const relicHp = Math.max(650, Math.round((strongestNonBossHp || 1400) * 0.7));
+      list.push(applyRelicCarrierArchetype({
+        id: `relic_carrier_wave_${waveNum}`,
+        name: 'Relic Carrier',
+        type: 'Normal' as const,
+        color: '#facc15',
+        x: centerX + (Math.random() - 0.5) * 360,
+        y: centerY + (Math.random() - 0.5) * 360,
+        radius: 24,
+        hp: relicHp,
+        maxHp: relicHp,
+        speed: 1.55,
+        activeElements: [] as ElementType[],
+        telegraphTimer: 0,
+        isFrozen: 0,
+        burningTicks: 0
+      }));
     }
 
     enemiesRef.current = list.map(enemy => ({ ...enemy, statusEffects: [] as CombatStatusEffect[] }));
@@ -1561,14 +1606,26 @@ export default function CombatArena({
   };
 
   const isPlayerInsidePendingEnemyStrike = (enemy: any) => {
-    if (enemy.hp <= 0 || enemy.telegraphTimer < 103 || enemy.telegraphTimer > 115) return false;
+    if (enemy.hp <= 0) return false;
+    if (enemy.archetypeId === 'stalker') {
+      const strikeFrames = enemy.archetypeState?.strikeFrames ?? 0;
+      if (strikeFrames > 0 && strikeFrames <= 12) {
+        return Math.hypot(playerRef.current.x - enemy.x, playerRef.current.y - enemy.y) < 100;
+      }
+    }
+    if (enemy.telegraphTimer < 103 || enemy.telegraphTimer > 115) return false;
     const dmgDist = Math.hypot(playerRef.current.x - enemy.x, playerRef.current.y - enemy.y);
     return dmgDist < 70;
   };
 
   const isPlayerInsidePendingHazard = (hazard: any) => {
     if (!hazard) return false;
-    if (hazard.type !== 'meteor_warning' && hazard.type !== 'lightning_strike_warning') return false;
+    if (
+      hazard.type !== 'meteor_warning'
+      && hazard.type !== 'lightning_strike_warning'
+      && hazard.type !== 'archetype_artillery_warning'
+      && hazard.type !== 'archetype_mimic_warning'
+    ) return false;
     if (hazard.timer > 12) return false;
     return Math.hypot(playerRef.current.x - hazard.x, playerRef.current.y - hazard.y) < hazard.radius + playerRef.current.radius;
   };
@@ -1742,6 +1799,11 @@ export default function CombatArena({
     const skillKit = getCharacterKit(currentActiveChar.id);
     const skillDealsDirectDamage = skillKit?.skill.directDamage ?? true;
     const skillReactionContext = createReactionContext('elemental-skill', skillDealsDirectDamage);
+    lastPlayerSkillRef.current = {
+      name: currentActiveChar.skills.skill.name,
+      element: currentActiveChar.element,
+      damage: Math.max(120, Math.round(currentActiveChar.atk * currentActiveChar.skills.skill.damageMultiplier * 0.22))
+    };
 
     // Dynamic Skill animations and radial hit registration
     for (let i = 0; i < 35; i++) {
@@ -2327,6 +2389,53 @@ export default function CombatArena({
     }, 2200);
   };
 
+  const restoreSiphonedEnergy = (enemy: any) => {
+    const stolenEnergy = Math.round(enemy.archetypeState?.stolenEnergy ?? 0);
+    if (!enemy.archetypeState) return;
+    enemy.archetypeState.stolenEnergy = 0;
+    enemy.archetypeState.beamFrames = 0;
+    if (stolenEnergy <= 0) {
+      spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 28, 'BEAM BROKEN', '#e9d5ff', 11, true);
+      return;
+    }
+    const { activePartyIndex: currentPartyIndex } = loopStateRef.current;
+    setCombatParty(party => party.map((character, index) => index === currentPartyIndex
+      ? {
+          ...character,
+          ultimateEnergy: Math.min(character.ultimateMaxEnergy, character.ultimateEnergy + stolenEnergy)
+        }
+      : character
+    ));
+    spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 28, `BEAM BROKEN · +${stolenEnergy} ENERGY`, '#e9d5ff', 11, true);
+  };
+
+  const awardRelicCarrierBonus = (enemy: any) => {
+    const reward = getRelicCarrierReward();
+    const eliteMultiplier = enemy.type === 'Elite' ? 1.5 : 1;
+    if (reward.kind === 'gems') {
+      const amount = Math.round(reward.amount * eliteMultiplier);
+      onEarnRewards(amount, 0, 0);
+      spawnTextRef.current(enemy.x, enemy.y - 38, `RELIC CACHE +${amount} GEMS`, '#67e8f9', 13, true);
+      return;
+    }
+    if (reward.kind === 'mora') {
+      const amount = Math.round(reward.amount * eliteMultiplier);
+      onEarnRewards(0, amount, 0);
+      spawnTextRef.current(enemy.x, enemy.y - 38, `RELIC CACHE +${amount} MORA`, '#fde68a', 13, true);
+      return;
+    }
+    if (storyMode || !onAwardArtifact) {
+      const fallbackGems = Math.round(160 * eliteMultiplier);
+      onEarnRewards(fallbackGems, 0, 0);
+      spawnTextRef.current(enemy.x, enemy.y - 38, `RELIC CACHE +${fallbackGems} GEMS`, '#67e8f9', 13, true);
+      return;
+    }
+    const artifact = generateRandomArtifact(Math.max(1, currentWave));
+    onAwardArtifact(artifact);
+    setDroppedArtifacts(previous => [...previous, artifact]);
+    spawnTextRef.current(enemy.x, enemy.y - 38, `RELIC ARTIFACT · ${artifact.name}`, '#facc15', 13, true);
+  };
+
   const applySkillDamage = (
     enemy: any,
     baseDmg: number,
@@ -2692,6 +2801,45 @@ export default function CombatArena({
       finalDmg = Math.round(finalDmg * 1.4);
     }
 
+    if (enemy.type !== 'Boss' && enemy.archetypeId === 'siphon' && (enemy.archetypeState?.beamFrames ?? 0) > 0 && finalDmg > 0) {
+      restoreSiphonedEnergy(enemy);
+    }
+
+    if (enemy.type !== 'Boss' && finalDmg > 0) {
+      if (
+        enemy.archetypeId === 'bulwark'
+        && (enemy.archetypeState?.shieldHp ?? 0) > 0
+        && !isAttackerFlanking(playerRef.current, enemy)
+      ) {
+        const absorbedDamage = Math.min(
+          Math.round(finalDmg * 0.5),
+          enemy.archetypeState.shieldHp
+        );
+        enemy.archetypeState.shieldHp -= absorbedDamage;
+        finalDmg -= absorbedDamage;
+        spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 28, `SHIELD ${absorbedDamage}`, '#93c5fd', 10);
+        if (enemy.archetypeState.shieldHp <= 0) {
+          spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 45, 'BULWARK SHIELD BROKEN', '#dbeafe', 12, true);
+        }
+      } else {
+        const protection = getBulwarkProtection(enemy, enemiesRef.current, finalDmg);
+        if (protection.bulwarkId) {
+          const bulwark = enemiesRef.current.find(candidate => candidate.id === protection.bulwarkId);
+          if (bulwark?.archetypeState) {
+            bulwark.archetypeState.shieldHp = Math.max(
+              0,
+              (bulwark.archetypeState.shieldHp ?? 0) - protection.absorbedDamage
+            );
+            spawnTextRef.current(bulwark.x, bulwark.y - bulwark.radius - 28, `GUARD ${protection.absorbedDamage}`, '#93c5fd', 10);
+            if (bulwark.archetypeState.shieldHp <= 0) {
+              spawnTextRef.current(bulwark.x, bulwark.y - bulwark.radius - 45, 'BULWARK SHIELD BROKEN', '#dbeafe', 12, true);
+            }
+          }
+          finalDmg = protection.damage;
+        }
+      }
+    }
+
     // Decrease enemy HP
     finalDmg = Math.round(finalDmg);
     enemy.hp = Math.max(0, enemy.hp - finalDmg);
@@ -2762,12 +2910,12 @@ export default function CombatArena({
       onIncrementStat('enemiesDefeated');
 
       // Drop crystal shield shards on enemy death
-      if (Math.random() < 0.45 && shardsRef.current.length < 5) {
+      if (!enemy.isSummonedMinion && Math.random() < 0.45 && shardsRef.current.length < 5) {
         shardsRef.current.push(new CrystalShard(enemy.x, enemy.y, type, getElementColorHex(type)));
       }
 
       // Hero's Wit drop on enemy kill (30% chance per enemy, 1 book)
-      if (!dungeonMode && Math.random() < 0.30) {
+      if (!enemy.isSummonedMinion && !dungeonMode && Math.random() < 0.30) {
         onAddItems?.('char_xp', 1);
         spawnFloatingDamageText(enemy.x, enemy.y - 20, `📖 +1 Hero's Wit`, '#a78bfa', 11, false);
       }
@@ -2782,7 +2930,12 @@ export default function CombatArena({
         AetheriaAudioEngine.setBossFightActive(false);
         spawnTextRef.current(enemy.x, enemy.y, `🏆 ${enemy.name.toUpperCase()} DEFEATED! 🏆`, '#f59e0b', 24, true);
       } else {
-        awardCombatRewards(50, 400, 15); // Standard mob payout
+        if (enemy.archetypeId === 'relic-carrier' && !enemy.archetypeState?.escaped) {
+          awardRelicCarrierBonus(enemy);
+        }
+        if (!enemy.isSummonedMinion) {
+          awardCombatRewards(50, 400, 15); // Standard mob payout
+        }
       }
 
       // Dynamic automatic wave advancement check
@@ -3355,11 +3508,19 @@ export default function CombatArena({
             }
           }
         }
-        else if (proj.type === 'meteor_warning' || proj.type === 'lightning_strike_warning') {
+        else if (
+          proj.type === 'meteor_warning'
+          || proj.type === 'lightning_strike_warning'
+          || proj.type === 'archetype_artillery_warning'
+          || proj.type === 'archetype_mimic_warning'
+        ) {
           if (isExpired) {
             // Detonate / strike!
             if (distToPlayer < proj.radius) {
-              handlePlayerHit(null, proj.damage);
+              const sourceEnemy = proj.ownerId
+                ? enemiesRef.current.find(enemy => enemy.id === proj.ownerId)
+                : null;
+              handlePlayerHit(sourceEnemy ?? null, proj.damage);
               if (proj.type === 'meteor_warning') {
                 // Knockback player away from center of explosion
                 const angle = Math.atan2(playerRef.current.y - proj.y, playerRef.current.x - proj.x);
@@ -3380,8 +3541,9 @@ export default function CombatArena({
               });
             }
             // Spawn explosion particles
-            const particleColor = proj.type === 'meteor_warning' ? '#dc2626' : '#a855f7';
-            for (let i = 0; i < 20; i++) {
+            const particleColor = proj.color ?? (proj.type === 'meteor_warning' ? '#dc2626' : '#a855f7');
+            const particleCount = isMobile ? 8 : proj.type.startsWith('archetype_') ? 12 : 20;
+            for (let i = 0; i < particleCount; i++) {
               const part = new CombatParticle(proj.x, proj.y, particleColor, proj.type === 'meteor_warning' ? 4.5 : 3);
               part.vx *= 2.2;
               part.vy *= 2.2;
@@ -3389,6 +3551,10 @@ export default function CombatArena({
             }
             if (proj.type === 'meteor_warning') {
               spawnTextRef.current(proj.x, proj.y, '💥 METEOR! 💥', '#f97316', 12, true);
+            } else if (proj.type === 'archetype_artillery_warning') {
+              spawnTextRef.current(proj.x, proj.y, 'ARTILLERY IMPACT', '#fb923c', 11, true);
+            } else if (proj.type === 'archetype_mimic_warning') {
+              spawnTextRef.current(proj.x, proj.y, `MIMIC · ${proj.skillName ?? 'SKILL'}`, particleColor, 11, true);
             } else {
               spawnTextRef.current(proj.x, proj.y, '⚡ BOLT! ⚡', '#a855f7', 11, true);
             }
@@ -3441,10 +3607,16 @@ export default function CombatArena({
           ctx.fill();
           ctx.stroke();
         }
-        else if (proj.type === 'meteor_warning' || proj.type === 'lightning_strike_warning') {
+        else if (
+          proj.type === 'meteor_warning'
+          || proj.type === 'lightning_strike_warning'
+          || proj.type === 'archetype_artillery_warning'
+          || proj.type === 'archetype_mimic_warning'
+        ) {
+          const warningColor = proj.color ?? '#ef4444';
           ctx.globalAlpha = 0.25;
-          ctx.fillStyle = 'rgba(239, 68, 68, 0.2)';
-          ctx.strokeStyle = '#ef4444';
+          ctx.fillStyle = warningColor;
+          ctx.strokeStyle = warningColor;
           ctx.lineWidth = 2;
           ctx.beginPath();
           ctx.arc(proj.x, proj.y, proj.radius, 0, Math.PI * 2);
@@ -3453,8 +3625,8 @@ export default function CombatArena({
 
           // expanding progress ring
           const pct = 1 - (proj.timer / proj.maxTimer);
-          ctx.globalAlpha = 0.45;
-          ctx.fillStyle = 'rgba(239, 68, 68, 0.5)';
+          ctx.globalAlpha = 0.28;
+          ctx.fillStyle = warningColor;
           ctx.beginPath();
           ctx.arc(proj.x, proj.y, proj.radius * pct, 0, Math.PI * 2);
           ctx.fill();
@@ -3529,6 +3701,204 @@ export default function CombatArena({
           enemy.x += (dx / distance) * pullDistance;
           enemy.y += (dy / distance) * pullDistance;
         });
+
+        let archetypeMoveDirection: -1 | 0 | 1 = 1;
+        let usesGenericTelegraph = true;
+        let suppressGenericMovement = false;
+        const distanceToPlayer = Math.hypot(playerRef.current.x - enemy.x, playerRef.current.y - enemy.y);
+        const archetypeId = enemy.type !== 'Boss' ? enemy.archetypeId as EnemyArchetypeId | undefined : undefined;
+        const archetypeState = archetypeId ? enemy.archetypeState : null;
+
+        if (enemy.archetypeBuffFrames > 0) {
+          enemy.archetypeBuffFrames = Math.max(0, enemy.archetypeBuffFrames - combatSpeed);
+        }
+
+        if (archetypeId && archetypeState) {
+          archetypeMoveDirection = getArchetypeMoveDirection(archetypeId, distanceToPlayer);
+          if (!targetStunned && archetypeState.abilityCooldownFrames > 0) {
+            archetypeState.abilityCooldownFrames = Math.max(
+              0,
+              archetypeState.abilityCooldownFrames - combatSpeed
+            );
+          }
+
+          if (archetypeId === 'channeler' && !targetStunned && archetypeState.abilityCooldownFrames <= 0) {
+            const action = chooseChannelerSupportAction(
+              enemy.id,
+              enemiesRef.current.filter(candidate => !candidate.archetypeState?.escaped)
+            );
+            if (action) {
+              const target = enemiesRef.current.find(candidate => candidate.id === action.targetId);
+              if (target) {
+                if (action.kind === 'revive') {
+                  target.hp = Math.min(target.maxHp, action.amount);
+                  target.archetypeState && (target.archetypeState.escaped = false);
+                  spawnTextRef.current(target.x, target.y - target.radius - 30, 'REVIVED', '#86efac', 12, true);
+                } else if (action.kind === 'heal') {
+                  target.hp = Math.min(target.maxHp, target.hp + action.amount);
+                  spawnTextRef.current(target.x, target.y - target.radius - 30, `+${action.amount} HP`, '#86efac', 11, true);
+                } else {
+                  target.archetypeBuffFrames = action.amount;
+                  spawnTextRef.current(target.x, target.y - target.radius - 30, 'EMPOWERED', '#86efac', 11, true);
+                }
+                spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 28, action.kind.toUpperCase(), '#4ade80', 11, true);
+              }
+            }
+            archetypeState.abilityCooldownFrames = enemy.type === 'Elite' ? 210 : 270;
+          }
+
+          if (archetypeId === 'artillery') {
+            usesGenericTelegraph = false;
+            if (!targetStunned && archetypeState.abilityCooldownFrames <= 0) {
+              bossProjectilesRef.current.push({
+                id: `artillery_${enemy.id}_${Date.now()}`,
+                type: 'archetype_artillery_warning',
+                ownerId: enemy.id,
+                x: playerRef.current.x,
+                y: playerRef.current.y,
+                radius: enemy.type === 'Elite' ? 52 : 44,
+                damage: enemy.type === 'Elite' ? 260 : 170,
+                color: '#f97316',
+                timer: enemy.type === 'Elite' ? 48 : 58,
+                maxTimer: enemy.type === 'Elite' ? 48 : 58
+              });
+              spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 28, 'ARTILLERY LOCK', '#fdba74', 10, true);
+              archetypeState.abilityCooldownFrames = enemy.type === 'Elite' ? 150 : 180;
+            }
+          }
+
+          if (archetypeId === 'siphon') {
+            usesGenericTelegraph = false;
+            if ((archetypeState.beamFrames ?? 0) > 0) {
+              suppressGenericMovement = true;
+              archetypeState.beamFrames = Math.max(0, (archetypeState.beamFrames ?? 0) - combatSpeed);
+              if (distanceToPlayer > 360) {
+                restoreSiphonedEnergy(enemy);
+              } else {
+                const drainBucket = Math.floor((archetypeState.beamFrames ?? 0) / 24);
+                if (enemy.siphonDrainBucket !== drainBucket) {
+                  enemy.siphonDrainBucket = drainBucket;
+                  const { combatParty: currentParty, activePartyIndex: currentPartyIndex } = loopStateRef.current;
+                  const activeCharacter = currentParty[currentPartyIndex];
+                  if (activeCharacter) {
+                    const transfer = getSiphonEnergyTransfer(
+                      activeCharacter.ultimateEnergy,
+                      enemy.type === 'Elite' ? 7 : 5
+                    );
+                    if (transfer.stolenEnergy > 0) {
+                      archetypeState.stolenEnergy = (archetypeState.stolenEnergy ?? 0) + transfer.stolenEnergy;
+                      setCombatParty(party => party.map((character, index) => index === currentPartyIndex
+                        ? { ...character, ultimateEnergy: transfer.remainingEnergy }
+                        : character
+                      ));
+                      spawnTextRef.current(playerRef.current.x, playerRef.current.y - 42, `-${transfer.stolenEnergy} ULT`, '#d8b4fe', 10);
+                    }
+                  }
+                }
+              }
+              if ((archetypeState.beamFrames ?? 0) <= 0) {
+                archetypeState.stolenEnergy = 0;
+              }
+            } else if (!targetStunned && archetypeState.abilityCooldownFrames <= 0 && distanceToPlayer <= 340) {
+              archetypeState.beamFrames = enemy.type === 'Elite' ? 168 : 144;
+              archetypeState.stolenEnergy = 0;
+              enemy.siphonDrainBucket = null;
+              archetypeState.abilityCooldownFrames = enemy.type === 'Elite' ? 270 : 330;
+              spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 30, 'ULTIMATE SIPHON', '#d8b4fe', 12, true);
+            }
+          }
+
+          if (archetypeId === 'mimic') {
+            usesGenericTelegraph = false;
+            const copiedSkill = lastPlayerSkillRef.current;
+            if (!targetStunned && copiedSkill && archetypeState.abilityCooldownFrames <= 0) {
+              bossProjectilesRef.current.push({
+                id: `mimic_${enemy.id}_${Date.now()}`,
+                type: 'archetype_mimic_warning',
+                ownerId: enemy.id,
+                skillName: copiedSkill.name,
+                x: playerRef.current.x,
+                y: playerRef.current.y,
+                radius: enemy.type === 'Elite' ? 58 : 48,
+                damage: Math.round(copiedSkill.damage * (enemy.type === 'Elite' ? 1.25 : 0.9)),
+                color: getElementColorHex(copiedSkill.element),
+                timer: enemy.type === 'Elite' ? 50 : 62,
+                maxTimer: enemy.type === 'Elite' ? 50 : 62
+              });
+              spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 30, `MIMIC · ${copiedSkill.name}`, '#f8fafc', 11, true);
+              archetypeState.abilityCooldownFrames = enemy.type === 'Elite' ? 225 : 285;
+            }
+          }
+
+          if (archetypeId === 'summoner' && !targetStunned && archetypeState.abilityCooldownFrames <= 0) {
+            const activeMinions = enemiesRef.current.filter(candidate =>
+              candidate.hp > 0 && candidate.summonerOwnerId === enemy.id
+            ).length;
+            if (activeMinions < (enemy.type === 'Elite' ? 3 : 2)) {
+              const minionHp = Math.max(120, Math.round(enemy.maxHp * 0.12));
+              enemiesRef.current.push({
+                id: `summoned_${enemy.id}_${Date.now()}_${activeMinions}`,
+                name: 'Abyss Wisp',
+                type: 'Normal' as const,
+                color: '#7c3aed',
+                x: enemy.x + (Math.random() - 0.5) * 80,
+                y: enemy.y + (Math.random() - 0.5) * 80,
+                radius: 13,
+                hp: minionHp,
+                maxHp: minionHp,
+                speed: 1.8,
+                activeElements: [] as ElementType[],
+                telegraphTimer: 0,
+                isFrozen: 0,
+                burningTicks: 0,
+                isSummonedMinion: true,
+                summonerOwnerId: enemy.id,
+                statusEffects: [] as CombatStatusEffect[]
+              });
+              spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 28, 'ABYSS WISP SUMMONED', '#c4b5fd', 10, true);
+            }
+            archetypeState.abilityCooldownFrames = enemy.type === 'Elite' ? 255 : 315;
+          }
+
+          if (archetypeId === 'stalker') {
+            usesGenericTelegraph = false;
+            suppressGenericMovement = true;
+            if ((archetypeState.vanishFrames ?? 0) > 0) {
+              archetypeState.vanishFrames = Math.max(0, (archetypeState.vanishFrames ?? 0) - combatSpeed);
+              if ((archetypeState.vanishFrames ?? 0) <= 0) {
+                const ambush = getStalkerAmbushPosition(playerRef.current, enemy.type === 'Elite' ? 78 : 92);
+                enemy.x = Math.max(35, Math.min(WORLD_WIDTH - 35, ambush.x));
+                enemy.y = Math.max(35, Math.min(WORLD_HEIGHT - 35, ambush.y));
+                archetypeState.strikeFrames = enemy.type === 'Elite' ? 18 : 24;
+                spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 26, 'BACK ATTACK', '#fca5a5', 10, true);
+              }
+            } else if ((archetypeState.strikeFrames ?? 0) > 0) {
+              archetypeState.strikeFrames = Math.max(0, (archetypeState.strikeFrames ?? 0) - combatSpeed);
+              if ((archetypeState.strikeFrames ?? 0) <= 0) {
+                if (Math.hypot(playerRef.current.x - enemy.x, playerRef.current.y - enemy.y) < 105) {
+                  handlePlayerHit(enemy, enemy.type === 'Elite' ? 290 : 190);
+                }
+                archetypeState.abilityCooldownFrames = enemy.type === 'Elite' ? 225 : 285;
+              }
+            } else if (!targetStunned && archetypeState.abilityCooldownFrames <= 0) {
+              archetypeState.vanishFrames = enemy.type === 'Elite' ? 36 : 48;
+              spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 25, 'STALKER VANISHED', '#94a3b8', 10);
+            } else {
+              suppressGenericMovement = false;
+            }
+          }
+
+          if (archetypeId === 'relic-carrier') {
+            usesGenericTelegraph = false;
+            if (!archetypeState.escaped && isRelicCarrierAtExit(enemy.x, enemy.y)) {
+              archetypeState.escaped = true;
+              enemy.hp = 0;
+              spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 26, 'RELIC CARRIER ESCAPED', '#fde68a', 12, true);
+            }
+          }
+        }
+
+        if (enemy.hp <= 0) return;
 
         // --- REAL BOSS MECHANICS AI STEP ---
         if (enemy.type === 'Boss') {
@@ -3828,22 +4198,33 @@ export default function CombatArena({
 
         // AI Chasing logic
         const angleToPlayer = Math.atan2(playerRef.current.y - enemy.y, playerRef.current.x - enemy.x);
+        enemy.facingX = Math.cos(angleToPlayer);
+        enemy.facingY = Math.sin(angleToPlayer);
         // Apply a global 0.6x speed slowdown to make overall wave enemies slower as requested
         const globalWaveEnemySlowerMultiplier = 0.6;
         const weatherEnemySpeed = getWeatherEnemySpeedMultiplier(weatherRef.current);
-        if (!targetStunned) {
-          enemy.x += Math.cos(angleToPlayer) * enemy.speed * weatherEnemySpeed * speedModifier * globalWaveEnemySlowerMultiplier * statusMovementMultiplier * combatSpeed;
-          enemy.y += Math.sin(angleToPlayer) * enemy.speed * weatherEnemySpeed * speedModifier * globalWaveEnemySlowerMultiplier * statusMovementMultiplier * combatSpeed;
+        const archetypeBuffSpeed = enemy.archetypeBuffFrames > 0 ? 1.15 : 1;
+        if (!targetStunned && !suppressGenericMovement && archetypeMoveDirection !== 0) {
+          const movementStep = enemy.speed
+            * weatherEnemySpeed
+            * speedModifier
+            * globalWaveEnemySlowerMultiplier
+            * statusMovementMultiplier
+            * archetypeBuffSpeed
+            * combatSpeed
+            * archetypeMoveDirection;
+          enemy.x = Math.max(20, Math.min(WORLD_WIDTH - 20, enemy.x + Math.cos(angleToPlayer) * movementStep));
+          enemy.y = Math.max(20, Math.min(WORLD_HEIGHT - 20, enemy.y + Math.sin(angleToPlayer) * movementStep));
         }
 
         // Increase Telegraph Attack counter metrics
-        if (!targetStunned) enemy.telegraphTimer++;
+        if (!targetStunned && usesGenericTelegraph) enemy.telegraphTimer++;
         if (enemy.telegraphTimer > 120) {
           enemy.telegraphTimer = 0; // reset
         }
 
         // --- RENDER DANGER RED TELEGRAPH THREATS (smaller enemy ranges) ---
-        if (!targetStunned && enemy.telegraphTimer > 60) {
+        if (!targetStunned && usesGenericTelegraph && enemy.telegraphTimer > 60) {
           ctx.save();
           ctx.globalAlpha = 0.25;
           ctx.fillStyle = '#ef4444';
@@ -3876,14 +4257,47 @@ export default function CombatArena({
           }
         }
 
+        if (enemy.archetypeId === 'siphon' && (enemy.archetypeState?.beamFrames ?? 0) > 0) {
+          ctx.save();
+          ctx.strokeStyle = 'rgba(216,180,254,0.62)';
+          ctx.lineWidth = enemy.type === 'Elite' ? 3 : 2;
+          ctx.setLineDash([8, 7]);
+          ctx.beginPath();
+          ctx.moveTo(enemy.x, enemy.y);
+          ctx.lineTo(playerRef.current.x, playerRef.current.y);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.restore();
+        }
+
+        if (enemy.archetypeId === 'stalker' && (enemy.archetypeState?.strikeFrames ?? 0) > 0) {
+          ctx.save();
+          ctx.strokeStyle = 'rgba(248,113,113,0.68)';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([4, 5]);
+          ctx.beginPath();
+          ctx.arc(enemy.x, enemy.y, enemy.radius + 16, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(enemy.x, enemy.y);
+          ctx.lineTo(playerRef.current.x, playerRef.current.y);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.restore();
+        }
+
         // Draw Enemy circle sprite representation
         ctx.save();
-        ctx.beginPath();
-        ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
-        ctx.fillStyle = enemy.color;
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = enemy.color;
-        ctx.fill();
+        if (enemy.type !== 'Boss' && enemy.archetypeId && enemy.archetypeState) {
+          drawEnemyArchetypeEnemy(ctx, enemy, now, isMobile);
+        } else {
+          ctx.beginPath();
+          ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
+          ctx.fillStyle = enemy.color;
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = enemy.color;
+          ctx.fill();
+        }
 
         const enemyStatuses = (enemy.statusEffects ?? []) as CombatStatusEffect[];
         if (enemyStatuses.some(status => status.type === 'burn')) {
@@ -4213,7 +4627,7 @@ export default function CombatArena({
                 miniCtx.arc(enemyMapX, enemyMapY, 6.5, 0, Math.PI * 2);
                 miniCtx.stroke();
               } else {
-                miniCtx.fillStyle = '#ef4444'; // Red for normal enemies
+                miniCtx.fillStyle = enemy.archetypeId ? enemy.color : '#ef4444';
                 miniCtx.beginPath();
                 miniCtx.arc(enemyMapX, enemyMapY, 2.2, 0, Math.PI * 2);
                 miniCtx.fill();
@@ -4332,12 +4746,19 @@ export default function CombatArena({
       adjustedAmount = Math.round(
         adjustedAmount * getReactionFieldModifiers(partyEffectsRef.current, enemy.x, enemy.y).enemyDamageMultiplier
       );
+      if (enemy.archetypeBuffFrames > 0) {
+        adjustedAmount = Math.round(adjustedAmount * 1.15);
+      }
     }
 
     // If parry is active precisely
     if (currentIsParrying) {
       setIsParrying(false);
       onIncrementStat('successfulParries');
+      if (enemy?.archetypeId === 'bulwark' && enemy.archetypeState) {
+        enemy.archetypeState.shieldHp = 0;
+        spawnFloatingDamageText(enemy.x, enemy.y - enemy.radius - 42, 'BULWARK SHIELD SHATTERED', '#dbeafe', 12, true);
+      }
       
       const px = playerRef.current.x;
       const py = playerRef.current.y;

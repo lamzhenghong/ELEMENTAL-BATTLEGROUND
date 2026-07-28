@@ -10,13 +10,14 @@ import { PLAYABLE_CHARACTERS } from '../data/characters';
 import { WEAPONS_DATABASE } from '../data/weapons';
 import { AetheriaAudioEngine } from '../utils/audio';
 import { getPortraitInfoList } from '../utils/portraits';
-import { Shield, Sparkles, BookOpen, Compass, Sword, Landmark, Hammer, Coins, Trophy, DollarSign, Image, Eye, User, Star, Flame, Droplet, Snowflake, Zap, Wind, Mountain, Leaf, Check, Layers } from 'lucide-react';
+import { Shield, Sparkles, BookOpen, Compass, Sword, Landmark, Hammer, Coins, Trophy, DollarSign, Image, Eye, User, Star, Flame, Droplet, Snowflake, Zap, Wind, Mountain, Leaf, Check, Layers, HeartPulse, Crosshair, BatteryCharging, Copy, CircleDot, Gem } from 'lucide-react';
 import { ElementType, WeaponType, Weapon, Artifact, ArtifactSlot, ArtifactSet, CharacterRole } from '../types';
 import { ARTIFACT_SETS, ARTIFACT_NAMES, getArtifactMainStat } from '../data/artifacts';
 import { LanguageType, t } from '../utils/i18n';
 import { ELEMENTAL_REACTIONS } from '../data/elementalReactions';
 import { ALL_STORY_MEMORIES } from '../data/story';
 import { getCharacterKit } from '../utils/characterKits';
+import { ENEMY_ARCHETYPE_DEFINITIONS, type EnemyArchetypeId } from '../utils/enemyArchetypes';
 import CharacterRoleBadge from './CharacterRoleBadge';
 
 import aureliaBanner from '../../assets/aurelia_banner.jpg';
@@ -79,7 +80,7 @@ interface GDDViewerProps {
   language?: LanguageType;
   unlockedLoreEntries?: string[];
   completedCharacterStoryActs?: Record<string, number>;
-  initialTab?: 'lore' | 'nations' | 'characters' | 'weapons' | 'artifacts' | 'systems' | 'tutorial';
+  initialTab?: 'lore' | 'nations' | 'characters' | 'weapons' | 'artifacts' | 'enemies' | 'systems' | 'tutorial';
   initialCharacterId?: string;
   initialWeaponName?: string;
 }
@@ -97,7 +98,7 @@ export default function GDDViewer({
   unlockedLoreEntries = [],
   completedCharacterStoryActs = {}
 }: GDDViewerProps) {
-  const [activeTab, setActiveTab] = React.useState<'lore' | 'nations' | 'characters' | 'weapons' | 'artifacts' | 'systems' | 'tutorial'>(initialTab || 'lore');
+  const [activeTab, setActiveTab] = React.useState<'lore' | 'nations' | 'characters' | 'weapons' | 'artifacts' | 'enemies' | 'systems' | 'tutorial'>(initialTab || 'lore');
   const [selectedCharacterId, setSelectedCharacterId] = React.useState<string>(initialCharacterId || PLAYABLE_CHARACTERS[0].id);
   const [selectedWeaponName, setSelectedWeaponName] = useState<string>(initialWeaponName || WEAPONS_DATABASE[0].name);
   const [selectedNationName, setSelectedNationName] = useState<string>(GDD_DATA.nations[0].name);
@@ -173,6 +174,19 @@ export default function GDDViewer({
     }
   };
 
+  const getEnemyArchetypeIcon = (archetypeId: EnemyArchetypeId) => {
+    switch (archetypeId) {
+      case 'bulwark': return <Shield className="w-5 h-5" />;
+      case 'channeler': return <HeartPulse className="w-5 h-5" />;
+      case 'artillery': return <Crosshair className="w-5 h-5" />;
+      case 'siphon': return <BatteryCharging className="w-5 h-5" />;
+      case 'mimic': return <Copy className="w-5 h-5" />;
+      case 'summoner': return <CircleDot className="w-5 h-5" />;
+      case 'stalker': return <Eye className="w-5 h-5" />;
+      case 'relic-carrier': return <Gem className="w-5 h-5" />;
+    }
+  };
+
   const selectedChar = PLAYABLE_CHARACTERS.find(c => c.id === selectedCharacterId) || PLAYABLE_CHARACTERS[0];
   const selectedKit = getCharacterKit(selectedChar.id);
   const selectedNation = GDD_DATA.nations.find(n => n.name === selectedNationName) || GDD_DATA.nations[0];
@@ -198,7 +212,7 @@ export default function GDDViewer({
 
         {/* Tabs switcher */}
         <div className="flex overflow-x-auto whitespace-nowrap scrollbar-none gap-1 bg-black/45 p-1 rounded-lg border border-white/10 w-full">
-          {(['lore', 'nations', 'characters', 'weapons', 'artifacts', 'systems', 'tutorial'] as const).map((tab) => (
+          {(['lore', 'nations', 'characters', 'weapons', 'artifacts', 'enemies', 'systems', 'tutorial'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -209,7 +223,13 @@ export default function GDDViewer({
               }`}
               id={`gdd_tab_${tab}`}
             >
-              {tab === 'tutorial' ? 'How to Play' : tab === 'artifacts' ? t('artifacts', language) : tab}
+              {tab === 'tutorial'
+                ? 'How to Play'
+                : tab === 'artifacts'
+                  ? t('artifacts', language)
+                  : tab === 'enemies'
+                    ? 'Enemy Index'
+                    : tab}
             </button>
           ))}
         </div>
@@ -1275,6 +1295,87 @@ export default function GDDViewer({
                   </div>
                 );
               })()}
+            </motion.div>
+          )}
+
+          {activeTab === 'enemies' && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-5"
+              key="tab_enemies"
+              id="gdd_enemy_index"
+            >
+              <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 border-b border-slate-800 pb-4">
+                <div>
+                  <span className="text-[9px] font-black uppercase tracking-[0.24em] text-amber-400 font-mono">
+                    Battlefield Recognition
+                  </span>
+                  <h3 className="mt-1 text-2xl font-black text-slate-100 font-display uppercase tracking-tight">
+                    Enemy Archetype Index
+                  </h3>
+                  <p className="mt-2 max-w-3xl text-xs text-slate-400 leading-relaxed">
+                    Normal and Elite enemies use color and restrained visual cues to reveal their role. Read the silhouette first, then use the counter listed below.
+                  </p>
+                </div>
+                <div className="shrink-0 rounded-lg border border-amber-400/20 bg-amber-400/5 px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-amber-200">
+                  Boss enemies keep their existing boss mechanics and visuals
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+                {ENEMY_ARCHETYPE_DEFINITIONS.map((archetype) => (
+                  <article
+                    key={archetype.id}
+                    className="group relative overflow-hidden rounded-lg border border-slate-800 bg-slate-950/55 p-4 transition-colors hover:border-slate-700"
+                    style={{ boxShadow: `inset 3px 0 0 ${archetype.color}` }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div
+                        className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border"
+                        style={{
+                          color: archetype.id === 'stalker' ? '#f87171' : archetype.color,
+                          borderColor: `${archetype.color}66`,
+                          backgroundColor: `${archetype.color}14`
+                        }}
+                        aria-hidden="true"
+                      >
+                        {getEnemyArchetypeIcon(archetype.id)}
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-black uppercase tracking-wide text-slate-100">
+                          {archetype.name}
+                        </h4>
+                        <span
+                          className="mt-1 inline-block text-[8px] font-black uppercase tracking-wider"
+                          style={{ color: archetype.id === 'stalker' ? '#f87171' : archetype.color }}
+                        >
+                          {archetype.visual}
+                        </span>
+                      </div>
+                    </div>
+
+                    <p className="mt-4 text-[11px] leading-relaxed text-slate-300">
+                      {archetype.mechanic}
+                    </p>
+                    <div className="mt-3 border-t border-slate-800/80 pt-3">
+                      <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">Counter</span>
+                      <p className="mt-1 text-[10px] font-bold leading-relaxed text-slate-200">
+                        {archetype.counter}
+                      </p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+
+              <div className="flex items-start gap-3 rounded-lg border border-cyan-400/20 bg-cyan-400/5 p-3">
+                <Eye className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
+                <p className="text-[10px] leading-relaxed text-slate-400">
+                  Enemy body colors are role indicators, not elemental identities. Player-applied elements and reactions continue to use the existing combat system.
+                </p>
+              </div>
             </motion.div>
           )}
 
