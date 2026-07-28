@@ -5,6 +5,10 @@ import { join } from 'node:path';
 const sourceRoot = join(process.cwd(), 'src');
 const arenaSource = readFileSync(join(sourceRoot, 'components', 'CombatArena.tsx'), 'utf8');
 const wikiSource = readFileSync(join(sourceRoot, 'components', 'GDDViewer.tsx'), 'utf8');
+const previewSource = readFileSync(
+  join(sourceRoot, 'components', 'EnemyArchetypeModelPreview.tsx'),
+  'utf8'
+);
 const appSource = readFileSync(join(sourceRoot, 'App.tsx'), 'utf8');
 const rogueSource = readFileSync(join(sourceRoot, 'components', 'RogueDungeon.tsx'), 'utf8');
 
@@ -34,5 +38,15 @@ assert.match(
 assert.match(wikiSource, /activeTab === 'enemies'/);
 assert.match(wikiSource, /ENEMY_ARCHETYPE_DEFINITIONS\.map/);
 assert.match(wikiSource, /Boss enemies keep their existing boss mechanics and visuals/);
+assert.match(wikiSource, /<EnemyArchetypeModelPreview archetype=\{archetype\} \/>/);
+assert.doesNotMatch(wikiSource, />\s*Enemy Index\s*</);
+assert.doesNotMatch(wikiSource, />\s*Enemy Archetype Index\s*</);
 
-console.log('enemy archetype combat and index integration ok');
+assert.match(previewSource, /drawEnemyArchetypeEnemy/);
+assert.match(previewSource, /requestAnimationFrame/);
+assert.match(previewSource, /IntersectionObserver/);
+assert.match(previewSource, /devicePixelRatio/);
+assert.match(previewSource, /prefers-reduced-motion/);
+assert.match(previewSource, /aria-label=\{`\$\{archetype\.name\} animated enemy model preview`\}/);
+
+console.log('enemy archetype combat and encyclopedia integration ok');

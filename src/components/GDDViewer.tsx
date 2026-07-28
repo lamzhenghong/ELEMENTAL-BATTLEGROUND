@@ -19,6 +19,7 @@ import { ALL_STORY_MEMORIES } from '../data/story';
 import { getCharacterKit } from '../utils/characterKits';
 import { ENEMY_ARCHETYPE_DEFINITIONS, type EnemyArchetypeId } from '../utils/enemyArchetypes';
 import CharacterRoleBadge from './CharacterRoleBadge';
+import EnemyArchetypeModelPreview from './EnemyArchetypeModelPreview';
 
 import aureliaBanner from '../../assets/aurelia_banner.jpg';
 import kaelenBanner from '../../assets/kaelen_banner.jpg';
@@ -228,7 +229,7 @@ export default function GDDViewer({
                 : tab === 'artifacts'
                   ? t('artifacts', language)
                   : tab === 'enemies'
-                    ? 'Enemy Index'
+                    ? 'Enemies'
                     : tab}
             </button>
           ))}
@@ -1306,7 +1307,7 @@ export default function GDDViewer({
               transition={{ duration: 0.2 }}
               className="space-y-5"
               key="tab_enemies"
-              id="gdd_enemy_index"
+              id="gdd_enemies"
             >
               <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 border-b border-slate-800 pb-4">
                 <div>
@@ -1314,7 +1315,7 @@ export default function GDDViewer({
                     Battlefield Recognition
                   </span>
                   <h3 className="mt-1 text-2xl font-black text-slate-100 font-display uppercase tracking-tight">
-                    Enemy Archetype Index
+                    Enemy Archetypes
                   </h3>
                   <p className="mt-2 max-w-3xl text-xs text-slate-400 leading-relaxed">
                     Normal and Elite enemies use color and restrained visual cues to reveal their role. Read the silhouette first, then use the counter listed below.
@@ -1356,6 +1357,8 @@ export default function GDDViewer({
                         </span>
                       </div>
                     </div>
+
+                    <EnemyArchetypeModelPreview archetype={archetype} />
 
                     <p className="mt-4 text-[11px] leading-relaxed text-slate-300">
                       {archetype.mechanic}
