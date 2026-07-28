@@ -1988,6 +1988,13 @@ export default function App() {
     </div>
   );
 
+  const withMenuTransition = (screen: React.ReactNode) => (
+    <>
+      {screen}
+      {menuTransitionOverlay}
+    </>
+  );
+
   const cloudAccountOverlays = (
     <>
       <CloudAccountModal
@@ -2098,7 +2105,7 @@ export default function App() {
 
   // ENHANCED IMMERSIVE MAIN MENU UI
   if (activeScreen === 'menu') {
-    return (
+    return withMenuTransition(
       <div className="relative min-h-screen overflow-x-hidden text-slate-100">
         <MainMenu
           backgroundVideo={mainMenuVideo}
@@ -2333,15 +2340,13 @@ export default function App() {
             setIsTerminated(true);
           }}
         />
-        {menuTransitionOverlay}
         {cloudAccountOverlays}
       </div>
     );
   }
 
-  return (
+  return withMenuTransition(
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans relative antialiased leading-normal overflow-x-hidden">
-      {menuTransitionOverlay}
       {/* Immersive Game World Backdrop Simulation gradients */}
       <div className={`absolute inset-0 bg-gradient-to-b ${activeUiTheme.backdropClass} pointer-events-none`} />
       <div className={`absolute top-0 right-1/4 w-[600px] h-[400px] ${activeUiTheme.orbOneClass} rounded-full blur-[130px] pointer-events-none`} />

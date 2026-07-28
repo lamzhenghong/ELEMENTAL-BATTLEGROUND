@@ -13,6 +13,16 @@ assert.match(cssSource, /\.aether-main-menu__start::before,[\s\S]*\.aether-main-
 assert.match(cssSource, /@keyframes aether-gold-sigil-open/);
 assert.match(cssSource, /@keyframes aether-transition-veil/);
 assert.match(appSource, /key="aether-menu-transition"/);
+assert.equal(
+  appSource.match(/\{menuTransitionOverlay\}/g)?.length,
+  1,
+  'the transition overlay must stay mounted once across menu and game screen swaps'
+);
+assert.equal(
+  appSource.match(/return withMenuTransition\(/g)?.length,
+  2,
+  'both menu directions must use the same persistent transition host'
+);
 assert.match(appSource, /scheduleMenuTransitionStep\(completeStartSimulation,\s*620\)/);
 assert.match(appSource, /scheduleMenuTransitionStep\(\(\) => setMenuTransition\(null\),\s*1550\)/);
 assert.match(creditsSource, /PROJECT CREDITS/);
