@@ -16,6 +16,8 @@ import LoginRewardModal from './components/LoginRewardModal';
 import ElementalReactionsModal from './components/ElementalReactionsModal';
 import SquadronQuestLedger from './components/SquadronQuestLedger';
 import GameHome from './components/GameHome';
+import MainMenu from './components/MainMenu';
+import MainMenuSettingsModal from './components/MainMenuSettingsModal';
 import CharacterRoleBadge from './components/CharacterRoleBadge';
 import CloudAccountModal from './components/CloudAccountModal';
 import CloudSaveConflictModal from './components/CloudSaveConflictModal';
@@ -23,7 +25,7 @@ import { UsernameSettingsPanel } from './components/UsernameSettingsPanel';
 import { 
   Shield, Sparkles, Coins, HelpCircle, History, RefreshCw, Star, 
   BookOpen, Compass, Sword, Landmark, Hammer, Trophy, DollarSign, 
-  Info, Skull, LayoutGrid, CheckCircle2, Circle, Volume2, VolumeX, X, Play, LogOut, Award, Maximize2, Minimize2, Users, Lock, BarChart2, Cloud
+  Info, Skull, LayoutGrid, CheckCircle2, Circle, Volume2, VolumeX, X, Award, Maximize2, Minimize2, Users, Lock, BarChart2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AetheriaAudioEngine } from './utils/audio';
@@ -58,7 +60,8 @@ const ScreenLoadingFallback = () => (
   </div>
 );
 
-const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+  || new URLSearchParams(window.location.search).has('mobileGate');
 
 const requestMobileGateFullscreen = async () => {
   if (document.fullscreenElement) {
@@ -370,13 +373,25 @@ export default function App() {
   const [isTerminated, setIsTerminated] = useState(false);
   const [muteSfx, setMuteSfx] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [menuBgmEnabled, setMenuBgmEnabled] = useState(true);
+  const [menuTransition, setMenuTransition] = useState<'enter' | 'return' | null>(null);
+  const menuTransitionTimersRef = useRef<number[]>([]);
 
   const isDungeonLocked = !devCheatsEnabled && (saveState.playerLevel || 1) < 10;
   const isWishLocked = !devCheatsEnabled && (saveState.playerLevel || 1) < 5;
   const isShopLocked = !devCheatsEnabled && (saveState.playerLevel || 1) < 5;
   const currentPlayerLevel = saveState.playerLevel || 1;
-  const activeUiThemeId = normalizeUiTheme(saveState.activeUiTheme, currentPlayerLevel);
+  const activeUiThemeId = normalizeUiTheme(saveState.activeUiTheme, currentPlayerLevel, devCheatsEnabled);
   const activeUiTheme = getUiTheme(activeUiThemeId);
+
+  useEffect(() => () => {
+    menuTransitionTimersRef.current.forEach(timerId => window.clearTimeout(timerId));
+  }, []);
+
+  const scheduleMenuTransitionStep = (callback: () => void, delay: number) => {
+    const timerId = window.setTimeout(callback, delay);
+    menuTransitionTimersRef.current.push(timerId);
+  };
 
   // Fullscreen handler
   const toggleFullscreen = () => {
@@ -649,7 +664,7 @@ export default function App() {
     const theme = getUiTheme(themeId);
     AetheriaAudioEngine.playClick();
 
-    if (!isUiThemeUnlocked(themeId, level)) {
+    if (!isUiThemeUnlocked(themeId, level, devCheatsEnabled)) {
       showInGameAlert(
         `${theme.label} UI Theme unlocks at Player Level ${UI_THEME_UNLOCK_LEVEL}.`,
         `Current progress: Level ${level} / ${UI_THEME_UNLOCK_LEVEL}`,
@@ -1786,9 +1801,7 @@ export default function App() {
     });
   };
 
-  const handleStartSimulation = () => {
-    AetheriaAudioEngine.resume();
-    AetheriaAudioEngine.playClick();
+  const completeStartSimulation = () => {
     setEnteredSimulationThisSession(true);
     setActiveScreen('home');
 
@@ -1852,6 +1865,31 @@ export default function App() {
         }
       };
     });
+  };
+
+  const handleStartSimulation = () => {
+    if (menuTransition) return;
+    AetheriaAudioEngine.resume();
+    AetheriaAudioEngine.playClick();
+    setMenuTransition('enter');
+    scheduleMenuTransitionStep(completeStartSimulation, 520);
+    scheduleMenuTransitionStep(() => setMenuTransition(null), 780);
+    scheduleMenuTransitionStep(() => {
+      showInGameAlert(
+        `Welcome back, ${cloudAccount.profile?.username || 'Traveler'}.`,
+        undefined,
+        'success'
+      );
+    }, 900);
+  };
+
+  const handleReturnToMenu = () => {
+    if (menuTransition) return;
+    AetheriaAudioEngine.playClick();
+    setShowSettingsModal(false);
+    setMenuTransition('return');
+    scheduleMenuTransitionStep(() => setActiveScreen('menu'), 520);
+    scheduleMenuTransitionStep(() => setMenuTransition(null), 780);
   };
 
   const handleNavigateToDungeon = () => {
@@ -1932,6 +1970,15 @@ export default function App() {
             ? 'CHECKING'
             : 'LOCAL ONLY';
 
+  const menuTransitionOverlay = menuTransition && (
+    <div className="aether-menu-transition" role="status" aria-live="polite">
+      <div className="aether-menu-transition__sigil" aria-hidden="true" />
+      <span>Dawning Core</span>
+      <strong>{menuTransition === 'enter' ? 'Synchronizing World' : 'Returning to Main Menu'}</strong>
+      <div className="aether-menu-transition__bar" aria-hidden="true"><i /></div>
+    </div>
+  );
+
   const cloudAccountOverlays = (
     <>
       <CloudAccountModal
@@ -1969,29 +2016,33 @@ export default function App() {
   if (isMobile && mobileFullscreenGateOpen) {
     return (
       <div className="fixed inset-0 z-[99999] flex min-h-[100dvh] items-center justify-center bg-black px-6 text-white font-sans">
-        <div className="flex w-full max-w-sm flex-col items-center gap-6 text-center">
+        <div className="flex w-full max-w-sm flex-col items-center gap-5 text-center">
           <img
             src={gameLogoImg}
-            alt="ELEMENTAL BATTLEGROUND"
-            className="h-20 w-20 rounded-2xl object-cover shadow-[0_0_32px_rgba(255,255,255,0.25)] ring-1 ring-white/20"
+            alt=""
+            className="h-20 w-20 rounded-xl object-cover shadow-[0_0_32px_rgba(250,204,21,0.2)] ring-1 ring-amber-300/25"
           />
-          <div className="space-y-2">
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">Mobile Launch Gate</p>
-            <h1 className="text-2xl font-black uppercase tracking-[0.18em] text-white">Elemental Battleground</h1>
+          <div className="space-y-3">
+            <p className="text-[9px] font-black uppercase tracking-[0.32em] text-amber-200">Dawning Core Mobile Client</p>
+            <h1 className="font-display text-3xl font-black uppercase tracking-[0.08em] text-white">Enter Aetheria</h1>
+            <p className="text-xs font-semibold text-slate-400">Play in full screen before loading the game.</p>
           </div>
 
           <button
             type="button"
             onClick={handleMobileFullscreenGate}
-            className="w-full rounded-2xl border border-white/70 bg-black px-6 py-5 text-sm font-black uppercase tracking-[0.22em] text-white shadow-[0_0_28px_rgba(255,255,255,0.18)] transition-all active:scale-95"
+            className="flex min-h-14 w-full items-center justify-center gap-2 rounded-lg border border-amber-200 bg-amber-400 px-6 py-4 text-xs font-black uppercase tracking-[0.18em] text-slate-950 shadow-[0_0_28px_rgba(250,204,21,0.24)] transition-all active:scale-95"
           >
+            <Maximize2 className="h-4 w-4" />
             PLAY IN FULL SCREEN
           </button>
 
-          {mobileFullscreenGateMessage && (
+          {mobileFullscreenGateMessage ? (
             <p className="rounded-xl border border-red-400/40 bg-red-950/60 px-4 py-3 text-[11px] font-bold uppercase leading-relaxed tracking-wider text-red-100">
               {mobileFullscreenGateMessage}
             </p>
+          ) : (
+            <p className="font-mono text-[9px] uppercase tracking-wider text-slate-500">Tap once to enter the game.</p>
           )}
         </div>
       </div>
@@ -2039,36 +2090,34 @@ export default function App() {
   // ENHANCED IMMERSIVE MAIN MENU UI
   if (activeScreen === 'menu') {
     return (
-      <div className="mobile-main-menu-scroll min-h-screen text-slate-100 flex flex-col font-sans relative antialiased leading-normal overflow-x-hidden justify-between">
-        {/* Full-bleed generated background video (with 3% zoom to crop watermark) */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <video
-            src={mainMenuVideo}
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="absolute inset-0 w-full h-full object-cover scale-[1.03] select-none pointer-events-none"
-          />
-        </div>
-        {/* Dark vignette overlay for readability */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/80 pointer-events-none" />
-        {/* Subtle animated radial glow pulses on top */}
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-indigo-600/15 rounded-full blur-[120px] pointer-events-none animate-pulse" />
-        <div className="absolute bottom-0 left-1/4 w-[500px] h-[300px] bg-amber-500/10 rounded-full blur-[100px] pointer-events-none" />
-
-        {/* Top brand header */}
-        <header className="p-6 max-w-7xl mx-auto w-full flex justify-between items-center z-10">
-          <div className="flex items-center gap-2">
-            <img 
-              src={gameLogoImg}
-              alt="ELEMENTAL BATTLEGROUND"
-              className="w-10 h-10 rounded-xl object-cover shadow-[0_0_16px_rgba(251,191,36,0.5)] ring-1 ring-amber-400/30"
-            />
-            <span className="font-mono text-xs uppercase tracking-widest text-white drop-shadow font-bold">ELEMENTAL BATTLEGROUND</span>
-          </div>
-          <span className="text-[10px] bg-white/5 border border-white/10 text-slate-400 px-3 py-1 rounded font-mono uppercase">V1.2.0 COMPATIBLE</span>
-        </header>
+      <div className="relative min-h-screen overflow-x-hidden text-slate-100">
+        <MainMenu
+          backgroundVideo={mainMenuVideo}
+          logo={gameLogoImg}
+          username={cloudAccount.profile?.username ?? null}
+          email={cloudAccount.user?.email ?? null}
+          signedIn={Boolean(cloudAccount.user)}
+          syncLabel={cloudSyncLabel}
+          bgmEnabled={menuBgmEnabled}
+          onStart={handleStartSimulation}
+          onAccount={() => {
+            cloudAccount.openAccountModal();
+            AetheriaAudioEngine.playClick();
+          }}
+          onSettings={() => {
+            setShowSettingsModal(true);
+            AetheriaAudioEngine.playClick();
+          }}
+          onCredits={() => {
+            setShowCreditsModal(true);
+            AetheriaAudioEngine.playClick();
+          }}
+          onExit={() => setIsTerminated(true)}
+          onToggleBgm={() => {
+            AetheriaAudioEngine.playClick();
+            setMenuBgmEnabled(AetheriaAudioEngine.toggleMusic());
+          }}
+        />
 
         {/* Dynamic global error toast overlay */}
         <AnimatePresence>
@@ -2102,110 +2151,7 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        {/* Center menu stack */}
-        <main className="max-w-md w-full mx-auto px-6 py-12 text-center space-y-8 z-10">
-          <div className="flex flex-col items-center gap-4">
-            {/* Pulsing prompt for fullscreen */}
-            {!isMobile && !isFullscreen && (
-              <div 
-                onClick={() => {
-                  toggleFullscreen();
-                  AetheriaAudioEngine.playClick();
-                }}
-                className="animate-pop-pulse text-[8px] sm:text-[9.5px] font-black tracking-widest text-amber-400 bg-amber-400/10 border border-amber-400/30 px-3.5 py-1.5 rounded-full uppercase cursor-pointer select-none transition-all flex items-center gap-1.5 hover:bg-amber-400/20 active:scale-95 shadow-[0_0_15px_rgba(251,191,36,0.15)]"
-              >
-                <span className="inline-block animate-ping w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                PLAY IN FULL SCREEN FOR BEST EXPERIENCE!
-              </div>
-            )}
-
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.6 }}
-              className="inline-block p-1 bg-gradient-to-tr from-[#6366f1] to-amber-400 rounded-2xl shadow-[0_0_40px_rgba(99,102,241,0.25)] w-full"
-            >
-              <div className="bg-slate-900 border border-white/5 p-4 py-6 rounded-xl">
-                <span className="text-[9px] font-mono tracking-[0.3em] text-[#818cf8] uppercase block mb-1">Dawning Core Client</span>
-                <h1 className="text-2xl sm:text-3xl font-black tracking-[0.1em] text-white font-display leading-none">
-                  ELEMENTAL BATTLEGROUND
-                </h1>
-                <p className="text-[10px] text-slate-400 mt-2 font-mono uppercase tracking-wide">
-                  Realtime Elemental RPG Simulator
-                </p>
-              </div>
-            </motion.div>
-          </div>
-
-          {/* Action links list */}
-          <div className="flex flex-col gap-3 max-w-xs mx-auto">
-            <button
-              onClick={handleStartSimulation}
-              className="py-3.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs uppercase tracking-widest rounded-xl transition-all cursor-pointer shadow-lg shadow-amber-400/10 flex items-center justify-center gap-2 hover:scale-105 active:scale-95"
-            >
-              <Play className="w-4 h-4 fill-slate-950 text-slate-95" />
-              <span>START GAME</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                cloudAccount.openAccountModal();
-                AetheriaAudioEngine.playClick();
-              }}
-              className="flex min-h-14 items-center gap-3 rounded-xl border border-cyan-400/25 bg-slate-950/80 px-4 py-3 text-left shadow-[0_0_22px_rgba(34,211,238,0.08)] transition-all hover:border-cyan-300/50 hover:bg-slate-900 active:scale-[0.98]"
-            >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-cyan-400/25 bg-cyan-400/10">
-                <Cloud className="h-4 w-4 text-cyan-300" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-[10px] font-black uppercase tracking-wider text-white">CLOUD ACCOUNT</span>
-                {cloudAccount.user ? (
-                  <>
-                    <span className="mt-1 block truncate text-[9px] font-black text-cyan-100">
-                      {cloudAccount.profile?.username ?? (cloudAccount.profileStatus === 'loading' ? 'Loading player...' : 'Profile unavailable')}
-                    </span>
-                    <span className="mt-1 block truncate font-mono text-[8px] tracking-wider text-slate-400">
-                      {cloudAccount.user?.email}
-                    </span>
-                  </>
-                ) : (
-                  <span className="mt-1 block truncate font-mono text-[8px] uppercase tracking-wider text-slate-400">
-                    Sign in for cross-device saves
-                  </span>
-                )}
-              </span>
-              <span className={`shrink-0 rounded border px-2 py-1 font-mono text-[7px] font-black uppercase tracking-wider ${
-                cloudAccount.user ? 'border-cyan-400/25 bg-cyan-400/10 text-cyan-300' : 'border-white/10 bg-white/5 text-slate-500'
-              }`}>
-                {cloudSyncLabel}
-              </span>
-            </button>
-
-            <button
-              onClick={() => {
-                setShowCreditsModal(true);
-                AetheriaAudioEngine.playClick();
-              }}
-              className="py-3 bg-slate-900 hover:bg-slate-800 text-slate-205 border border-white/10 text-xs font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 hover:border-slate-700"
-            >
-              <Award className="w-4 h-4 text-emerald-400" />
-              <span>PROJECT CREDITS</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setIsTerminated(true);
-              }}
-              className="py-3 bg-red-950/80 hover:bg-red-900 text-rose-200 border border-red-500/60 hover:border-red-400 text-xs font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(239,68,68,0.15)] backdrop-blur-sm"
-            >
-              <LogOut className="w-4 h-4 text-rose-500" />
-              <span>LEAVE GAME</span>
-            </button>
-          </div>
-        </main>
-
-        <footer className="p-6 text-center text-[10px] text-slate-500 font-mono uppercase tracking-wider">
+        <footer className="hidden">
           © 2026 Aetheria AAA Game Development Studio. All modules loaded correctly.
         </footer>
 
@@ -2308,9 +2254,10 @@ export default function App() {
                 </div>
 
                 <div className="space-y-3.5 text-xs">
-                  <div className="p-2.5 bg-black/40 rounded border border-white/5">
-                    <span className="text-[8.5px] uppercase text-indigo-400 block font-semibold">Game Producer & Lead Architect</span>
-                    <span className="font-extrabold text-amber-400 text-sm">LAM ZHENG HONG</span>
+                  <div className="rounded-lg border border-amber-300/35 bg-amber-400/10 p-4 text-center shadow-[0_0_28px_rgba(250,204,21,0.12)]">
+                    <span className="block text-[8.5px] font-semibold uppercase tracking-[0.2em] text-amber-200">Created By</span>
+                    <span className="mt-2 block font-display text-2xl font-black text-white">lamzhenghong</span>
+                    <span className="mt-1 block font-mono text-[8px] uppercase tracking-wider text-slate-400">Game Producer and Lead Architect</span>
                   </div>
                   <div className="p-2.5 bg-black/40 rounded border border-white/5">
                     <span className="text-[8.5px] uppercase text-emerald-400 block font-semibold">Lead System Designer</span>
@@ -2396,6 +2343,27 @@ export default function App() {
             </motion.div>
           )}
         </AnimatePresence>
+        <MainMenuSettingsModal
+          open={showSettingsModal}
+          bgmVolume={bgmVolume}
+          sfxVolume={sfxVolume}
+          screenShakeEnabled={screenShakeEnabled}
+          devCheatsEnabled={devCheatsEnabled}
+          playerLevel={currentPlayerLevel}
+          activeThemeId={activeUiThemeId}
+          onClose={() => setShowSettingsModal(false)}
+          onBgmVolumeChange={(value) => {
+            setBgmVolume(value);
+            AetheriaAudioEngine.setBgmVolume(value / 100);
+          }}
+          onSfxVolumeChange={(value) => {
+            setSfxVolume(value);
+            AetheriaAudioEngine.setSfxVolume(value / 100);
+          }}
+          onScreenShakeChange={setScreenShakeEnabled}
+          onSelectTheme={handleSelectUiTheme}
+        />
+        {menuTransitionOverlay}
         {cloudAccountOverlays}
       </div>
     );
@@ -2403,6 +2371,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans relative antialiased leading-normal overflow-x-hidden">
+      {menuTransitionOverlay}
       {/* Immersive Game World Backdrop Simulation gradients */}
       <div className={`absolute inset-0 bg-gradient-to-b ${activeUiTheme.backdropClass} pointer-events-none`} />
       <div className={`absolute top-0 right-1/4 w-[600px] h-[400px] ${activeUiTheme.orbOneClass} rounded-full blur-[130px] pointer-events-none`} />
@@ -2445,10 +2414,7 @@ export default function App() {
         {/* Logo and Game System Title */}
         <div className="flex items-center gap-3">
           <button 
-            onClick={() => {
-              setActiveScreen('menu');
-              AetheriaAudioEngine.playClick();
-            }}
+            onClick={handleReturnToMenu}
             className="w-10 h-10 rounded-xl overflow-hidden shadow-[0_0_16px_rgba(251,191,36,0.5)] ring-1 ring-amber-400/30 hover:scale-105 active:scale-95 transition-all"
           >
             <img src={gameLogoImg} alt="E" className="w-full h-full object-cover" />
@@ -3926,7 +3892,7 @@ export default function App() {
 
                     <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                       {UI_THEMES.map(theme => {
-                        const isUnlocked = isUiThemeUnlocked(theme.id, currentPlayerLevel);
+                        const isUnlocked = isUiThemeUnlocked(theme.id, currentPlayerLevel, devCheatsEnabled);
                         const isActive = activeUiThemeId === theme.id;
                         return (
                           <button
@@ -4022,21 +3988,6 @@ export default function App() {
                         </button>
                       ))}
                     </div>
-                  </div>
-
-                  {/* Auto-Save Frequency */}
-                  <div className="flex justify-between items-center border-b border-white/5 pb-3">
-                    <div>
-                      <span className="text-[11px] text-slate-300 uppercase font-bold block">Auto-Save</span>
-                      <span className="text-[9px] text-slate-500">
-                        Saves locally immediately{cloudAccount.user ? ' and uploads after changes' : ''}
-                      </span>
-                    </div>
-                    <span className={`text-[10px] font-black px-2 py-1 rounded border uppercase tracking-wider ${
-                      cloudAccount.user
-                        ? 'text-cyan-300 bg-cyan-900/20 border-cyan-500/20'
-                        : 'text-emerald-400 bg-emerald-900/20 border-emerald-500/20'
-                    }`}>{cloudSyncLabel}</span>
                   </div>
 
                   {/* Performance Mode / FPS Limit */}
@@ -4165,11 +4116,7 @@ export default function App() {
                     </button>
 
                     <button
-                      onClick={() => {
-                        setActiveScreen('menu');
-                        setShowSettingsModal(false);
-                        AetheriaAudioEngine.playClick();
-                      }}
+                      onClick={handleReturnToMenu}
                       className="py-2.5 bg-indigo-650 hover:bg-indigo-550 text-white rounded-lg text-[10px] font-black uppercase tracking-wider active:scale-95 transition-all cursor-pointer text-center block shadow-md"
                     >
                       🔌 Return to Main Menu

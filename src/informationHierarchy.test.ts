@@ -61,7 +61,17 @@ assert.ok(activeScreenDeclaration, 'App must declare the active-screen state fro
 assert.match(activeScreenDeclaration[1], /'home'/, 'active-screen state must include the home screen');
 
 const startSimulationBody = extractBracedBlock(appSource, 'const handleStartSimulation = () =>');
-assert.match(startSimulationBody, /setActiveScreen\('home'\)/, 'starting the simulation must select the home screen');
+assert.match(
+  startSimulationBody,
+  /scheduleMenuTransitionStep\(completeStartSimulation/,
+  'starting the simulation must pass through the menu transition',
+);
+const completeStartSimulationBody = extractBracedBlock(appSource, 'const completeStartSimulation = () =>');
+assert.match(
+  completeStartSimulationBody,
+  /setActiveScreen\('home'\)/,
+  'completing the start transition must select the home screen',
+);
 
 assert.match(
   appSource,

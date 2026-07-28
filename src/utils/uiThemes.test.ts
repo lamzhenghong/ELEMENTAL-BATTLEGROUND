@@ -21,9 +21,11 @@ assert.deepEqual(
 assert.equal(isUiThemeUnlocked('Crimson', 19), false);
 assert.equal(isUiThemeUnlocked('Crimson', 20), true);
 assert.equal(isUiThemeUnlocked('Blue', 1), true);
+assert.equal(isUiThemeUnlocked('Crimson', 1, true), true);
 
 assert.equal(normalizeUiTheme('Void', 20), 'Void');
 assert.equal(normalizeUiTheme('Void', 19), 'Blue');
+assert.equal(normalizeUiTheme('Void', 1, true), 'Void');
 assert.equal(normalizeUiTheme('Unknown', 80), 'Blue');
 assert.equal(normalizeUiTheme(undefined, 80), 'Blue');
 

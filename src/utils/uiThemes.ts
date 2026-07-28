@@ -123,12 +123,13 @@ export const getAvailableUiThemes = (playerLevel: number): UiThemeDefinition[] =
   return UI_THEMES.filter(theme => theme.unlockLevel <= level);
 };
 
-export const isUiThemeUnlocked = (themeId: UiThemeId | string | undefined, playerLevel: number): boolean => {
+export const isUiThemeUnlocked = (themeId: UiThemeId | string | undefined, playerLevel: number, bypassLevelRequirement = false): boolean => {
   const theme = UI_THEMES.find(item => item.id === themeId);
   if (!theme) return false;
+  if (bypassLevelRequirement) return true;
   return theme.unlockLevel <= (Number.isFinite(playerLevel) ? playerLevel : 1);
 };
 
-export const normalizeUiTheme = (themeId: UiThemeId | string | undefined, playerLevel: number): UiThemeId => {
-  return isUiThemeUnlocked(themeId, playerLevel) ? themeId as UiThemeId : 'Blue';
+export const normalizeUiTheme = (themeId: UiThemeId | string | undefined, playerLevel: number, bypassLevelRequirement = false): UiThemeId => {
+  return isUiThemeUnlocked(themeId, playerLevel, bypassLevelRequirement) ? themeId as UiThemeId : 'Blue';
 };

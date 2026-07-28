@@ -11,6 +11,7 @@ assert.match(source, /PLAY IN FULL SCREEN/);
 assert.match(source, /isMobile\s*&&\s*mobileFullscreenGateOpen/);
 assert.match(source, /if\s*\(\s*isMobile\s*&&\s*mobileFullscreenGateOpen\s*\)\s*{\s*return;\s*}/);
 assert.match(source, /document\.documentElement\.requestFullscreen\(\)/);
-assert.match(source, /!\s*isMobile\s*&&\s*!\s*isFullscreen/);
+assert.match(source, /URLSearchParams\(window\.location\.search\)\.has\('mobileGate'\)/);
+assert.doesNotMatch(source, /PLAY IN FULL SCREEN FOR BEST EXPERIENCE/);
 
 console.log('app mobile fullscreen gate ok');

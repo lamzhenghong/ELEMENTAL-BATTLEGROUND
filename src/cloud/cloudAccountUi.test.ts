@@ -4,6 +4,7 @@ import { existsSync, readFileSync } from 'node:fs';
 const accountSource = readFileSync(new URL('../components/CloudAccountModal.tsx', import.meta.url), 'utf8');
 const conflictSource = readFileSync(new URL('../components/CloudSaveConflictModal.tsx', import.meta.url), 'utf8');
 const appSource = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
+const mainMenuSource = readFileSync(new URL('../components/MainMenu.tsx', import.meta.url), 'utf8');
 const copyButtonUrl = new URL('../components/CopyValueButton.tsx', import.meta.url);
 const usernameSettingsUrl = new URL('../components/UsernameSettingsPanel.tsx', import.meta.url);
 
@@ -53,10 +54,11 @@ assert.match(conflictSource, /max-h-\[92dvh\]/);
 assert.match(appSource, /username=\{cloudAccount\.profile\?\.username \?\? null\}/);
 assert.match(appSource, /playerId=\{cloudAccount\.profile\?\.publicId \?\? null\}/);
 assert.match(appSource, /profileStatus=\{cloudAccount\.profileStatus\}/);
-assert.match(
-  appSource,
-  /CLOUD ACCOUNT<\/span>[\s\S]*cloudAccount\.profile\?\.username[\s\S]*cloudAccount\.user\?\.email/
-);
+assert.match(mainMenuSource, /CLOUD ACCOUNT/);
+assert.match(mainMenuSource, /signedIn \? username/);
+assert.match(mainMenuSource, /signedIn \? email/);
+assert.match(appSource, /username=\{cloudAccount\.profile\?\.username \?\? null\}/);
+assert.match(appSource, /email=\{cloudAccount\.user\?\.email \?\? null\}/);
 assert.match(appSource, /UsernameSettingsPanel/);
 assert.match(appSource, /onChangeUsername=\{cloudAccount\.changeUsername\}/);
 assert.match(appSource, /mutationStatus=\{cloudAccount\.profileMutationStatus\}/);
