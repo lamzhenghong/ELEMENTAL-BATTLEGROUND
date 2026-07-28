@@ -1,5 +1,12 @@
 import type { EnemyArchetypeId } from './enemyArchetypes';
 
+export const SIPHON_DRAIN_INTERVAL_FRAMES = 5 * 60;
+export const SIPHON_ENERGY_DRAIN_RATIO = 0.05;
+
+export const getElapsedCombatFrames = (deltaMs: number, combatSpeed = 1) => (
+  Math.min(3, Math.max(0, deltaMs / (1000 / 60))) * Math.max(0, combatSpeed)
+);
+
 export const getArchetypeMoveDirection = (
   archetypeId: EnemyArchetypeId,
   distanceToPlayer: number
@@ -44,11 +51,25 @@ export const chooseChannelerSupportAction = (
   return ally ? { kind: 'buff', targetId: ally.id, amount: 180 } : null;
 };
 
-export const getSiphonEnergyTransfer = (currentEnergy: number, requestedAmount: number) => {
-  const stolenEnergy = Math.min(Math.max(0, currentEnergy), Math.max(0, requestedAmount));
+const roundEnergy = (value: number) => Math.round(value * 100) / 100;
+
+export const getSiphonEnergyTransfer = (currentEnergy: number) => {
+  const availableEnergy = Math.max(0, currentEnergy);
+  const stolenEnergy = roundEnergy(availableEnergy * SIPHON_ENERGY_DRAIN_RATIO);
   return {
-    remainingEnergy: Math.max(0, currentEnergy - stolenEnergy),
+    remainingEnergy: roundEnergy(Math.max(0, availableEnergy - stolenEnergy)),
     stolenEnergy
+  };
+};
+
+export const tickSiphonDrainTimer = (remainingFrames: number, elapsedFrames: number) => {
+  const nextRemainingFrames = Math.max(0, remainingFrames - Math.max(0, elapsedFrames));
+  if (nextRemainingFrames > 0) {
+    return { remainingFrames: nextRemainingFrames, shouldDrain: false };
+  }
+  return {
+    remainingFrames: SIPHON_DRAIN_INTERVAL_FRAMES,
+    shouldDrain: true
   };
 };
 

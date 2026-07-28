@@ -25,6 +25,9 @@ assert.deepEqual(
   ENEMY_ARCHETYPE_DEFINITIONS.map(definition => definition.color),
   ['#3b82f6', '#22c55e', '#f97316', '#a855f7', '#f8fafc', '#5b21b6', '#09090b', '#facc15']
 );
+const siphonDefinition = ENEMY_ARCHETYPE_DEFINITIONS.find(definition => definition.id === 'siphon');
+assert.match(siphonDefinition?.mechanic ?? '', /5%/);
+assert.match(siphonDefinition?.mechanic ?? '', /five seconds/i);
 
 const normalEnemy = applyEnemyArchetype({
   id: 'normal',

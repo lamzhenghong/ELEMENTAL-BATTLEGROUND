@@ -59,12 +59,15 @@ import {
   type EnemyArchetypeId
 } from '../utils/enemyArchetypes';
 import {
+  SIPHON_DRAIN_INTERVAL_FRAMES,
   chooseChannelerSupportAction,
   getArchetypeMoveDirection,
+  getElapsedCombatFrames,
   getSiphonEnergyTransfer,
   getStalkerAmbushPosition,
   isAttackerFlanking,
-  isRelicCarrierAtExit
+  isRelicCarrierAtExit,
+  tickSiphonDrainTimer
 } from '../utils/enemyArchetypeCombat';
 import {
   COMBO_TIMEOUT_FRAMES,
@@ -2390,10 +2393,14 @@ export default function CombatArena({
   };
 
   const restoreSiphonedEnergy = (enemy: any) => {
-    const stolenEnergy = Math.round(enemy.archetypeState?.stolenEnergy ?? 0);
+    const stolenEnergy = Math.max(
+      0,
+      Math.round((enemy.archetypeState?.stolenEnergy ?? 0) * 100) / 100
+    );
     if (!enemy.archetypeState) return;
     enemy.archetypeState.stolenEnergy = 0;
     enemy.archetypeState.beamFrames = 0;
+    enemy.archetypeState.abilityCooldownFrames = SIPHON_DRAIN_INTERVAL_FRAMES;
     if (stolenEnergy <= 0) {
       spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 28, 'BEAM BROKEN', '#e9d5ff', 11, true);
       return;
@@ -2402,7 +2409,10 @@ export default function CombatArena({
     setCombatParty(party => party.map((character, index) => index === currentPartyIndex
       ? {
           ...character,
-          ultimateEnergy: Math.min(character.ultimateMaxEnergy, character.ultimateEnergy + stolenEnergy)
+          ultimateEnergy: Math.min(
+            character.ultimateMaxEnergy,
+            Math.round((character.ultimateEnergy + stolenEnergy) * 100) / 100
+          )
         }
       : character
     ));
@@ -3771,39 +3781,42 @@ export default function CombatArena({
             usesGenericTelegraph = false;
             if ((archetypeState.beamFrames ?? 0) > 0) {
               suppressGenericMovement = true;
-              archetypeState.beamFrames = Math.max(0, (archetypeState.beamFrames ?? 0) - combatSpeed);
               if (distanceToPlayer > 360) {
                 restoreSiphonedEnergy(enemy);
               } else {
-                const drainBucket = Math.floor((archetypeState.beamFrames ?? 0) / 24);
-                if (enemy.siphonDrainBucket !== drainBucket) {
-                  enemy.siphonDrainBucket = drainBucket;
+                const drainTimer = tickSiphonDrainTimer(
+                  archetypeState.beamFrames ?? SIPHON_DRAIN_INTERVAL_FRAMES,
+                  getElapsedCombatFrames(delta, combatSpeed)
+                );
+                archetypeState.beamFrames = drainTimer.remainingFrames;
+                if (drainTimer.shouldDrain) {
                   const { combatParty: currentParty, activePartyIndex: currentPartyIndex } = loopStateRef.current;
                   const activeCharacter = currentParty[currentPartyIndex];
                   if (activeCharacter) {
-                    const transfer = getSiphonEnergyTransfer(
-                      activeCharacter.ultimateEnergy,
-                      enemy.type === 'Elite' ? 7 : 5
-                    );
+                    const transfer = getSiphonEnergyTransfer(activeCharacter.ultimateEnergy);
                     if (transfer.stolenEnergy > 0) {
-                      archetypeState.stolenEnergy = (archetypeState.stolenEnergy ?? 0) + transfer.stolenEnergy;
+                      archetypeState.stolenEnergy = Math.round(
+                        ((archetypeState.stolenEnergy ?? 0) + transfer.stolenEnergy) * 100
+                      ) / 100;
                       setCombatParty(party => party.map((character, index) => index === currentPartyIndex
                         ? { ...character, ultimateEnergy: transfer.remainingEnergy }
                         : character
                       ));
-                      spawnTextRef.current(playerRef.current.x, playerRef.current.y - 42, `-${transfer.stolenEnergy} ULT`, '#d8b4fe', 10);
+                      spawnTextRef.current(
+                        playerRef.current.x,
+                        playerRef.current.y - 42,
+                        `-${transfer.stolenEnergy} ULT (5%)`,
+                        '#d8b4fe',
+                        10
+                      );
                     }
                   }
                 }
               }
-              if ((archetypeState.beamFrames ?? 0) <= 0) {
-                archetypeState.stolenEnergy = 0;
-              }
             } else if (!targetStunned && archetypeState.abilityCooldownFrames <= 0 && distanceToPlayer <= 340) {
-              archetypeState.beamFrames = enemy.type === 'Elite' ? 168 : 144;
+              archetypeState.beamFrames = SIPHON_DRAIN_INTERVAL_FRAMES;
               archetypeState.stolenEnergy = 0;
-              enemy.siphonDrainBucket = null;
-              archetypeState.abilityCooldownFrames = enemy.type === 'Elite' ? 270 : 330;
+              archetypeState.abilityCooldownFrames = SIPHON_DRAIN_INTERVAL_FRAMES;
               spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 30, 'ULTIMATE SIPHON', '#d8b4fe', 12, true);
             }
           }

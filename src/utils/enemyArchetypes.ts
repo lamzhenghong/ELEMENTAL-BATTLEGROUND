@@ -82,7 +82,7 @@ export const ENEMY_ARCHETYPE_DEFINITIONS: readonly EnemyArchetypeDefinition[] = 
     id: 'siphon',
     name: 'Siphon',
     color: '#a855f7',
-    mechanic: 'Channels a telegraphed beam that steals Ultimate energy.',
+    mechanic: 'Channels a telegraphed beam that steals 5% of current Ultimate energy every five seconds.',
     counter: 'Damage it to break the beam and recover stolen energy.',
     visual: 'Purple energy veins and orbiting particles'
   },

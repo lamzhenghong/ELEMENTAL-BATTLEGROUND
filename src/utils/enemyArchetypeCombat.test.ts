@@ -1,11 +1,15 @@
 import assert from 'node:assert/strict';
 import {
+  SIPHON_DRAIN_INTERVAL_FRAMES,
+  SIPHON_ENERGY_DRAIN_RATIO,
   chooseChannelerSupportAction,
   getArchetypeMoveDirection,
+  getElapsedCombatFrames,
   getSiphonEnergyTransfer,
   getStalkerAmbushPosition,
   isAttackerFlanking,
-  isRelicCarrierAtExit
+  isRelicCarrierAtExit,
+  tickSiphonDrainTimer
 } from './enemyArchetypeCombat';
 
 assert.equal(getArchetypeMoveDirection('artillery', 120), -1);
@@ -31,8 +35,21 @@ assert.deepEqual(
   { kind: 'heal', targetId: 'wounded', amount: 180 }
 );
 
-assert.deepEqual(getSiphonEnergyTransfer(8, 12), { remainingEnergy: 0, stolenEnergy: 8 });
-assert.deepEqual(getSiphonEnergyTransfer(80, 12), { remainingEnergy: 68, stolenEnergy: 12 });
+assert.equal(SIPHON_DRAIN_INTERVAL_FRAMES, 300);
+assert.equal(SIPHON_ENERGY_DRAIN_RATIO, 0.05);
+assert.deepEqual(getSiphonEnergyTransfer(80), { remainingEnergy: 76, stolenEnergy: 4 });
+assert.deepEqual(getSiphonEnergyTransfer(15), { remainingEnergy: 14.25, stolenEnergy: 0.75 });
+assert.deepEqual(tickSiphonDrainTimer(300, 299), {
+  remainingFrames: 1,
+  shouldDrain: false
+});
+assert.deepEqual(tickSiphonDrainTimer(1, 1), {
+  remainingFrames: 300,
+  shouldDrain: true
+});
+assert.equal(getElapsedCombatFrames(1000 / 60), 1);
+assert.equal(getElapsedCombatFrames(1000 / 30), 2);
+assert.equal(getElapsedCombatFrames(1000), 3, 'long tab stalls must not trigger multiple instant drains');
 
 assert.deepEqual(
   getStalkerAmbushPosition({ x: 500, y: 500, lastDirX: 1, lastDirY: 0 }, 90),
