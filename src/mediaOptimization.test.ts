@@ -12,13 +12,15 @@ const bgmFiles = readdirSync(bgmDir)
   .filter((file) => file.toLowerCase().endsWith('.mp3'))
   .sort();
 const bgmSource = readFileSync(join(srcDir, 'utils', 'bgm.ts'), 'utf8');
+const specialUltimateBgmSource = readFileSync(join(srcDir, 'utils', 'specialUltimateBgm.ts'), 'utf8');
+const fileBackedBgmSources = `${bgmSource}\n${specialUltimateBgmSource}`;
 
-assert.equal(bgmFiles.length, 13, 'the centralized BGM catalog must keep all 13 tracks');
+assert.equal(bgmFiles.length, 14, 'the game must keep 13 context tracks and one Special Ultimate track');
 for (const file of bgmFiles) {
   assert.match(
-    bgmSource,
+    fileBackedBgmSources,
     new RegExp(file.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
-    `BGM catalog must still reference ${file}`
+    `a file-backed audio player must still reference ${file}`
   );
 }
 
@@ -27,8 +29,8 @@ const totalBgmBytes = bgmFiles.reduce(
   0
 );
 assert.ok(
-  totalBgmBytes < 48 * 1024 * 1024,
-  `optimized BGM bundle must stay below 48 MiB, received ${(totalBgmBytes / 1024 / 1024).toFixed(2)} MiB`
+  totalBgmBytes < 52 * 1024 * 1024,
+  `optimized BGM bundle must stay below 52 MiB, received ${(totalBgmBytes / 1024 / 1024).toFixed(2)} MiB`
 );
 
 const activeMenuVideo = join(assetsDir, 'main_menu_bg.mp4');

@@ -5,10 +5,12 @@ import {
   SPECIAL_ULTIMATE_BGM_NAME,
   SPECIAL_ULTIMATE_THEME_DURATION_MS,
 } from './utils/audio';
+import { SPECIAL_ULTIMATE_BGM_URL } from './utils/specialUltimateBgm';
 
 assert.equal(SPECIAL_ULTIMATE_BGM_NAME, 'Resonance of Aetheria');
 assert.ok(SPECIAL_ULTIMATE_THEME_DURATION_MS >= 8000);
 assert.ok(SPECIAL_ULTIMATE_THEME_DURATION_MS <= 12000);
+assert.match(SPECIAL_ULTIMATE_BGM_URL, /SPECIAL%20ULTIMATE%20BGM\.mp3(?:$|\?)/i);
 
 assert.equal(getBgmVolumeMultiplierForDevice(false), 1);
 assert.ok(getBgmVolumeMultiplierForDevice(true) > 1);
