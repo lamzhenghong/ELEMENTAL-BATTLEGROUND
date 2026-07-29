@@ -33,6 +33,16 @@ for (let chapter = 1; chapter <= 10; chapter += 1) {
     true,
     `${stageId} dialogue must identify the same campaign boss`
   );
+
+  const fallbackDialogue = getStageDialogue(stageId);
+  const fallbackBossLines = [
+    ...(fallbackDialogue.before ?? []),
+    ...(fallbackDialogue.after ?? []),
+  ].filter((line) => line.speaker === definition.name);
+  assert.ok(
+    fallbackBossLines.length > 0,
+    `${stageId} fallback dialogue must use the shared campaign boss name`,
+  );
 }
 
 assert.deepEqual(

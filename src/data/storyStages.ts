@@ -30,6 +30,13 @@ export const STORY_CHAPTERS = [
 const CHAPTER_1_BOSS = CAMPAIGN_BOSSES['1-5'];
 const CHAPTER_2_BOSS = CAMPAIGN_BOSSES['2-5'];
 const CHAPTER_3_BOSS = CAMPAIGN_BOSSES['3-5'];
+const CHAPTER_4_BOSS = CAMPAIGN_BOSSES['4-5'];
+const CHAPTER_5_BOSS = CAMPAIGN_BOSSES['5-5'];
+const CHAPTER_6_BOSS = CAMPAIGN_BOSSES['6-5'];
+const CHAPTER_7_BOSS = CAMPAIGN_BOSSES['7-5'];
+const CHAPTER_8_BOSS = CAMPAIGN_BOSSES['8-5'];
+const CHAPTER_9_BOSS = CAMPAIGN_BOSSES['9-5'];
+const CHAPTER_10_BOSS = CAMPAIGN_BOSSES['10-5'];
 
 export const STORY_STAGES: Record<string, StoryStageSpec> = {
   // CHAPTER 1
@@ -384,16 +391,16 @@ export const STORY_DIALOGUES: Record<string, { before?: StoryDialogueLine[], aft
     ],
     after: [
       { speaker: 'Eldric Thorne', element: 'Anemo', text: 'The sentinel has returned to dust. Let\'s translate the remaining lines.' },
-      { speaker: 'Marina', element: 'Hydro', text: '"When the stars fade, the Chronos Monarch shall reset the timeline..." It\'s a warning!' }
+      { speaker: 'Marina', element: 'Hydro', text: `"When the stars fade, ${CHAPTER_9_BOSS.name} shall reset the timeline..." It's a warning!` }
     ]
   },
   '4-5': {
     before: [
-      { speaker: 'Void Overlord', element: 'Geo', text: 'I AM THE OBSIDIAN WILL OF THE ABYSS. CONSUME THEIR LIGHT!', effect: 'shake' },
+      { speaker: CHAPTER_4_BOSS.name, element: 'Geo', text: 'I AM THE OBSIDIAN WILL OF THE ABYSS. CONSUME THEIR LIGHT!', effect: 'shake' },
       { speaker: 'Marina', element: 'Hydro', text: 'It\'s pulling us into a gravity well! We must burst it down before we lose all light!' }
     ],
     after: [
-      { speaker: 'Void Overlord', element: 'Geo', text: 'My shadow... returns... to the core...', effect: 'flash' },
+      { speaker: CHAPTER_4_BOSS.name, element: 'Geo', text: 'My shadow... returns... to the core...', effect: 'flash' },
       { speaker: 'Eldric Thorne', element: 'Anemo', text: 'The chasm is collapsing, but look! A ladder of pure light has appeared.' }
     ]
   },
@@ -419,11 +426,11 @@ export const STORY_DIALOGUES: Record<string, { before?: StoryDialogueLine[], aft
   },
   '5-5': {
     before: [
-      { speaker: 'Eternity Knight', element: 'Geo', text: 'I AM THE GUARD OF THE SACRED STARDUST CORE. PREPARE YOUR TRIAL!', effect: 'shake' },
+      { speaker: CHAPTER_5_BOSS.name, element: 'Geo', text: 'I AM THE GUARD OF THE SACRED STARDUST CORE. PREPARE YOUR TRIAL!', effect: 'shake' },
       { speaker: 'Eldric Thorne', element: 'Anemo', text: 'Its defense shield is reinforced with stardust! Marina, overload its barriers with continuous swirled reactions!' }
     ],
     after: [
-      { speaker: 'Eternity Knight', element: 'Geo', text: 'Your resolve... is... eternal...', effect: 'flash' },
+      { speaker: CHAPTER_5_BOSS.name, element: 'Geo', text: 'Your resolve... is... eternal...', effect: 'flash' },
       { speaker: 'Marina', element: 'Hydro', text: 'The stardust core has opened a portal of volcanic heat!' }
     ]
   },
@@ -449,11 +456,11 @@ export const STORY_DIALOGUES: Record<string, { before?: StoryDialogueLine[], aft
   },
   '6-5': {
     before: [
-      { speaker: 'Frostfire Wyrm', element: 'Pyro', text: 'ROOOOOOOAR! METALLIC FLAME AND ICE SHATTER ALL WHO INTRUDE!', effect: 'shake' },
+      { speaker: CHAPTER_6_BOSS.name, element: 'Pyro', text: 'ROOOOOOOAR! METALLIC FLAME AND ICE SHATTER ALL WHO INTRUDE!', effect: 'shake' },
       { speaker: 'Marina', element: 'Hydro', text: 'A dragon of absolute frost and lava! It\'s shifting elements every few seconds! Watch the color of its core!' }
     ],
     after: [
-      { speaker: 'Frostfire Wyrm', element: 'Pyro', text: 'Frost... melts... fire... burns... out...', effect: 'flash' },
+      { speaker: CHAPTER_6_BOSS.name, element: 'Pyro', text: 'Frost... melts... fire... burns... out...', effect: 'flash' },
       { speaker: 'Eldric Thorne', element: 'Anemo', text: 'The dragon has disintegrated. Let\'s extract the Frostfire Core and climb the mountain spires.' }
     ]
   },
@@ -479,11 +486,11 @@ export const STORY_DIALOGUES: Record<string, { before?: StoryDialogueLine[], aft
   },
   '7-5': {
     before: [
-      { speaker: 'Skyward Garuda', element: 'Anemo', text: 'SCREEECH! HUMANS, THE SKY IS THE REALM OF THE ASCENDANT ONES!', effect: 'shake' },
+      { speaker: CHAPTER_7_BOSS.name, element: 'Anemo', text: 'SCREEECH! HUMANS, THE SKY IS THE REALM OF THE ASCENDANT ONES!', effect: 'shake' },
       { speaker: 'Eldric Thorne', element: 'Anemo', text: 'It\'s the lord of the skies! Ground its flight with heavy ice and rock elements!' }
     ],
     after: [
-      { speaker: 'Skyward Garuda', element: 'Anemo', text: 'The wind... belongs... to... all...', effect: 'flash' },
+      { speaker: CHAPTER_7_BOSS.name, element: 'Anemo', text: 'The wind... belongs... to... all...', effect: 'flash' },
       { speaker: 'Marina', element: 'Hydro', text: 'The storm has cleared. The sun is shining directly onto the volcanic crucible below.' }
     ]
   },
@@ -509,11 +516,11 @@ export const STORY_DIALOGUES: Record<string, { before?: StoryDialogueLine[], aft
   },
   '8-5': {
     before: [
-      { speaker: 'Molten Overlord', element: 'Pyro', text: 'I AM THE TECTONIC FURY OF AETHERIA. DROWN IN THE MAGMA MATRIX!', effect: 'shake' },
+      { speaker: CHAPTER_8_BOSS.name, element: 'Pyro', text: 'I AM THE TECTONIC FURY OF AETHERIA. DROWN IN THE MAGMA MATRIX!', effect: 'shake' },
       { speaker: 'Marina', element: 'Hydro', text: 'It\'s drawing lava from the core! Eldric, swirl my hydro vaporize drops onto its hot shield!' }
     ],
     after: [
-      { speaker: 'Molten Overlord', element: 'Pyro', text: 'The fire... fades... to ash...', effect: 'flash' },
+      { speaker: CHAPTER_8_BOSS.name, element: 'Pyro', text: 'The fire... fades... to ash...', effect: 'flash' },
       { speaker: 'Eldric Thorne', element: 'Anemo', text: 'The volcanic core is stabilized. But a temporal rift is tearing open in front of us!' }
     ]
   },
@@ -539,11 +546,11 @@ export const STORY_DIALOGUES: Record<string, { before?: StoryDialogueLine[], aft
   },
   '9-5': {
     before: [
-      { speaker: 'Chronos Monarch', element: 'Electro', text: 'MORTALS. TIME IS MY CANVAS. YOU SHALL BE ERASED FROM EXISTENCE!', effect: 'shake' },
+      { speaker: CHAPTER_9_BOSS.name, element: 'Electro', text: 'MORTALS. TIME IS MY CANVAS. YOU SHALL BE ERASED FROM EXISTENCE!', effect: 'shake' },
       { speaker: 'Marina', element: 'Hydro', text: 'It\'s accelerating our decay! Eldric, we must end this before the dimensional rift collapses!' }
     ],
     after: [
-      { speaker: 'Chronos Monarch', element: 'Electro', text: 'Time... flows... forward... once... more...', effect: 'flash' },
+      { speaker: CHAPTER_9_BOSS.name, element: 'Electro', text: 'Time... flows... forward... once... more...', effect: 'flash' },
       { speaker: 'Eldric Thorne', element: 'Anemo', text: 'The dimensional rifts are closed. The central engine of Aetheria lies open.' }
     ]
   },
@@ -569,11 +576,11 @@ export const STORY_DIALOGUES: Record<string, { before?: StoryDialogueLine[], aft
   },
   '10-5': {
     before: [
-      { speaker: 'Eldric Core Prime', element: 'Anemo', text: 'I AM THE SYSTEM INTELLIGENCE OF AETHERIA. INITIATING FINAL STABILIZATION VERIFICATION TRIAL.', effect: 'shake' },
+      { speaker: CHAPTER_10_BOSS.name, element: 'Anemo', text: 'I AM THE SYSTEM INTELLIGENCE OF AETHERIA. INITIATING FINAL STABILIZATION VERIFICATION TRIAL.', effect: 'shake' },
       { speaker: 'Marina', element: 'Hydro', text: 'This is it, Eldric! The ultimate test of our elements! For the future of Aetheria!' }
     ],
     after: [
-      { speaker: 'Eldric Core Prime', element: 'Anemo', text: 'VERIFICATION PASS. THE ELEMENTAL CORE IS STABILIZED. SAVIORS OF AETHERIA.', effect: 'flash' },
+      { speaker: CHAPTER_10_BOSS.name, element: 'Anemo', text: 'VERIFICATION PASS. THE ELEMENTAL CORE IS STABILIZED. SAVIORS OF AETHERIA.', effect: 'flash' },
       { speaker: 'Eldric Thorne', element: 'Anemo', text: 'We did it. Aetheria is reforged. The elemental matrix is fully synchronized.' },
       { speaker: 'Marina', element: 'Hydro', text: 'Yes... the stardust has finally found its home.' }
     ]

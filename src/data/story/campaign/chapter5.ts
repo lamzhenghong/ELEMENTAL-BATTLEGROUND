@@ -124,7 +124,7 @@ export const CHAPTER_5_PACK = {
       backgroundId: 'chapter-5',
       recommendedLevel: 61,
       difficulty: 'Normal',
-      desc: "Reach the clockless summit where every route reveals the Eternity Knight's final trial.",
+      desc: `Reach the clockless summit where every route reveals ${BOSS.name}'s final trial.`,
       enemies: [
         { name: 'Chronoweaver', type: 'Elite', element: 'Electro', level: 61 },
         { name: 'Stardust Adjudicator', type: 'Normal', element: 'Geo', level: 61 },
