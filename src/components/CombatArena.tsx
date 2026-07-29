@@ -29,6 +29,7 @@ import MobileControls from './MobileControls';
 import CharacterRoleBadge from './CharacterRoleBadge';
 import { FloatingDamageTextDOM } from './combat/CombatVisuals';
 import { drawEnemyArchetypeEnemy } from './combat/enemyArchetypeVfx';
+import { drawBossModel } from './combat/bossModelRenderer';
 import {
   BOSS_TEMPLATES,
   CombatParticle,
@@ -50,6 +51,10 @@ import {
   getRandomEnemyVisualVariant,
   sanitizeEnemyName
 } from '../utils/enemyVisuals';
+import {
+  getBossIdentityForEnemy,
+  getWorldBossIdentityForProfile
+} from '../utils/bossIdentities';
 import {
   applyEnemyArchetype,
   applyRelicCarrierArchetype,
@@ -1295,13 +1300,15 @@ export default function CombatArena({
 
     const spawnRandomBoss = (id: string, scale: number) => {
       const bossTpl = BOSS_TEMPLATES[Math.floor(Math.random() * BOSS_TEMPLATES.length)];
+      const bossIdentity = getWorldBossIdentityForProfile(bossTpl.bossType);
       const hp = Math.round(bossTpl.maxHp * scale);
       return {
         id,
-        name: bossTpl.name,
+        name: bossIdentity.name,
         type: 'Boss' as const,
         bossType: bossTpl.bossType,
-        color: bossTpl.color,
+        bossIdentityId: bossIdentity.id,
+        color: bossIdentity.color,
         x: centerX,
         y: centerY - 80,
         radius: bossTpl.radius,
@@ -1331,13 +1338,15 @@ export default function CombatArena({
         if (enemySpec.type === 'Boss') {
           setSpawnerPreset('boss');
           const bossTpl = BOSS_TEMPLATES.find(b => b.bossType === enemySpec.bossType) || BOSS_TEMPLATES[0];
+          const bossIdentity = getBossIdentityForEnemy(enemySpec.name, bossTpl.bossType);
           const hp = Math.round(bossTpl.maxHp * scaleMultiplier);
           const boss = {
             id: enemyId,
-            name: sanitizeEnemyName(enemySpec.name) || bossTpl.name,
+            name: enemySpec.name.trim() || bossIdentity.name,
             type: 'Boss' as const,
             bossType: bossTpl.bossType,
-            color: bossTpl.color,
+            bossIdentityId: bossIdentity.id,
+            color: bossIdentity.color,
             x: centerX,
             y: centerY - 80,
             radius: bossTpl.radius,
@@ -4303,6 +4312,8 @@ export default function CombatArena({
         ctx.save();
         if (enemy.type !== 'Boss' && enemy.archetypeId && enemy.archetypeState) {
           drawEnemyArchetypeEnemy(ctx, enemy, now, isMobile);
+        } else if (enemy.type === 'Boss') {
+          drawBossModel(ctx, enemy, now, isMobile);
         } else {
           ctx.beginPath();
           ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);

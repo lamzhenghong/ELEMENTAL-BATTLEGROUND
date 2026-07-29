@@ -154,4 +154,4 @@ export const BOSS_TEMPLATES = [
     maxHp: 23000,
     speed: 0.8
   }
-];
+] as const;

@@ -37,7 +37,12 @@ assert.match(
 );
 assert.match(wikiSource, /activeTab === 'enemies'/);
 assert.match(wikiSource, /ENEMY_ARCHETYPE_DEFINITIONS\.map/);
-assert.match(wikiSource, /Boss enemies keep their existing boss mechanics and visuals/);
+assert.match(wikiSource, /Switch to Boss/);
+assert.match(wikiSource, /Switch to Enemies/);
+assert.match(wikiSource, /getBossIdentityGroups/);
+assert.match(wikiSource, /<BossModelPreview identity=\{identity\} \/>/);
+assert.match(wikiSource, /Skill \/ Mechanic/);
+assert.match(wikiSource, />\s*Counter\s*</);
 assert.match(wikiSource, /<EnemyArchetypeModelPreview archetype=\{archetype\} \/>/);
 assert.doesNotMatch(wikiSource, />\s*Enemy Index\s*</);
 assert.doesNotMatch(wikiSource, />\s*Enemy Archetype Index\s*</);
