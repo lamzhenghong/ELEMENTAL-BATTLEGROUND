@@ -32,7 +32,7 @@ const manifests = [
   {
     pack: packs[0],
     chapter: 9,
-    names: ['Paradox Shore', 'Forked Horizon', 'City That Never Was', 'Last Stable Second', 'Chronos Monarch Boss'],
+    names: ['Paradox Shore', 'Forked Horizon', 'City That Never Was', 'Last Stable Second', 'Solvane, Monarch of the Final Second'],
     locations: ['Paradox Verge', 'Forked Horizon', 'Unwritten Capital', 'Last Stable Second', "Monarch's Clockface"],
     enemyNames: ['Rift Mimic', 'Paradox Shade', 'Unwritten Citizen', 'Looping Pursuer', 'Glitch Sentinel', 'Timeline Bailiff'],
     eliteNames: ['Glitch Sentinel', 'Timeline Bailiff'],
@@ -45,7 +45,7 @@ const manifests = [
   {
     pack: packs[1],
     chapter: 10,
-    names: ['Prime Orbit Vestibule', 'Sevenfold Trial', 'Hall of Choosing', 'Catalyst Mirror', 'Eldric Core Prime Boss'],
+    names: ['Prime Orbit Vestibule', 'Sevenfold Trial', 'Hall of Choosing', 'Catalyst Mirror', 'Orison Prime, Keeper of the Empty Throne'],
     locations: ['Prime Orbit Vestibule', 'Sevenfold Matrix', 'Stewardship Hall', 'Catalyst Mirror', 'Prime Defense Core'],
     enemyNames: ['Orbit Custodian', 'Protocol Shade', 'Divine Simulacrum', 'Consensus Warden', 'Sevenfold Examiner', 'Catalyst Replica'],
     eliteNames: ['Sevenfold Examiner', 'Catalyst Replica'],
@@ -118,10 +118,24 @@ for (const manifest of manifests) {
 }
 
 assert.deepEqual(getStageSpec('9-5').enemies, [
-  { name: 'Colossus of Pyro', type: 'Boss', element: 'Pyro', level: 103, bossType: 'fire_dragon' },
+  {
+    name: 'Solvane, Monarch of the Final Second',
+    type: 'Boss',
+    element: 'Pyro',
+    level: 103,
+    bossType: 'fire_dragon',
+    campaignMechanicId: 'one-perfect-second',
+  },
 ]);
 assert.deepEqual(getStageSpec('10-5').enemies, [
-  { name: 'Colossus of Hydro', type: 'Boss', element: 'Hydro', level: 113, bossType: 'ice_golem' },
+  {
+    name: 'Orison Prime, Keeper of the Empty Throne',
+    type: 'Boss',
+    element: 'Hydro',
+    level: 113,
+    bossType: 'ice_golem',
+    campaignMechanicId: 'sevenfold-convergence',
+  },
 ]);
 
 for (let chapter = 4; chapter <= 10; chapter += 1) {

@@ -1,5 +1,8 @@
 import { getCampaignReward } from '../balance';
+import { CAMPAIGN_BOSSES, createCampaignBossEnemySpec } from '../campaignBosses';
 import type { StoryChapterPack } from '../types';
+
+const BOSS = CAMPAIGN_BOSSES['8-5'];
 
 export const CHAPTER_8_PACK = {
   chapter: 8,
@@ -140,18 +143,16 @@ export const CHAPTER_8_PACK = {
     '8-5': {
       id: '8-5',
       chapter: 8,
-      name: 'Molten Overlord Boss',
+      name: BOSS.name,
       location: 'Planetary Anvil',
       backgroundId: 'chapter-8',
       recommendedLevel: 93,
       difficulty: 'Boss',
       desc: 'Defeat the fixed guardian that would bind the reclaimed forge to another master.',
-      enemies: [
-        { name: 'Colossus of Dendro', type: 'Boss', element: 'Dendro', level: 93, bossType: 'thunderbird' },
-      ],
+      enemies: [createCampaignBossEnemySpec('8-5', 93)],
       firstClearRewards: getCampaignReward(8, 5),
       beforeSlides: [
-        { speaker: 'Colossus of Dendro', element: 'Dendro', text: 'ALL FIRE REQUIRES A MASTER.' },
+        { speaker: BOSS.name, element: BOSS.element, text: 'ALL FIRE REQUIRES A MASTER.' },
         { speaker: 'Forgekeeper Iona', element: 'Pyro', text: 'Its roots carried the first command through every orbit chain.' },
         { speaker: 'Eldric Thorne', element: 'Anemo', text: 'Then we sever the command and leave the flame a choice.' },
       ],

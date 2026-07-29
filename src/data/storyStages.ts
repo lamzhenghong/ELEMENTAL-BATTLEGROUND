@@ -3,6 +3,7 @@ import { PLAYABLE_CHARACTERS } from './characters';
 import { getStageSpec as getResolvedStageSpec, getStoryScene } from './story';
 import { getCampaignReward } from './story/balance';
 import { generateFutureBoss } from './story/bossRegistry';
+import { CAMPAIGN_BOSSES, createCampaignBossEnemySpec } from './story/campaignBosses';
 import type { StoryDialogueLine, StoryEnemySpec, StoryStageReward, StoryStageSpec } from './story/types';
 
 export type { StoryDialogueLine, StoryEnemySpec, StoryStageReward, StoryStageSpec } from './story/types';
@@ -25,6 +26,10 @@ export const STORY_CHAPTERS = [
   { id: 9, title: 'Dimensional Rift', desc: 'The space-time matrix is breaking down! Navigate chaotic rifts featuring elemental elements combined.' },
   { id: 10, title: 'Aetheria Reforged', desc: 'The ultimate battle to stabilize the core of the element matrix. Face the original creators in final trials.' }
 ];
+
+const CHAPTER_1_BOSS = CAMPAIGN_BOSSES['1-5'];
+const CHAPTER_2_BOSS = CAMPAIGN_BOSSES['2-5'];
+const CHAPTER_3_BOSS = CAMPAIGN_BOSSES['3-5'];
 
 export const STORY_STAGES: Record<string, StoryStageSpec> = {
   // CHAPTER 1
@@ -68,11 +73,9 @@ export const STORY_STAGES: Record<string, StoryStageSpec> = {
     firstClearRewards: { gems: 65, mora: 3500, charXp: 3 }
   },
   '1-5': {
-    id: '1-5', chapter: 1, name: 'Ruins Core Boss', recommendedLevel: 10, difficulty: 'Boss',
+    id: '1-5', chapter: 1, name: CHAPTER_1_BOSS.name, recommendedLevel: 10, difficulty: 'Boss',
     desc: 'The central energy core is guarded by a massive Calamity Pyro Dragon. Defeat it to cleanse Chapter 1!',
-    enemies: [
-      { name: 'Calamity Pyro Dragon', type: 'Boss', element: 'Pyro', level: 10, bossType: 'fire_dragon' }
-    ],
+    enemies: [createCampaignBossEnemySpec('1-5', 10)],
     firstClearRewards: { gems: 150, mora: 10000, charXp: 5, ascensionMaterialCount: 3, specialItem: 'Ruins Obsidian Core' }
   },
 
@@ -115,11 +118,9 @@ export const STORY_STAGES: Record<string, StoryStageSpec> = {
     firstClearRewards: { gems: 70, mora: 5500, charXp: 4 }
   },
   '2-5': {
-    id: '2-5', chapter: 2, name: 'Elemental Overlord Boss', recommendedLevel: 20, difficulty: 'Boss',
+    id: '2-5', chapter: 2, name: CHAPTER_2_BOSS.name, recommendedLevel: 20, difficulty: 'Boss',
     desc: 'Vanquish the Glacial Frost Golem that rules the elemental nexus.',
-    enemies: [
-      { name: 'Glacial Frost Golem', type: 'Boss', element: 'Cryo', level: 20, bossType: 'ice_golem' }
-    ],
+    enemies: [createCampaignBossEnemySpec('2-5', 20)],
     firstClearRewards: { gems: 200, mora: 15000, charXp: 6, ascensionMaterialCount: 4, specialItem: 'Absolute Zero Lens' }
   },
 
@@ -161,11 +162,9 @@ export const STORY_STAGES: Record<string, StoryStageSpec> = {
     firstClearRewards: { gems: 85, mora: 8000, charXp: 5 }
   },
   '3-5': {
-    id: '3-5', chapter: 3, name: 'Ancient Dragon Boss', recommendedLevel: 35, difficulty: 'Boss',
+    id: '3-5', chapter: 3, name: CHAPTER_3_BOSS.name, recommendedLevel: 35, difficulty: 'Boss',
     desc: 'Awaken and defeat the Tempest Thunderbird dragon guarding the Gates of Aetheria!',
-    enemies: [
-      { name: 'Tempest Thunderbird', type: 'Boss', element: 'Electro', level: 35, bossType: 'thunderbird' }
-    ],
+    enemies: [createCampaignBossEnemySpec('3-5', 35)],
     firstClearRewards: { gems: 250, mora: 20000, charXp: 8, ascensionMaterialCount: 5, specialItem: 'Stormborn Feather' }
   }
 };
@@ -283,11 +282,11 @@ export const STORY_DIALOGUES: Record<string, { before?: StoryDialogueLine[], aft
     before: [
       { speaker: 'Eldric Thorne', element: 'Anemo', text: 'Look at the center! The elemental nexus is burning!' },
       { speaker: 'Marina', element: 'Hydro', text: 'No, that\'s... a massive dragon! It\'s absorbing the core obsidian stones!', effect: 'flash' },
-      { speaker: 'Calamity Pyro Dragon', element: 'Pyro', text: 'ROOOAAAR! INSECTS OF LIGHT, YOU SHALL BURN IN THE CRUCIBLE OF REBORN FLAMES!', effect: 'shake' },
+      { speaker: CHAPTER_1_BOSS.name, element: 'Pyro', text: 'ROOOAAAR! INSECTS OF LIGHT, YOU SHALL BURN IN THE CRUCIBLE OF REBORN FLAMES!', effect: 'shake' },
       { speaker: 'Eldric Thorne', element: 'Anemo', text: 'It\'s fully active! Marina, trigger elemental swirl reactions on my mark! Engage!' }
     ],
     after: [
-      { speaker: 'Calamity Pyro Dragon', element: 'Pyro', text: 'Gurgle... The stardust... has not... forgotten...', effect: 'flash' },
+      { speaker: CHAPTER_1_BOSS.name, element: 'Pyro', text: 'Gurgle... The stardust... has not... forgotten...', effect: 'flash' },
       { speaker: 'Marina', element: 'Hydro', text: 'It\'s disintegrating! The obsidian core is stabilizing. Look, a core fragment left behind!' },
       { speaker: 'Eldric Thorne', element: 'Anemo', text: 'This obsidian core... contains coordinates pointing towards the Burning Plains. The Elemental Crisis has just begun.' }
     ]
@@ -319,11 +318,11 @@ export const STORY_DIALOGUES: Record<string, { before?: StoryDialogueLine[], aft
   '2-5': {
     before: [
       { speaker: 'Marina', element: 'Hydro', text: 'Brrr... it\'s freezing! The heat is literally being sucked out of the space!' },
-      { speaker: 'Glacial Frost Golem', element: 'Cryo', text: 'COLD... SHALL... CONSUME... ALL... LIFE...', effect: 'shake' },
+      { speaker: CHAPTER_2_BOSS.name, element: 'Cryo', text: 'COLD... SHALL... CONSUME... ALL... LIFE...', effect: 'shake' },
       { speaker: 'Eldric Thorne', element: 'Anemo', text: 'It\'s the Glacial Frost Golem! It\'s locking the entire valley in permanent stasis. We must shatter its icy shell!' }
     ],
     after: [
-      { speaker: 'Glacial Frost Golem', element: 'Cryo', text: 'Ice... cracks... the light... returns...', effect: 'flash' },
+      { speaker: CHAPTER_2_BOSS.name, element: 'Cryo', text: 'Ice... cracks... the light... returns...', effect: 'flash' },
       { speaker: 'Marina', element: 'Hydro', text: 'Look, it left behind the Absolute Zero Lens! The freezing aura is dissipating.' },
       { speaker: 'Eldric Thorne', element: 'Anemo', text: 'This lens focuses cosmic light. It points towards the peaks of Ancient Aetheria. Let\'s climb!' }
     ]
@@ -355,12 +354,12 @@ export const STORY_DIALOGUES: Record<string, { before?: StoryDialogueLine[], aft
   '3-5': {
     before: [
       { speaker: 'Eldric Thorne', element: 'Anemo', text: 'The storm winds are tearing the temple roof apart!' },
-      { speaker: 'Tempest Thunderbird', element: 'Electro', text: 'SCREEECH! INTENSIFYING THUNDERSTORM MATRIX! FALL INTO DUST!', effect: 'shake' },
+      { speaker: CHAPTER_3_BOSS.name, element: 'Electro', text: 'SCREEECH! INTENSIFYING THUNDERSTORM MATRIX! FALL INTO DUST!', effect: 'shake' },
       { speaker: 'Marina', element: 'Hydro', text: 'It\'s too fast! Eldric, we need to ground its lightning strikes using Geo and Cryo reactions!' },
       { speaker: 'Eldric Thorne', element: 'Anemo', text: 'On my mark! Charge!' }
     ],
     after: [
-      { speaker: 'Tempest Thunderbird', element: 'Electro', text: 'Screee... the storm... clears...', effect: 'flash' },
+      { speaker: CHAPTER_3_BOSS.name, element: 'Electro', text: 'Screee... the storm... clears...', effect: 'flash' },
       { speaker: 'Marina', element: 'Hydro', text: 'The wind has completely died down. The starlight is shining on the altar.' },
       { speaker: 'Eldric Thorne', element: 'Anemo', text: 'We have stabilized the gates of Aetheria. Let\'s retrieve the Stormborn Feather.' }
     ]

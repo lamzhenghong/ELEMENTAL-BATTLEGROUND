@@ -1,5 +1,8 @@
 import { getCampaignReward } from '../balance';
+import { CAMPAIGN_BOSSES, createCampaignBossEnemySpec } from '../campaignBosses';
 import type { StoryChapterPack } from '../types';
+
+const BOSS = CAMPAIGN_BOSSES['4-5'];
 
 export const CHAPTER_4_PACK = {
   chapter: 4,
@@ -140,18 +143,16 @@ export const CHAPTER_4_PACK = {
     '4-5': {
       id: '4-5',
       chapter: 4,
-      name: 'Void Overlord Boss',
+      name: BOSS.name,
       location: 'Heart of Gloamvault',
       backgroundId: 'chapter-4',
       recommendedLevel: 53,
       difficulty: 'Boss',
       desc: "Defeat Gloamvault's fixed guardian without destroying the memories held in its frozen heart.",
-      enemies: [
-        { name: 'Colossus of Cryo', type: 'Boss', element: 'Cryo', level: 53, bossType: 'ice_golem' },
-      ],
+      enemies: [createCampaignBossEnemySpec('4-5', 53)],
       firstClearRewards: getCampaignReward(4, 5),
       beforeSlides: [
-        { speaker: 'Colossus of Cryo', element: 'Cryo', text: 'NO KING PASSES. NO GRIEF LEAVES.' },
+        { speaker: BOSS.name, element: BOSS.element, text: 'NO KING PASSES. NO GRIEF LEAVES.' },
         { speaker: 'Tomb-Keeper Neris', element: 'Geo', text: "It is not Gloamvault's ruler. It is the lock on every memory below." },
         { speaker: 'Eldric Thorne', element: 'Anemo', text: 'Then we break the lock, not the memories.' },
       ],

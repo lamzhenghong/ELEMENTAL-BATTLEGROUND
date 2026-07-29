@@ -1,5 +1,14 @@
 import type { ElementType } from '../../types';
 
+export type CampaignBossMechanicId =
+  | 'sepulchral-silence'
+  | 'vowclock-edict'
+  | 'seasonal-convergence'
+  | 'seven-anchor-dominion'
+  | 'worldforge-root'
+  | 'one-perfect-second'
+  | 'sevenfold-convergence';
+
 export interface StoryStageReward {
   gems: number;
   mora: number;
@@ -14,6 +23,7 @@ export interface StoryEnemySpec {
   element: ElementType;
   level: number;
   bossType?: 'fire_dragon' | 'ice_golem' | 'thunderbird';
+  campaignMechanicId?: CampaignBossMechanicId;
 }
 
 export interface StoryStageSpec {

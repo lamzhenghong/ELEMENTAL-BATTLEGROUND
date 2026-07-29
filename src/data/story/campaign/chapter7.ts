@@ -1,5 +1,8 @@
 import { getCampaignReward } from '../balance';
+import { CAMPAIGN_BOSSES, createCampaignBossEnemySpec } from '../campaignBosses';
 import type { StoryChapterPack } from '../types';
+
+const BOSS = CAMPAIGN_BOSSES['7-5'];
 
 export const CHAPTER_7_PACK = {
   chapter: 7,
@@ -140,18 +143,16 @@ export const CHAPTER_7_PACK = {
     '7-5': {
       id: '7-5',
       chapter: 7,
-      name: 'Skyward Avian Boss',
+      name: BOSS.name,
       location: 'Eye Above the Spires',
       backgroundId: 'chapter-7',
       recommendedLevel: 83,
       difficulty: 'Boss',
       desc: 'Defeat the fixed guardian whose stone wings keep the cloud kingdom dependent on a single crown.',
-      enemies: [
-        { name: 'Colossus of Geo', type: 'Boss', element: 'Geo', level: 83, bossType: 'ice_golem' },
-      ],
+      enemies: [createCampaignBossEnemySpec('7-5', 83)],
       firstClearRewards: getCampaignReward(7, 5),
       beforeSlides: [
-        { speaker: 'Colossus of Geo', element: 'Geo', text: 'ONLY THE CROWN HOLDS THE SKY.' },
+        { speaker: BOSS.name, element: BOSS.element, text: 'ONLY THE CROWN HOLDS THE SKY.' },
         { speaker: 'Anchor-Keeper Tovan', element: 'Geo', text: 'The ledger proves otherwise. Every district bears the weight.' },
         { speaker: 'Marina', element: 'Hydro', text: 'Then we break the crown lock and leave the anchors joined.' },
       ],

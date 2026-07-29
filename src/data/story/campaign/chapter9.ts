@@ -1,5 +1,8 @@
 import { getCampaignReward } from '../balance';
+import { CAMPAIGN_BOSSES, createCampaignBossEnemySpec } from '../campaignBosses';
 import type { StoryChapterPack } from '../types';
+
+const BOSS = CAMPAIGN_BOSSES['9-5'];
 
 export const CHAPTER_9_PACK = {
   chapter: 9,
@@ -140,18 +143,16 @@ export const CHAPTER_9_PACK = {
     '9-5': {
       id: '9-5',
       chapter: 9,
-      name: 'Chronos Monarch Boss',
+      name: BOSS.name,
       location: "Monarch's Clockface",
       backgroundId: 'chapter-9',
       recommendedLevel: 103,
       difficulty: 'Boss',
       desc: 'Defeat the fixed guardian that would crown one instant and condemn every future to repeat it.',
-      enemies: [
-        { name: 'Colossus of Pyro', type: 'Boss', element: 'Pyro', level: 103, bossType: 'fire_dragon' },
-      ],
+      enemies: [createCampaignBossEnemySpec('9-5', 103)],
       firstClearRewards: getCampaignReward(9, 5),
       beforeSlides: [
-        { speaker: 'Colossus of Pyro', element: 'Pyro', text: 'ONE PERFECT SECOND. ONE ETERNAL CROWN.' },
+        { speaker: BOSS.name, element: BOSS.element, text: 'ONE PERFECT SECOND. ONE ETERNAL CROWN.' },
         { speaker: 'Chronist Lio', element: 'Electro', text: 'It burns every future that does not return to this throne.' },
         { speaker: 'Eldric Thorne', element: 'Anemo', text: 'Time chooses forward. No crown gets to choose for it.' },
       ],

@@ -1,4 +1,6 @@
 import { PLAYABLE_CHARACTERS } from '../data/characters';
+import { CAMPAIGN_BOSSES } from '../data/story/campaignBosses';
+import type { CampaignBossMechanicId } from '../data/story/types';
 import type { CharacterRole, ElementType, WeaponType } from '../types';
 
 export type BossMechanicProfile = 'fire_dragon' | 'ice_golem' | 'thunderbird';
@@ -33,6 +35,7 @@ export interface BossIdentity {
   mechanic: string;
   counter: string;
   seed: number;
+  campaignMechanicId?: CampaignBossMechanicId;
   weaponType?: WeaponType;
   role?: CharacterRole;
   rarity?: 3 | 4 | 5;
@@ -105,126 +108,164 @@ const withMechanic = (
   };
 };
 
+const CAMPAIGN_BOSS_1 = CAMPAIGN_BOSSES['1-5'];
+const CAMPAIGN_BOSS_2 = CAMPAIGN_BOSSES['2-5'];
+const CAMPAIGN_BOSS_3 = CAMPAIGN_BOSSES['3-5'];
+const CAMPAIGN_BOSS_4 = CAMPAIGN_BOSSES['4-5'];
+const CAMPAIGN_BOSS_5 = CAMPAIGN_BOSSES['5-5'];
+const CAMPAIGN_BOSS_6 = CAMPAIGN_BOSSES['6-5'];
+const CAMPAIGN_BOSS_7 = CAMPAIGN_BOSSES['7-5'];
+const CAMPAIGN_BOSS_8 = CAMPAIGN_BOSSES['8-5'];
+const CAMPAIGN_BOSS_9 = CAMPAIGN_BOSSES['9-5'];
+const CAMPAIGN_BOSS_10 = CAMPAIGN_BOSSES['10-5'];
+
 const CAMPAIGN_BOSS_IDENTITIES: readonly BossIdentity[] = [
   withMechanic({
-    id: 'campaign-calamity-pyro-dragon',
-    name: 'Calamity Pyro Dragon',
+    id: CAMPAIGN_BOSS_1.identityId,
+    name: CAMPAIGN_BOSS_1.name,
     category: 'campaign',
-    source: 'Chapter 1 - Ruins Core Boss',
-    element: 'Pyro',
+    source: `Chapter 1 - ${CAMPAIGN_BOSS_1.name}`,
+    element: CAMPAIGN_BOSS_1.element,
     color: '#ff3b21',
     secondaryColor: '#ffc22e',
     visualKind: 'calamity-dragon',
-    mechanicProfile: 'fire_dragon',
-    skillName: 'Ruins Core Calamity'
+    mechanicProfile: CAMPAIGN_BOSS_1.legacyBossType,
+    skillName: CAMPAIGN_BOSS_1.skillName,
+    mechanic: CAMPAIGN_BOSS_1.mechanic,
+    counter: CAMPAIGN_BOSS_1.counter
   }),
   withMechanic({
-    id: 'campaign-glacial-frost-golem',
-    name: 'Glacial Frost Golem',
+    id: CAMPAIGN_BOSS_2.identityId,
+    name: CAMPAIGN_BOSS_2.name,
     category: 'campaign',
-    source: 'Chapter 2 - Elemental Overlord Boss',
-    element: 'Cryo',
+    source: `Chapter 2 - ${CAMPAIGN_BOSS_2.name}`,
+    element: CAMPAIGN_BOSS_2.element,
     color: '#63dcff',
     secondaryColor: '#f0fdff',
     visualKind: 'frost-golem',
-    mechanicProfile: 'ice_golem',
-    skillName: 'Absolute Zero Lens'
+    mechanicProfile: CAMPAIGN_BOSS_2.legacyBossType,
+    skillName: CAMPAIGN_BOSS_2.skillName,
+    mechanic: CAMPAIGN_BOSS_2.mechanic,
+    counter: CAMPAIGN_BOSS_2.counter
   }),
   withMechanic({
-    id: 'campaign-tempest-thunderbird',
-    name: 'Tempest Thunderbird',
+    id: CAMPAIGN_BOSS_3.identityId,
+    name: CAMPAIGN_BOSS_3.name,
     category: 'campaign',
-    source: 'Chapter 3 - Ancient Dragon Boss',
-    element: 'Electro',
+    source: `Chapter 3 - ${CAMPAIGN_BOSS_3.name}`,
+    element: CAMPAIGN_BOSS_3.element,
     color: '#a858ff',
     secondaryColor: '#f2a2ff',
     visualKind: 'tempest-bird',
-    mechanicProfile: 'thunderbird',
-    skillName: 'Summit Storm Matrix'
+    mechanicProfile: CAMPAIGN_BOSS_3.legacyBossType,
+    skillName: CAMPAIGN_BOSS_3.skillName,
+    mechanic: CAMPAIGN_BOSS_3.mechanic,
+    counter: CAMPAIGN_BOSS_3.counter
   }),
   withMechanic({
-    id: 'campaign-void-overlord',
-    name: 'Colossus of Cryo',
+    id: CAMPAIGN_BOSS_4.identityId,
+    name: CAMPAIGN_BOSS_4.name,
     category: 'campaign',
-    source: 'Chapter 4 - Void Overlord Boss',
-    element: 'Cryo',
+    source: `Chapter 4 - ${CAMPAIGN_BOSS_4.name}`,
+    element: CAMPAIGN_BOSS_4.element,
     color: '#6d45d8',
     secondaryColor: '#fa57c6',
     visualKind: 'void-overlord',
-    mechanicProfile: 'ice_golem',
-    skillName: 'Black-Ice Eclipse'
+    mechanicProfile: CAMPAIGN_BOSS_4.legacyBossType,
+    campaignMechanicId: CAMPAIGN_BOSS_4.campaignMechanicId,
+    skillName: CAMPAIGN_BOSS_4.skillName,
+    mechanic: CAMPAIGN_BOSS_4.mechanic,
+    counter: CAMPAIGN_BOSS_4.counter
   }),
   withMechanic({
-    id: 'campaign-eternity-knight',
-    name: 'Colossus of Electro',
+    id: CAMPAIGN_BOSS_5.identityId,
+    name: CAMPAIGN_BOSS_5.name,
     category: 'campaign',
-    source: 'Chapter 5 - Eternity Knight Boss',
-    element: 'Electro',
+    source: `Chapter 5 - ${CAMPAIGN_BOSS_5.name}`,
+    element: CAMPAIGN_BOSS_5.element,
     color: '#8f5bff',
     secondaryColor: '#ffd65a',
     visualKind: 'eternity-knight',
-    mechanicProfile: 'thunderbird',
-    skillName: 'Eternal Clockwall'
+    mechanicProfile: CAMPAIGN_BOSS_5.legacyBossType,
+    campaignMechanicId: CAMPAIGN_BOSS_5.campaignMechanicId,
+    skillName: CAMPAIGN_BOSS_5.skillName,
+    mechanic: CAMPAIGN_BOSS_5.mechanic,
+    counter: CAMPAIGN_BOSS_5.counter
   }),
   withMechanic({
-    id: 'campaign-frostfire-wyrm',
-    name: 'Colossus of Anemo',
+    id: CAMPAIGN_BOSS_6.identityId,
+    name: CAMPAIGN_BOSS_6.name,
     category: 'campaign',
-    source: 'Chapter 6 - Frostfire Wyrm Boss',
-    element: 'Anemo',
+    source: `Chapter 6 - ${CAMPAIGN_BOSS_6.name}`,
+    element: CAMPAIGN_BOSS_6.element,
     color: '#32d8c4',
     secondaryColor: '#ff7048',
     visualKind: 'frostfire-wyrm',
-    mechanicProfile: 'fire_dragon',
-    skillName: 'Frostfire Convergence'
+    mechanicProfile: CAMPAIGN_BOSS_6.legacyBossType,
+    campaignMechanicId: CAMPAIGN_BOSS_6.campaignMechanicId,
+    skillName: CAMPAIGN_BOSS_6.skillName,
+    mechanic: CAMPAIGN_BOSS_6.mechanic,
+    counter: CAMPAIGN_BOSS_6.counter
   }),
   withMechanic({
-    id: 'campaign-skyward-avian',
-    name: 'Colossus of Geo',
+    id: CAMPAIGN_BOSS_7.identityId,
+    name: CAMPAIGN_BOSS_7.name,
     category: 'campaign',
-    source: 'Chapter 7 - Skyward Avian Boss',
-    element: 'Geo',
+    source: `Chapter 7 - ${CAMPAIGN_BOSS_7.name}`,
+    element: CAMPAIGN_BOSS_7.element,
     color: '#e4aa27',
     secondaryColor: '#fff2a8',
     visualKind: 'skyward-avian',
-    mechanicProfile: 'ice_golem',
-    skillName: 'Crownwind Anchor'
+    mechanicProfile: CAMPAIGN_BOSS_7.legacyBossType,
+    campaignMechanicId: CAMPAIGN_BOSS_7.campaignMechanicId,
+    skillName: CAMPAIGN_BOSS_7.skillName,
+    mechanic: CAMPAIGN_BOSS_7.mechanic,
+    counter: CAMPAIGN_BOSS_7.counter
   }),
   withMechanic({
-    id: 'campaign-molten-overlord',
-    name: 'Colossus of Dendro',
+    id: CAMPAIGN_BOSS_8.identityId,
+    name: CAMPAIGN_BOSS_8.name,
     category: 'campaign',
-    source: 'Chapter 8 - Molten Overlord Boss',
-    element: 'Dendro',
+    source: `Chapter 8 - ${CAMPAIGN_BOSS_8.name}`,
+    element: CAMPAIGN_BOSS_8.element,
     color: '#35c95c',
     secondaryColor: '#ff963c',
     visualKind: 'molten-overlord',
-    mechanicProfile: 'thunderbird',
-    skillName: 'Worldforge Root'
+    mechanicProfile: CAMPAIGN_BOSS_8.legacyBossType,
+    campaignMechanicId: CAMPAIGN_BOSS_8.campaignMechanicId,
+    skillName: CAMPAIGN_BOSS_8.skillName,
+    mechanic: CAMPAIGN_BOSS_8.mechanic,
+    counter: CAMPAIGN_BOSS_8.counter
   }),
   withMechanic({
-    id: 'campaign-chronos-monarch',
-    name: 'Colossus of Pyro',
+    id: CAMPAIGN_BOSS_9.identityId,
+    name: CAMPAIGN_BOSS_9.name,
     category: 'campaign',
-    source: 'Chapter 9 - Chronos Monarch Boss',
-    element: 'Pyro',
+    source: `Chapter 9 - ${CAMPAIGN_BOSS_9.name}`,
+    element: CAMPAIGN_BOSS_9.element,
     color: '#e84b32',
     secondaryColor: '#ffe071',
     visualKind: 'chronos-monarch',
-    mechanicProfile: 'fire_dragon',
-    skillName: 'One Perfect Second'
+    mechanicProfile: CAMPAIGN_BOSS_9.legacyBossType,
+    campaignMechanicId: CAMPAIGN_BOSS_9.campaignMechanicId,
+    skillName: CAMPAIGN_BOSS_9.skillName,
+    mechanic: CAMPAIGN_BOSS_9.mechanic,
+    counter: CAMPAIGN_BOSS_9.counter
   }),
   withMechanic({
-    id: 'campaign-eldric-core-prime',
-    name: 'Colossus of Hydro',
+    id: CAMPAIGN_BOSS_10.identityId,
+    name: CAMPAIGN_BOSS_10.name,
     category: 'campaign',
-    source: 'Chapter 10 - Eldric Core Prime Boss',
-    element: 'Hydro',
+    source: `Chapter 10 - ${CAMPAIGN_BOSS_10.name}`,
+    element: CAMPAIGN_BOSS_10.element,
     color: '#19a9eb',
     secondaryColor: '#f3feff',
     visualKind: 'core-prime',
-    mechanicProfile: 'ice_golem',
-    skillName: 'Prime Orbit Collapse'
+    mechanicProfile: CAMPAIGN_BOSS_10.legacyBossType,
+    campaignMechanicId: CAMPAIGN_BOSS_10.campaignMechanicId,
+    skillName: CAMPAIGN_BOSS_10.skillName,
+    mechanic: CAMPAIGN_BOSS_10.mechanic,
+    counter: CAMPAIGN_BOSS_10.counter
   })
 ];
 

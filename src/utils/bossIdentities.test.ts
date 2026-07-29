@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { PLAYABLE_CHARACTERS } from '../data/characters';
+import { getCampaignBossForStage } from '../data/story/campaignBosses';
 import { getStageSpec } from '../data/storyStages';
 import {
   BOSS_IDENTITIES,
@@ -22,15 +23,26 @@ for (const identity of BOSS_IDENTITIES) {
 }
 
 const campaignBosses = Array.from({ length: 10 }, (_, index) => {
-  const stage = getStageSpec(`${index + 1}-5`);
-  return stage.enemies.find(enemy => enemy.type === 'Boss');
+  const stageId = `${index + 1}-5`;
+  const stage = getStageSpec(stageId);
+  return {
+    stageId,
+    boss: stage.enemies.find(enemy => enemy.type === 'Boss')
+  };
 });
 
-for (const boss of campaignBosses) {
+for (const { stageId, boss } of campaignBosses) {
   assert.ok(boss, 'Every campaign chapter should end with a boss');
+  const definition = getCampaignBossForStage(stageId);
+  assert.ok(definition, `${stageId} should have a campaign boss definition`);
   const identity = getBossIdentityForEnemy(boss.name, boss.bossType);
   assert.equal(identity.name, boss.name, `${boss.name} should resolve to its authored identity`);
   assert.equal(identity.category, 'campaign');
+  assert.equal(identity.name, definition.name);
+  assert.equal(identity.skillName, definition.skillName);
+  assert.equal(identity.mechanic, definition.mechanic);
+  assert.equal(identity.counter, definition.counter);
+  assert.equal(identity.campaignMechanicId, definition.campaignMechanicId);
 }
 
 for (const character of PLAYABLE_CHARACTERS) {

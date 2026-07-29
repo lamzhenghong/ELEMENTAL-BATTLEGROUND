@@ -32,7 +32,7 @@ const manifests = [
   {
     pack: packs[0],
     chapter: 6,
-    names: ['Rimeforge Threshold', 'Split Current Works', 'Vaporworks Crossing', 'Engine of Two Seasons', 'Frostfire Wyrm Boss'],
+    names: ['Rimeforge Threshold', 'Split Current Works', 'Vaporworks Crossing', 'Engine of Two Seasons', 'Rimeflare, Wyrm of Two Seasons'],
     locations: ['Rimeforge Gate', 'Broken Climate Works', 'White-Steam Causeway', 'Twin-Season Engine', 'Faultheart Caldera'],
     enemyNames: ['Steam Wretch', 'Rime Crawler', 'Pressure Keeper', 'Meltwater Stalker', 'Tempered Sentinel', 'Fault Engineer'],
     memoryIds: ['chapter-6-first-gauge', 'chapter-6-sabotage-order', 'chapter-6-changing-balance'],
@@ -44,7 +44,7 @@ const manifests = [
   {
     pack: packs[1],
     chapter: 7,
-    names: ['Fallen Sky Dock', 'Anchor District', 'Aethelwing Causeway', 'Crownwind Spire', 'Skyward Avian Boss'],
+    names: ['Fallen Sky Dock', 'Anchor District', 'Aethelwing Causeway', 'Crownwind Spire', 'Aureolith, the Crownless Skywarden'],
     locations: ['Lower Cloud Harbor', 'Anchor Ward', 'Aethelwing Skyroad', 'Crownwind Observatory', 'Eye Above the Spires'],
     enemyNames: ['Gale Harrier', 'Skyroad Prowler', 'Anchor Breaker', 'Prism Talon', 'Windchain Custodian', 'Crownwind Warden'],
     memoryIds: ['chapter-7-falling-bell', 'chapter-7-anchor-keeper', 'chapter-7-open-sky'],
@@ -56,7 +56,7 @@ const manifests = [
   {
     pack: packs[2],
     chapter: 8,
-    names: ['Cinderlift Descent', 'Worldforge Control', 'Hammerfall Foundry', 'Crucible Keyway', 'Molten Overlord Boss'],
+    names: ['Cinderlift Descent', 'Worldforge Control', 'Hammerfall Foundry', 'Crucible Keyway', 'Verdigris, Root of the First Command'],
     locations: ['Mount Eldruin Cinderlift', 'Worldforge Control Ring', 'Hammerfall Foundry', 'Crucible Keyway', 'Planetary Anvil'],
     enemyNames: ['Cinder Scavenger', 'Furnace Husk', 'Chainforged Guard', 'Crucible Artificer', 'Worldforge Warden', 'Keyway Adjudicator'],
     memoryIds: ['chapter-8-bound-orbits', 'chapter-8-smiths-refusal', 'chapter-8-reclaimed-fire'],
@@ -125,13 +125,34 @@ for (const manifest of manifests) {
 }
 
 assert.deepEqual(getStageSpec('6-5').enemies, [
-  { name: 'Colossus of Anemo', type: 'Boss', element: 'Anemo', level: 73, bossType: 'fire_dragon' },
+  {
+    name: 'Rimeflare, Wyrm of Two Seasons',
+    type: 'Boss',
+    element: 'Anemo',
+    level: 73,
+    bossType: 'fire_dragon',
+    campaignMechanicId: 'seasonal-convergence',
+  },
 ]);
 assert.deepEqual(getStageSpec('7-5').enemies, [
-  { name: 'Colossus of Geo', type: 'Boss', element: 'Geo', level: 83, bossType: 'ice_golem' },
+  {
+    name: 'Aureolith, the Crownless Skywarden',
+    type: 'Boss',
+    element: 'Geo',
+    level: 83,
+    bossType: 'ice_golem',
+    campaignMechanicId: 'seven-anchor-dominion',
+  },
 ]);
 assert.deepEqual(getStageSpec('8-5').enemies, [
-  { name: 'Colossus of Dendro', type: 'Boss', element: 'Dendro', level: 93, bossType: 'thunderbird' },
+  {
+    name: 'Verdigris, Root of the First Command',
+    type: 'Boss',
+    element: 'Dendro',
+    level: 93,
+    bossType: 'thunderbird',
+    campaignMechanicId: 'worldforge-root',
+  },
 ]);
 
 const testDir = dirname(fileURLToPath(import.meta.url));

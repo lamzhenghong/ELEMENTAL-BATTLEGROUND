@@ -1,5 +1,8 @@
 import { getCampaignReward } from '../balance';
+import { CAMPAIGN_BOSSES, createCampaignBossEnemySpec } from '../campaignBosses';
 import type { StoryChapterPack } from '../types';
+
+const BOSS = CAMPAIGN_BOSSES['10-5'];
 
 export const CHAPTER_10_PACK = {
   chapter: 10,
@@ -140,18 +143,16 @@ export const CHAPTER_10_PACK = {
     '10-5': {
       id: '10-5',
       chapter: 10,
-      name: 'Eldric Core Prime Boss',
+      name: BOSS.name,
       location: 'Prime Defense Core',
       backgroundId: 'chapter-10',
       recommendedLevel: 113,
       difficulty: 'Boss',
       desc: 'Defeat the fixed guardian that mistakes absolute custody for the only possible defense of Aetheria.',
-      enemies: [
-        { name: 'Colossus of Hydro', type: 'Boss', element: 'Hydro', level: 113, bossType: 'ice_golem' },
-      ],
+      enemies: [createCampaignBossEnemySpec('10-5', 113)],
       firstClearRewards: getCampaignReward(10, 5),
       beforeSlides: [
-        { speaker: 'Colossus of Hydro', element: 'Hydro', text: 'A WORLD WITHOUT AN OWNER CANNOT BE DEFENDED.' },
+        { speaker: BOSS.name, element: BOSS.element, text: 'A WORLD WITHOUT AN OWNER CANNOT BE DEFENDED.' },
         { speaker: 'Prime Witness Oren', element: 'Geo', text: 'It would freeze every living choice to preserve the shape its makers left behind.' },
         { speaker: 'Eldric Thorne', element: 'Anemo', text: 'Aetheria belongs to everyone who keeps choosing its future. That is defense enough.' },
       ],

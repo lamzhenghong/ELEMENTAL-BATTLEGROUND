@@ -1,5 +1,8 @@
 import { getCampaignReward } from '../balance';
+import { CAMPAIGN_BOSSES, createCampaignBossEnemySpec } from '../campaignBosses';
 import type { StoryChapterPack } from '../types';
+
+const BOSS = CAMPAIGN_BOSSES['6-5'];
 
 export const CHAPTER_6_PACK = {
   chapter: 6,
@@ -140,18 +143,16 @@ export const CHAPTER_6_PACK = {
     '6-5': {
       id: '6-5',
       chapter: 6,
-      name: 'Frostfire Wyrm Boss',
+      name: BOSS.name,
       location: 'Faultheart Caldera',
       backgroundId: 'chapter-6',
       recommendedLevel: 73,
       difficulty: 'Boss',
       desc: 'Defeat the fixed guardian feeding on both seasons and release Rimeforge from permanent imbalance.',
-      enemies: [
-        { name: 'Colossus of Anemo', type: 'Boss', element: 'Anemo', level: 73, bossType: 'fire_dragon' },
-      ],
+      enemies: [createCampaignBossEnemySpec('6-5', 73)],
       firstClearRewards: getCampaignReward(6, 5),
       beforeSlides: [
-        { speaker: 'Colossus of Anemo', element: 'Anemo', text: 'ONE SEASON MUST CONSUME THE OTHER.' },
+        { speaker: BOSS.name, element: BOSS.element, text: 'ONE SEASON MUST CONSUME THE OTHER.' },
         { speaker: 'Faultwright Sera', element: 'Pyro', text: 'It keeps the currents divided so it can breathe between them.' },
         { speaker: 'Eldric Thorne', element: 'Anemo', text: 'Then we end the false choice and free both seasons.' },
       ],

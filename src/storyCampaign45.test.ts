@@ -35,7 +35,7 @@ const manifests = [
       'Hall of Last Voices',
       'Gallery of Broken Oaths',
       'Crownless Altar',
-      'Void Overlord Boss',
+      "Nhal'Kyr, Warden of Whispers",
     ],
     locations: [
       'The Last-Lamp Stair',
@@ -59,7 +59,7 @@ const manifests = [
       'Mirror Pilgrims',
       'Hall of Borrowed Faces',
       'Clockless Dais',
-      'Eternity Knight Boss',
+      'Aevum, Knight of the Last Vow',
     ],
     locations: [
       'Astral Reliquary Gate',
@@ -155,10 +155,24 @@ assert.deepEqual(getStageSpec('5-4', trustRoute), getStageSpec('5-4', breakRoute
 assert.deepEqual(getStageSpec('5-5', trustRoute), getStageSpec('5-5', breakRoute));
 
 assert.deepEqual(getStageSpec('4-5').enemies, [
-  { name: 'Colossus of Cryo', type: 'Boss', element: 'Cryo', level: 53, bossType: 'ice_golem' },
+  {
+    name: "Nhal'Kyr, Warden of Whispers",
+    type: 'Boss',
+    element: 'Cryo',
+    level: 53,
+    bossType: 'ice_golem',
+    campaignMechanicId: 'sepulchral-silence',
+  },
 ]);
 assert.deepEqual(getStageSpec('5-5').enemies, [
-  { name: 'Colossus of Electro', type: 'Boss', element: 'Electro', level: 63, bossType: 'thunderbird' },
+  {
+    name: 'Aevum, Knight of the Last Vow',
+    type: 'Boss',
+    element: 'Electro',
+    level: 63,
+    bossType: 'thunderbird',
+    campaignMechanicId: 'vowclock-edict',
+  },
 ]);
 
 const testDir = dirname(fileURLToPath(import.meta.url));

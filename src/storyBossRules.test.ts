@@ -3,13 +3,13 @@ import { getStageSpec } from './data/storyStages';
 import { generateFutureBoss } from './data/story/bossRegistry';
 
 const currentBosses = {
-  '4-5': ['Colossus of Cryo', 'ice_golem'],
-  '5-5': ['Colossus of Electro', 'thunderbird'],
-  '6-5': ['Colossus of Anemo', 'fire_dragon'],
-  '7-5': ['Colossus of Geo', 'ice_golem'],
-  '8-5': ['Colossus of Dendro', 'thunderbird'],
-  '9-5': ['Colossus of Pyro', 'fire_dragon'],
-  '10-5': ['Colossus of Hydro', 'ice_golem'],
+  '4-5': ["Nhal'Kyr, Warden of Whispers", 'ice_golem'],
+  '5-5': ['Aevum, Knight of the Last Vow', 'thunderbird'],
+  '6-5': ['Rimeflare, Wyrm of Two Seasons', 'fire_dragon'],
+  '7-5': ['Aureolith, the Crownless Skywarden', 'ice_golem'],
+  '8-5': ['Verdigris, Root of the First Command', 'thunderbird'],
+  '9-5': ['Solvane, Monarch of the Final Second', 'fire_dragon'],
+  '10-5': ['Orison Prime, Keeper of the Empty Throne', 'ice_golem'],
 } as const;
 
 for (const [stageId, [name, bossType]] of Object.entries(currentBosses)) {

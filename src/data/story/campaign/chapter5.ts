@@ -1,5 +1,8 @@
 import { getCampaignReward } from '../balance';
+import { CAMPAIGN_BOSSES, createCampaignBossEnemySpec } from '../campaignBosses';
 import type { StoryChapterPack } from '../types';
+
+const BOSS = CAMPAIGN_BOSSES['5-5'];
 
 export const CHAPTER_5_PACK = {
   chapter: 5,
@@ -140,23 +143,21 @@ export const CHAPTER_5_PACK = {
     '5-5': {
       id: '5-5',
       chapter: 5,
-      name: 'Eternity Knight Boss',
+      name: BOSS.name,
       location: 'Sanctuary Outside Time',
       backgroundId: 'chapter-5',
       recommendedLevel: 63,
       difficulty: 'Boss',
       desc: 'Complete the fixed trial of the Astral Reliquary and restore the road into ordinary time.',
-      enemies: [
-        { name: 'Colossus of Electro', type: 'Boss', element: 'Electro', level: 63, bossType: 'thunderbird' },
-      ],
+      enemies: [createCampaignBossEnemySpec('5-5', 63)],
       firstClearRewards: getCampaignReward(5, 5),
       beforeSlides: [
-        { speaker: 'Colossus of Electro', element: 'Electro', text: "NAME THE HAND THAT WON YOUR VICTORIES: YOURS, OR FATE'S." },
+        { speaker: BOSS.name, element: BOSS.element, text: "NAME THE HAND THAT WON YOUR VICTORIES: YOURS, OR FATE'S." },
         { speaker: 'Eldric Thorne', element: 'Anemo', text: 'It wants certainty from people who survived without it.' },
         { speaker: 'Marina', element: 'Hydro', text: 'Then let our imperfect memories answer together.' },
       ],
       afterSlides: [
-        { speaker: 'Colossus of Electro', element: 'Electro', text: 'THE VOW ENDURES BEYOND THE WITNESS.' },
+        { speaker: BOSS.name, element: BOSS.element, text: 'THE VOW ENDURES BEYOND THE WITNESS.' },
         { speaker: 'Eldric Thorne', element: 'Anemo', text: 'The Reliquary is opening a road of frost and flame.' },
         { speaker: 'Marina', element: 'Hydro', text: 'Rimeforge Fault. Time starts again there.' },
       ],
