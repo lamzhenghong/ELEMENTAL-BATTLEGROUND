@@ -14,6 +14,7 @@ import { normalizeStoryProgress } from '../data/story/progress';
 import { applyStoryChoice } from '../storyChoiceRules';
 import StoryMemoryArchive from './StoryMemoryArchive';
 import CharacterRoleBadge from './CharacterRoleBadge';
+import { personalizeCampaignScene } from '../utils/storyDialoguePersonalization';
 
 interface StoryModeProps {
   saveState: SaveState;
@@ -22,6 +23,7 @@ interface StoryModeProps {
   onUpdateSaveState: (updater: (prev: SaveState) => SaveState) => void;
   onStartStoryBattle: (config: { stageId: string; isHardMode: boolean; isCharStory: boolean; choiceSelections: StoryChoiceSelections; charId?: string; act?: number }) => void;
   devCheatsEnabled: boolean;
+  playerUsername?: string | null;
   onShowAlert: (msg: string, sol: string, typ: 'error' | 'success' | 'info') => void;
 }
 
@@ -32,6 +34,7 @@ export default function StoryMode({
   onUpdateSaveState,
   onStartStoryBattle,
   devCheatsEnabled,
+  playerUsername,
   onShowAlert
 }: StoryModeProps) {
   const [activeTab, setActiveTab] = useState<'campaign' | 'characters' | 'memories'>('campaign');
@@ -123,9 +126,10 @@ export default function StoryMode({
     const choiceSelections = { ...storyProgress.storyChoices };
     const authoredScene = getStoryScene(stageId, 'before', choiceSelections);
     const dialogue = getStageDialogue(stageId);
-    const scene = authoredScene.slides.length > 0
+    const sourceScene = authoredScene.slides.length > 0
       ? authoredScene
       : { slides: dialogue?.before ?? [], backgroundId: authoredScene.backgroundId };
+    const scene = personalizeCampaignScene(sourceScene, playerUsername);
     const choice = getStoryChoice(stageId);
     const startBattle = (nextChoices: StoryChoiceSelections) => {
       onStartStoryBattle({

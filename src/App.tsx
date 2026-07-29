@@ -40,6 +40,7 @@ import mainMenuVideo from '../assets/main_menu_bg.mp4';
 import gameLogoImg from '../assets/game_logo_256.png';
 import StoryCutscene from './components/StoryCutscene';
 import { getStageSpec, getStageDialogue, getCharacterStoryScript, getStoryScene } from './data/storyStages';
+import { personalizeCampaignScene } from './utils/storyDialoguePersonalization';
 import type { StoryChoiceSelections, StoryScene } from './data/story';
 import { mergeUnlockedStoryMemories } from './data/story/memories';
 import { normalizeStoryProgress } from './data/story/progress';
@@ -1438,9 +1439,10 @@ export default function App() {
 
     const authoredScene = getStoryScene(stageId, 'after', choiceSelections);
     const dialogue = getStageDialogue(stageId);
-    const scene = authoredScene.slides.length > 0
+    const sourceScene = authoredScene.slides.length > 0
       ? authoredScene
       : { slides: dialogue?.after ?? [], backgroundId: authoredScene.backgroundId };
+    const scene = personalizeCampaignScene(sourceScene, cloudAccount.profile?.username);
     if (scene.slides.length > 0) {
       setActiveCutsceneScene(scene);
     } else {
@@ -3576,6 +3578,7 @@ export default function App() {
                     onUpdateSaveState={triggerSaveUpdate}
                     onStartStoryBattle={handleStartStoryBattle}
                     devCheatsEnabled={devCheatsEnabled}
+                    playerUsername={cloudAccount.profile?.username ?? null}
                     onShowAlert={showInGameAlert}
                   />
                 </motion.div>
