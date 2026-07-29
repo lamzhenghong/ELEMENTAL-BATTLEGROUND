@@ -124,6 +124,11 @@ import {
   getReactionFieldModifiers,
   tickPartyEffects
 } from '../utils/combatPartyEffects';
+import {
+  createCampaignBossMechanicState,
+  stepCampaignBossMechanic,
+  type CampaignBossAction,
+} from '../utils/campaignBossMechanics';
 
 const EMPTY_STORY_CHOICE_SELECTIONS: StoryChoiceSelections = {};
 
@@ -1359,7 +1364,9 @@ export default function CombatArena({
             isFrozen: 0,
             burningTicks: 0,
             phase: 1,
-            attackCooldown: 0
+            attackCooldown: 0,
+            campaignMechanicId: enemySpec.campaignMechanicId,
+            campaignMechanicState: createCampaignBossMechanicState()
           };
           setBossMaxHp(boss.maxHp);
           setBossHp(boss.hp);
@@ -1637,9 +1644,17 @@ export default function CombatArena({
       && hazard.type !== 'lightning_strike_warning'
       && hazard.type !== 'archetype_artillery_warning'
       && hazard.type !== 'archetype_mimic_warning'
+      && hazard.type !== 'campaign_boss_warning'
     ) return false;
     if (hazard.timer > 12) return false;
-    return Math.hypot(playerRef.current.x - hazard.x, playerRef.current.y - hazard.y) < hazard.radius + playerRef.current.radius;
+    const distance = Math.hypot(
+      playerRef.current.x - hazard.x,
+      playerRef.current.y - hazard.y,
+    );
+    const insideOuter = distance < hazard.radius + playerRef.current.radius;
+    const outsideInner = hazard.innerRadius === undefined
+      || distance > Math.max(0, hazard.innerRadius - playerRef.current.radius);
+    return insideOuter && outsideInner;
   };
 
   const hasPerfectDodgeThreat = () => {
@@ -3032,6 +3047,92 @@ export default function CombatArena({
     let lastFrameTime = performance.now();
     const ctx = canvasRef.current?.getContext('2d');
 
+    const applyCampaignBossActions = (enemy: any, actions: CampaignBossAction[]) => {
+      actions.forEach((action, actionIndex) => {
+        const id = `campaign_${enemy.id}_${performance.now()}_${actionIndex}`;
+        if (action.kind === 'projectile') {
+          bossProjectilesRef.current.push({
+            id,
+            type: action.projectileType,
+            x: action.x,
+            y: action.y,
+            vx: action.vx,
+            vy: action.vy,
+            radius: action.radius,
+            damage: action.damage,
+            element: action.element,
+            color: action.color,
+            timer: action.timer,
+            ownerId: enemy.id,
+          });
+          return;
+        }
+
+        if (action.kind === 'warning') {
+          bossProjectilesRef.current.push({
+            id,
+            type: 'campaign_boss_warning',
+            x: action.x,
+            y: action.y,
+            radius: action.radius,
+            innerRadius: action.innerRadius,
+            damage: action.damage,
+            element: action.element,
+            color: action.color,
+            timer: action.delayFrames,
+            maxTimer: action.delayFrames,
+            impactLabel: action.label,
+            knockback: action.knockback,
+            ownerId: enemy.id,
+          });
+          return;
+        }
+
+        if (action.kind === 'patch') {
+          bossProjectilesRef.current.push({
+            id,
+            type: 'campaign_boss_patch',
+            x: action.x,
+            y: action.y,
+            radius: action.radius,
+            damage: action.damage,
+            element: action.element,
+            color: action.color,
+            timer: action.durationFrames,
+            maxTimer: action.durationFrames,
+            impactLabel: action.label,
+            ownerId: enemy.id,
+          });
+          return;
+        }
+
+        if (action.kind === 'pull') {
+          const pullAngle = Math.atan2(
+            enemy.y - playerRef.current.y,
+            enemy.x - playerRef.current.x,
+          );
+          playerRef.current.x = Math.max(
+            25,
+            Math.min(WORLD_WIDTH - 25, playerRef.current.x + Math.cos(pullAngle) * action.strength),
+          );
+          playerRef.current.y = Math.max(
+            25,
+            Math.min(WORLD_HEIGHT - 25, playerRef.current.y + Math.sin(pullAngle) * action.strength),
+          );
+          return;
+        }
+
+        spawnTextRef.current(
+          enemy.x,
+          enemy.y - enemy.radius - 28,
+          action.text,
+          action.color,
+          action.emphasized ? 13 : 10,
+          action.emphasized,
+        );
+      });
+    };
+
     const updateGameLoop = () => {
       const {
         combatParty: currentParty,
@@ -3519,7 +3620,11 @@ export default function CombatArena({
             isExpired = true;
           }
         } 
-        else if (proj.type === 'ice_patch' || proj.type === 'fire_patch') {
+        else if (
+          proj.type === 'ice_patch'
+          || proj.type === 'fire_patch'
+          || proj.type === 'campaign_boss_patch'
+        ) {
           // Continuous damage check
           if (distToPlayer < proj.radius) {
             if (Math.floor(proj.timer) % 25 === 0) {
@@ -3532,19 +3637,23 @@ export default function CombatArena({
           || proj.type === 'lightning_strike_warning'
           || proj.type === 'archetype_artillery_warning'
           || proj.type === 'archetype_mimic_warning'
+          || proj.type === 'campaign_boss_warning'
         ) {
           if (isExpired) {
             // Detonate / strike!
-            if (distToPlayer < proj.radius) {
+            const insideOuter = distToPlayer < proj.radius;
+            const outsideInner = proj.innerRadius === undefined || distToPlayer > proj.innerRadius;
+            if (insideOuter && outsideInner) {
               const sourceEnemy = proj.ownerId
                 ? enemiesRef.current.find(enemy => enemy.id === proj.ownerId)
                 : null;
               handlePlayerHit(sourceEnemy ?? null, proj.damage);
-              if (proj.type === 'meteor_warning') {
+              if (proj.type === 'meteor_warning' || proj.knockback) {
                 // Knockback player away from center of explosion
                 const angle = Math.atan2(playerRef.current.y - proj.y, playerRef.current.x - proj.x);
-                playerRef.current.x = Math.max(25, Math.min(WORLD_WIDTH - 25, playerRef.current.x + Math.cos(angle) * 75));
-                playerRef.current.y = Math.max(25, Math.min(WORLD_HEIGHT - 25, playerRef.current.y + Math.sin(angle) * 75));
+                const knockback = proj.knockback ?? 75;
+                playerRef.current.x = Math.max(25, Math.min(WORLD_WIDTH - 25, playerRef.current.x + Math.cos(angle) * knockback));
+                playerRef.current.y = Math.max(25, Math.min(WORLD_HEIGHT - 25, playerRef.current.y + Math.sin(angle) * knockback));
               }
             }
             if (proj.source === 'weather_meteor') {
@@ -3561,7 +3670,9 @@ export default function CombatArena({
             }
             // Spawn explosion particles
             const particleColor = proj.color ?? (proj.type === 'meteor_warning' ? '#dc2626' : '#a855f7');
-            const particleCount = isMobile ? 8 : proj.type.startsWith('archetype_') ? 12 : 20;
+            const isRestrainedWarning = proj.type.startsWith('archetype_')
+              || proj.type === 'campaign_boss_warning';
+            const particleCount = isMobile ? 8 : isRestrainedWarning ? 12 : 20;
             for (let i = 0; i < particleCount; i++) {
               const part = new CombatParticle(proj.x, proj.y, particleColor, proj.type === 'meteor_warning' ? 4.5 : 3);
               part.vx *= 2.2;
@@ -3574,6 +3685,15 @@ export default function CombatArena({
               spawnTextRef.current(proj.x, proj.y, 'ARTILLERY IMPACT', '#fb923c', 11, true);
             } else if (proj.type === 'archetype_mimic_warning') {
               spawnTextRef.current(proj.x, proj.y, `MIMIC · ${proj.skillName ?? 'SKILL'}`, particleColor, 11, true);
+            } else if (proj.type === 'campaign_boss_warning') {
+              spawnTextRef.current(
+                proj.x,
+                proj.y,
+                proj.impactLabel ?? 'BOSS IMPACT',
+                particleColor,
+                11,
+                true,
+              );
             } else {
               spawnTextRef.current(proj.x, proj.y, '⚡ BOLT! ⚡', '#a855f7', 11, true);
             }
@@ -3626,11 +3746,23 @@ export default function CombatArena({
           ctx.fill();
           ctx.stroke();
         }
+        else if (proj.type === 'campaign_boss_patch') {
+          const patchProgress = Math.max(0, proj.timer / Math.max(1, proj.maxTimer ?? proj.timer));
+          ctx.globalAlpha = 0.18 + patchProgress * 0.18;
+          ctx.fillStyle = proj.color;
+          ctx.strokeStyle = proj.color;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(proj.x, proj.y, proj.radius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
         else if (
           proj.type === 'meteor_warning'
           || proj.type === 'lightning_strike_warning'
           || proj.type === 'archetype_artillery_warning'
           || proj.type === 'archetype_mimic_warning'
+          || proj.type === 'campaign_boss_warning'
         ) {
           const warningColor = proj.color ?? '#ef4444';
           ctx.globalAlpha = 0.25;
@@ -3639,7 +3771,12 @@ export default function CombatArena({
           ctx.lineWidth = 2;
           ctx.beginPath();
           ctx.arc(proj.x, proj.y, proj.radius, 0, Math.PI * 2);
-          ctx.fill();
+          if (proj.innerRadius !== undefined) {
+            ctx.arc(proj.x, proj.y, proj.innerRadius, 0, Math.PI * 2, true);
+            ctx.fill('evenodd');
+          } else {
+            ctx.fill();
+          }
           ctx.stroke();
 
           // expanding progress ring
@@ -3648,7 +3785,12 @@ export default function CombatArena({
           ctx.fillStyle = warningColor;
           ctx.beginPath();
           ctx.arc(proj.x, proj.y, proj.radius * pct, 0, Math.PI * 2);
-          ctx.fill();
+          if (proj.innerRadius !== undefined) {
+            ctx.arc(proj.x, proj.y, proj.innerRadius * pct, 0, Math.PI * 2, true);
+            ctx.fill('evenodd');
+          } else {
+            ctx.fill();
+          }
         }
         ctx.restore();
 
@@ -3960,7 +4102,24 @@ export default function CombatArena({
           const targetY = playerRef.current.y;
           const angle = Math.atan2(targetY - enemy.y, targetX - enemy.x);
 
-          if (enemy.bossType === 'fire_dragon') {
+          if (enemy.campaignMechanicId) {
+            const mechanicStep = stepCampaignBossMechanic(
+              enemy.campaignMechanicState ?? createCampaignBossMechanicState(),
+              {
+                mechanicId: enemy.campaignMechanicId,
+                phase: enemy.phase as 1 | 2 | 3,
+                combatSpeed,
+                bossX: enemy.x,
+                bossY: enemy.y,
+                targetX,
+                targetY,
+                random: Math.random,
+              },
+            );
+            enemy.campaignMechanicState = mechanicStep.state;
+            applyCampaignBossActions(enemy, mechanicStep.actions);
+          }
+          else if (enemy.bossType === 'fire_dragon') {
             // FIRE DRAGON MECHANICS
             // Phase 1+: Fireballs every 110 frames
             if (enemy.attackCooldown <= 0) {
