@@ -928,7 +928,6 @@ canvas {
   }
 
   .aether-main-menu__mini-brand span,
-  .aether-main-menu__header-actions > span,
   .aether-main-menu__header-actions button span {
     display: none;
   }

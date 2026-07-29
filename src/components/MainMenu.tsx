@@ -8,6 +8,7 @@ import {
   Volume2,
   VolumeX,
 } from 'lucide-react';
+import { GAME_VERSION } from '../config/gameVersion';
 
 interface MainMenuProps {
   backgroundVideo: string;
@@ -59,7 +60,7 @@ export default function MainMenu({
           <span>Elemental Battleground</span>
         </div>
         <div className="aether-main-menu__header-actions">
-          <span>V1.2.0 Live</span>
+          <span>V{GAME_VERSION} Live</span>
           <button type="button" onClick={onToggleBgm} aria-label="Toggle background music">
             {bgmEnabled ? <Volume2 /> : <VolumeX />}
             <span>BGM {bgmEnabled ? 'On' : 'Off'}</span>

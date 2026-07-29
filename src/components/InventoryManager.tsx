@@ -32,16 +32,21 @@ export function getUpgradedWeaponStats(weapon: Weapon) {
 
   let statBonusStr = weapon.statBonus || "None +0%";
   let baseBonusVal = 0;
-  let parsedBonusLabel = "";
+  let statBonusPrefix = "";
+  let statBonusSuffix = "";
   const bonusNumMatch = statBonusStr.match(/(\d+(\.\d+)?)/);
   if (bonusNumMatch) {
     baseBonusVal = parseFloat(bonusNumMatch[1]);
-    parsedBonusLabel = statBonusStr.replace(bonusNumMatch[1], "");
+    const valueIndex = bonusNumMatch.index ?? 0;
+    statBonusPrefix = statBonusStr.slice(0, valueIndex);
+    statBonusSuffix = statBonusStr.slice(valueIndex + bonusNumMatch[1].length);
   }
 
   // Upgrades every 5 levels
   const upgradedBonusVal = Number((baseBonusVal * (1 + upgradeSteps * 0.12)).toFixed(1));
-  const calcStatBonus = parsedBonusLabel ? `${parsedBonusLabel}${upgradedBonusVal}` : `${statBonusStr} (+${upgradeSteps * 12}%)`;
+  const calcStatBonus = bonusNumMatch
+    ? `${statBonusPrefix}${upgradedBonusVal}${statBonusSuffix}`
+    : `${statBonusStr} (+${upgradeSteps * 12}%)`;
 
   let baseFeatureDesc = "Master tier armaments with scaled global combat potency.";
   const templ = WEAPONS_DATABASE.find(w => w.name === weapon.name);

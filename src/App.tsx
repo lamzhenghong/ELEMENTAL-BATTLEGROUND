@@ -46,6 +46,7 @@ import { mergeUnlockedStoryMemories } from './data/story/memories';
 import { normalizeStoryProgress } from './data/story/progress';
 import { useCloudAccount } from './cloud/useCloudAccount';
 import { createInitialSaveState, formatPlayTime, normalizeLoadedSaveState } from './save/gameSave';
+import { GAME_VERSION } from './config/gameVersion';
 
 const GDDViewer = React.lazy(() => import('./components/GDDViewer'));
 const GachaSimulator = React.lazy(() => import('./components/GachaSimulator'));
@@ -2402,7 +2403,7 @@ export default function App() {
                 ELEMENTAL BATTLEGROUND
               </h1>
               <span className="text-[8px] bg-amber-400/10 text-amber-300 border border-amber-300/20 px-1.5 py-0.5 rounded font-black tracking-wider uppercase">
-                v1.2.0 LIVE
+                v{GAME_VERSION} LIVE
               </span>
             </div>
             <p className="text-[9px] text-slate-400 font-mono uppercase tracking-widest">Dawning Elements • RTS Action Core Engine</p>
@@ -3593,12 +3594,14 @@ export default function App() {
           <div className="space-y-6">
           
           {/* Squadron Quest Ledger Sidebar Layout */}
-          <SquadronQuestLedger
-            activeQuests={saveState.activeQuests}
-            onClaimQuestReward={claimQuestReward}
-            onClaimAllQuestRewards={claimAllQuestRewards}
-            layout="sidebar"
-          />
+          {activeScreen !== 'quest' && (
+            <SquadronQuestLedger
+              activeQuests={saveState.activeQuests}
+              onClaimQuestReward={claimQuestReward}
+              onClaimAllQuestRewards={claimAllQuestRewards}
+              layout="sidebar"
+            />
+          )}
 
           {/* Quick Character Inventory Party Panel  (HUD style with custom frames) */}
           <div className="bg-[#0b0f19]/70 border border-white/10 p-5 rounded-xl shadow-[0_4px_30px_rgba(0,0,0,0.4)] backdrop-blur-md space-y-4">
