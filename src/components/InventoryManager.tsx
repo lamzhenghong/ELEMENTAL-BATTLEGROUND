@@ -9,8 +9,6 @@ import { PLAYABLE_CHARACTERS } from '../data/characters';
 import { PlayableCharacter, Weapon, InventoryItem, ElementType, Artifact, ArtifactSlot, ArtifactSet } from '../types';
 import { Shield, Sparkles, Coins, Hammer, Star, StarOff, ArrowUpCircle, BookOpen, Smile, User, Flame, Droplet, Snowflake, Zap, Wind, Leaf, Search, Layers, Lock, Unlock, Trash2, Heart, Clock, Sword } from 'lucide-react';
 import { AetheriaAudioEngine } from '../utils/audio';
-import { WEAPONS_DATABASE } from '../data/weapons';
-import { getAccumulatedPortraitBuffs } from '../utils/portraits';
 import { LanguageType, t } from '../utils/i18n';
 import { ARTIFACT_SETS, ARTIFACT_NAMES, getArtifactMainStat } from '../data/artifacts';
 import {
@@ -23,55 +21,13 @@ import {
   getRecommendedArtifactSet,
   recommendArtifactsForCharacter
 } from '../utils/artifactAutoEquip';
+import {
+  calculateCharacterBuildStats,
+  getUpgradedWeaponStats
+} from '../utils/characterBuildStats';
 import CharacterRoleBadge from './CharacterRoleBadge';
 
-export function getUpgradedWeaponStats(weapon: Weapon) {
-  const lvl = weapon.level || 1;
-  const upgradeSteps = Math.floor(lvl / 5);
-  const calcBaseAtk = Math.round(weapon.baseAtk + (lvl * 2.5));
-
-  let statBonusStr = weapon.statBonus || "None +0%";
-  let baseBonusVal = 0;
-  let statBonusPrefix = "";
-  let statBonusSuffix = "";
-  const bonusNumMatch = statBonusStr.match(/(\d+(\.\d+)?)/);
-  if (bonusNumMatch) {
-    baseBonusVal = parseFloat(bonusNumMatch[1]);
-    const valueIndex = bonusNumMatch.index ?? 0;
-    statBonusPrefix = statBonusStr.slice(0, valueIndex);
-    statBonusSuffix = statBonusStr.slice(valueIndex + bonusNumMatch[1].length);
-  }
-
-  // Upgrades every 5 levels
-  const upgradedBonusVal = Number((baseBonusVal * (1 + upgradeSteps * 0.12)).toFixed(1));
-  const calcStatBonus = bonusNumMatch
-    ? `${statBonusPrefix}${upgradedBonusVal}${statBonusSuffix}`
-    : `${statBonusStr} (+${upgradeSteps * 12}%)`;
-
-  let baseFeatureDesc = "Master tier armaments with scaled global combat potency.";
-  const templ = WEAPONS_DATABASE.find(w => w.name === weapon.name);
-  if (templ) {
-    baseFeatureDesc = templ.featureDesc;
-  }
-
-  let calcFeatureDesc = baseFeatureDesc;
-  // Upgrade passive stats in string dynamically!
-  const percentMatches = baseFeatureDesc.match(/(\d+)%/g);
-  if (percentMatches) {
-    percentMatches.forEach(m => {
-      const origVal = parseInt(m);
-      const newVal = Math.round(origVal * (1 + upgradeSteps * 0.08));
-      calcFeatureDesc = calcFeatureDesc.replace(m, `${newVal}%`);
-    });
-  }
-
-  return {
-    calcBaseAtk,
-    calcStatBonus,
-    calcFeatureDesc,
-    upgradeSteps
-  };
-}
+export { getUpgradedWeaponStats };
 
 const ELEMENTS_LIST: ('all' | ElementType)[] = ['all', 'Pyro', 'Hydro', 'Cryo', 'Electro', 'Anemo', 'Geo', 'Dendro'];
 
@@ -263,39 +219,7 @@ export default function InventoryManager({
 
   const equippedWeaponId = characterEquippedWeapon[selectedChar.id];
   const activeEquippedWeapon = inventoryWeapons.find(w => w.id === equippedWeaponId);
-  const wStats = activeEquippedWeapon ? getUpgradedWeaponStats(activeEquippedWeapon) : null;
-
-  // Upper upgraded active parameters computed dynamically for HUD visualization
-  let bonusCritRate = 0;
-  let bonusCritDmg = 0;
-  let bonusAtkPercent = 0;
-
-  if (activeEquippedWeapon) {
-    const upgradeSteps = Math.floor(activeEquippedWeapon.level / 5);
-    const statBonusStr = activeEquippedWeapon.statBonus || "";
-    let baseBonusVal = 0;
-    const bonusNumMatch = statBonusStr.match(/(\d+(\.\d+)?)/);
-    if (bonusNumMatch) {
-      baseBonusVal = parseFloat(bonusNumMatch[1]);
-    }
-
-    const upgradedBonusVal = baseBonusVal * (1 + upgradeSteps * 0.12);
-    const normalizedStr = statBonusStr.toLowerCase();
-
-    if (normalizedStr.includes("crit rate")) {
-      bonusCritRate = upgradedBonusVal / 100;
-    } else if (normalizedStr.includes("crit dmg") || normalizedStr.includes("crit damage")) {
-      bonusCritDmg = upgradedBonusVal / 100;
-    } else if (normalizedStr.includes("atk") || normalizedStr.includes("attack")) {
-      bonusAtkPercent = upgradedBonusVal / 100;
-    }
-  }
-
-  const charMult = selectedChar.rarity === 5 ? 3.0 : selectedChar.rarity === 4 ? 1.5 : 1.0;
-  const wpMult = activeEquippedWeapon ? (activeEquippedWeapon.rarity === 5 ? 3.0 : activeEquippedWeapon.rarity === 4 ? 1.5 : 1.0) : 1.0;
-
   const pLvl = characterPortraits?.[selectedChar.id] || 0;
-  const pBuffs = getAccumulatedPortraitBuffs(selectedChar.id, pLvl);
 
   // --- ARTIFACT STATS CALCULATION ---
   const equippedArtifactIds = characterEquippedArtifacts?.[selectedChar.id] || {};
@@ -303,17 +227,32 @@ export default function InventoryManager({
     .map(([slot, artId]) => inventoryArtifacts.find(a => a.id === artId))
     .filter((a): a is Artifact => !!a);
 
-  const setCounts: Record<ArtifactSet, number> = {
-    Vanguard: 0,
-    Guardian: 0,
-    Celestial: 0,
-    Chrono: 0
-  };
-  equippedArts.forEach(art => {
-    if (art.set in setCounts) {
-      setCounts[art.set]++;
-    }
+  const buildStats = calculateCharacterBuildStats({
+    character: selectedChar,
+    level: charLevel,
+    equippedWeapon: activeEquippedWeapon,
+    equippedArtifacts: equippedArts,
+    portraitLevel: pLvl
   });
+  const {
+    charMultiplier: charMult,
+    portraitBuffs: pBuffs,
+    setCounts,
+    weaponCritRate: bonusCritRate,
+    weaponCritDmg: bonusCritDmg,
+    artifactHpPercent: totalArtHpPercent,
+    artifactDmgPercent: totalArtDmgPercent,
+    artifactCritRate: totalArtCritRate,
+    artifactCritDmg: totalArtCritDmg,
+    finalWeaponBaseAtk,
+    finalHp,
+    finalDef,
+    finalAtk,
+    finalCritRate,
+    finalCritDmg,
+    finalCooldownReduction: finalCdReduction,
+    upgradedWeaponStats: wStats
+  } = buildStats;
 
   const handleAutoEquip = () => {
     if (!onEquipArtifact) return;
@@ -353,85 +292,6 @@ export default function InventoryManager({
       );
     }
   };
-
-  let artBonusHpPercent = 0;
-  let artBonusDmgPercent = 0;
-  let artBonusCritRate = 0;
-  let artBonusCritDmg = 0;
-  let artBonusCdReduction = 0;
-
-  if (setCounts.Guardian >= 4) {
-    artBonusHpPercent += 0.55;
-  } else if (setCounts.Guardian >= 2) {
-    artBonusHpPercent += 0.20;
-  }
-
-  if (setCounts.Vanguard >= 4) {
-    artBonusDmgPercent += 0.45;
-  } else if (setCounts.Vanguard >= 2) {
-    artBonusDmgPercent += 0.15;
-  }
-
-  if (setCounts.Celestial >= 4) {
-    artBonusCritRate += 0.25;
-    artBonusCritDmg += 0.55;
-  } else if (setCounts.Celestial >= 2) {
-    artBonusCritRate += 0.10;
-    artBonusCritDmg += 0.20;
-  }
-
-  if (setCounts.Chrono >= 4) {
-    artBonusCdReduction += 0.30;
-  } else if (setCounts.Chrono >= 2) {
-    artBonusCdReduction += 0.10;
-  }
-
-  let artSlotHpPercent = 0;
-  let artSlotDmgPercent = 0;
-  let artSlotCritRate = 0;
-  let artSlotCritDmg = 0;
-
-  equippedArts.forEach(art => {
-    const stat = getArtifactMainStat(art.slot, art.rarity);
-    if (art.slot === 'helmet') {
-      artSlotHpPercent += stat.value;
-    } else if (art.slot === 'hands') {
-      artSlotDmgPercent += stat.value;
-    } else if (art.slot === 'leg') {
-      artSlotCritRate += stat.value;
-    } else if (art.slot === 'shoe') {
-      artSlotCritDmg += stat.value;
-    }
-  });
-
-  const totalArtHpPercent = artBonusHpPercent + artSlotHpPercent;
-  const totalArtDmgPercent = artBonusDmgPercent + artSlotDmgPercent;
-  const totalArtCritRate = artBonusCritRate + artSlotCritRate;
-  const totalArtCritDmg = artBonusCritDmg + artSlotCritDmg;
-
-  let baseHp = Math.round((selectedChar.baseStats.hp + charLevel * 14) * charMult);
-  let baseDef = Math.round((selectedChar.baseStats.def + charLevel * 2.4) * charMult);
-
-  const finalCharBaseAtk = Math.round((selectedChar.baseStats.atk + charLevel * 3.8) * charMult);
-  const finalWeaponBaseAtk = activeEquippedWeapon ? Math.round((activeEquippedWeapon.baseAtk + (activeEquippedWeapon.level * 2.5)) * wpMult) : 10;
-  const rawAtk = finalCharBaseAtk + finalWeaponBaseAtk;
-  let baseAtk = Math.round(rawAtk * (1 + bonusAtkPercent + totalArtDmgPercent));
-  let baseCritRate = selectedChar.baseStats.critRate + bonusCritRate + totalArtCritRate;
-  let baseCritDmg = selectedChar.baseStats.critDmg + bonusCritDmg + totalArtCritDmg;
-
-  // Apply Portrait buffs
-  baseHp = Math.round(baseHp * (1 + pBuffs.hp + totalArtHpPercent));
-  baseDef = Math.round(baseDef * (1 + pBuffs.def));
-  baseAtk = Math.round(baseAtk * (1 + pBuffs.atk));
-  baseCritRate += pBuffs.critRate;
-  baseCritDmg += pBuffs.critDmg;
-
-  const finalHp = baseHp;
-  const finalDef = baseDef;
-  const finalAtk = baseAtk;
-  const finalCritRate = baseCritRate * 100;
-  const finalCritDmg = baseCritDmg * 100;
-  const finalCdReduction = artBonusCdReduction * 100;
 
   // Quick sandbox grant
   const handleCheatResources = () => {

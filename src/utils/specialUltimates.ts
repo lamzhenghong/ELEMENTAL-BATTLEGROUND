@@ -113,7 +113,3 @@ export function getAvailableSpecialUltimate(query: SpecialUltimateQuery): Availa
 
   return null;
 }
-
-export const canUseSpecialUltimate = (query: SpecialUltimateQuery) => {
-  return getAvailableSpecialUltimate(query) !== null;
-};

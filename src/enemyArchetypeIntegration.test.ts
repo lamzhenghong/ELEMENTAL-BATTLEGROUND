@@ -5,6 +5,10 @@ import { join } from 'node:path';
 const sourceRoot = join(process.cwd(), 'src');
 const arenaSource = readFileSync(join(sourceRoot, 'components', 'CombatArena.tsx'), 'utf8');
 const wikiSource = readFileSync(join(sourceRoot, 'components', 'GDDViewer.tsx'), 'utf8');
+const enemyArchiveSource = readFileSync(
+  join(sourceRoot, 'components', 'wiki', 'EnemyArchiveTab.tsx'),
+  'utf8'
+);
 const previewSource = readFileSync(
   join(sourceRoot, 'components', 'EnemyArchetypeModelPreview.tsx'),
   'utf8'
@@ -36,16 +40,17 @@ assert.match(
   /\['lore', 'nations', 'characters', 'weapons', 'artifacts', 'enemies', 'systems', 'tutorial'\]/
 );
 assert.match(wikiSource, /activeTab === 'enemies'/);
-assert.match(wikiSource, /ENEMY_ARCHETYPE_DEFINITIONS\.map/);
-assert.match(wikiSource, /Switch to Boss/);
-assert.match(wikiSource, /Switch to Enemies/);
-assert.match(wikiSource, /getBossIdentityGroups/);
-assert.match(wikiSource, /<BossModelPreview identity=\{identity\} \/>/);
-assert.match(wikiSource, /Skill \/ Mechanic/);
-assert.match(wikiSource, />\s*Counter\s*</);
-assert.match(wikiSource, /<EnemyArchetypeModelPreview archetype=\{archetype\} \/>/);
-assert.doesNotMatch(wikiSource, />\s*Enemy Index\s*</);
-assert.doesNotMatch(wikiSource, />\s*Enemy Archetype Index\s*</);
+assert.match(wikiSource, /<EnemyArchiveTab \/>/);
+assert.match(enemyArchiveSource, /ENEMY_ARCHETYPE_DEFINITIONS\.map/);
+assert.match(enemyArchiveSource, /Switch to Boss/);
+assert.match(enemyArchiveSource, /Switch to Enemies/);
+assert.match(enemyArchiveSource, /getBossIdentityGroups/);
+assert.match(enemyArchiveSource, /<BossModelPreview identity=\{identity\} \/>/);
+assert.match(enemyArchiveSource, /Skill \/ Mechanic/);
+assert.match(enemyArchiveSource, />\s*Counter\s*</);
+assert.match(enemyArchiveSource, /<EnemyArchetypeModelPreview archetype=\{archetype\} \/>/);
+assert.doesNotMatch(enemyArchiveSource, />\s*Enemy Index\s*</);
+assert.doesNotMatch(enemyArchiveSource, />\s*Enemy Archetype Index\s*</);
 
 assert.match(previewSource, /drawEnemyArchetypeEnemy/);
 assert.match(previewSource, /requestAnimationFrame/);

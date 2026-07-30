@@ -5,6 +5,7 @@ const accountSource = readFileSync(new URL('../components/CloudAccountModal.tsx'
 const conflictSource = readFileSync(new URL('../components/CloudSaveConflictModal.tsx', import.meta.url), 'utf8');
 const appSource = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
 const mainMenuSource = readFileSync(new URL('../components/MainMenu.tsx', import.meta.url), 'utf8');
+const settingsSource = readFileSync(new URL('../components/InGameSettingsModal.tsx', import.meta.url), 'utf8');
 const copyButtonUrl = new URL('../components/CopyValueButton.tsx', import.meta.url);
 const usernameSettingsUrl = new URL('../components/UsernameSettingsPanel.tsx', import.meta.url);
 
@@ -59,9 +60,9 @@ assert.match(mainMenuSource, /signedIn \? username/);
 assert.match(mainMenuSource, /signedIn \? email/);
 assert.match(appSource, /username=\{cloudAccount\.profile\?\.username \?\? null\}/);
 assert.match(appSource, /email=\{cloudAccount\.user\?\.email \?\? null\}/);
-assert.match(appSource, /UsernameSettingsPanel/);
-assert.match(appSource, /onChangeUsername=\{cloudAccount\.changeUsername\}/);
-assert.match(appSource, /mutationStatus=\{cloudAccount\.profileMutationStatus\}/);
+assert.match(settingsSource, /UsernameSettingsPanel/);
+assert.match(settingsSource, /onChangeUsername=\{cloudAccount\.changeUsername\}/);
+assert.match(settingsSource, /mutationStatus=\{cloudAccount\.profileMutationStatus\}/);
 
 assert.match(copyButtonSource, /navigator\.clipboard\.writeText/);
 assert.match(copyButtonSource, /document\.execCommand\('copy'\)/);

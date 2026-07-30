@@ -9,11 +9,6 @@ import type { StoryDialogueLine, StoryEnemySpec, StoryStageReward, StoryStageSpe
 export type { StoryDialogueLine, StoryEnemySpec, StoryStageReward, StoryStageSpec } from './story/types';
 export { getMemoryUnlockIds, getStageSpec, getStoryChoice, getStoryModifier, getStoryScene } from './story';
 
-export interface StoryCutsceneSpec {
-  background: string; // Tailwind bg-gradient details or theme
-  slides: StoryDialogueLine[];
-}
-
 export const STORY_CHAPTERS = [
   { id: 1, title: 'The Awakening', desc: 'The starting step of the hero. Journey into the Whispering Forest to investigate active elemental anomalies.' },
   { id: 2, title: 'Elemental Crisis', desc: 'Unstable dimensional tears are erupting across the elements. Secure the burning plains and frozen rivers.' },

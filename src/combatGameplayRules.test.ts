@@ -40,7 +40,8 @@ assert.doesNotMatch(combatArenaSource, /element:\s*(tpl|bossTpl|enemySpec)\.elem
 assert.doesNotMatch(combatArenaSource, /element:\s*enemySpec\.element/);
 
 const appSource = readFileSync(new URL('./App.tsx', import.meta.url), 'utf8');
-assert.match(appSource, /Disable Gameplay Cutscenes/);
-assert.match(appSource, /disableGameplayCutscenes=\{saveState\.disableGameplayCutscenes/);
+const settingsSource = readFileSync(new URL('./components/InGameSettingsModal.tsx', import.meta.url), 'utf8');
+assert.match(settingsSource, /Disable Gameplay Cutscenes/);
+assert.match(appSource, /disableGameplayCutscenes=\{Boolean\(saveState\.disableGameplayCutscenes\)\}/);
 
 console.log('combat gameplay rules ok');

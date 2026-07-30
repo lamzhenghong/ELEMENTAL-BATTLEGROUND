@@ -129,6 +129,7 @@ import {
   stepCampaignBossMechanic,
   type CampaignBossAction,
 } from '../utils/campaignBossMechanics';
+import { useCombatKeyboardInput } from './combat/useCombatKeyboardInput';
 
 const EMPTY_STORY_CHOICE_SELECTIONS: StoryChoiceSelections = {};
 
@@ -4866,52 +4867,19 @@ export default function CombatArena({
     };
   }, []);
 
-  // Keyboard binding trackers
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const key = e.key.toLowerCase();
-      
-      if (key === 'escape' || key === 'p') {
-        AetheriaAudioEngine.playClick();
-        setIsPaused(prev => !prev);
-        return;
-      }
-
-      if (!loopStateRef.current.battleStarted || loopStateRef.current.isPaused || loopStateRef.current.isGameOver || loopStateRef.current.countdownValue !== null) return;
-
-      keyboardState.current[key] = true;
-
-      // Handle direct key activations to bypass event delay issues in fast canvas updates
-      if (key === 'j' || key === 'f') triggerBasicAttack();
-      if (key === 'q') triggerUltimate();
-      if (key === 'z') triggerSpecialUltimate();
-      if (key === 'e') triggerElementalSkill();
-      if (key === ' ') {
-        e.preventDefault();
-        triggerDodgeDash();
-      }
-      if (key === 'c') triggerParryBlock();
-      if (key === '1') swapPartyIndex(0);
-      if (key === '2') swapPartyIndex(1);
-      if (key === '3') swapPartyIndex(2);
-      if (key === '4') swapPartyIndex(3);
-    };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      const key = e.key.toLowerCase();
-      keyboardState.current[key] = false;
-      if (key === 'c') {
-        setIsParrying(false);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-    };
-  }, [triggerBasicAttack, triggerUltimate, triggerSpecialUltimate, triggerElementalSkill, triggerDodgeDash, triggerParryBlock, swapPartyIndex]);
+  useCombatKeyboardInput({
+    loopStateRef,
+    keyboardState,
+    onTogglePause: () => setIsPaused(previous => !previous),
+    onBasicAttack: triggerBasicAttack,
+    onUltimate: triggerUltimate,
+    onSpecialUltimate: triggerSpecialUltimate,
+    onElementalSkill: triggerElementalSkill,
+    onDodge: triggerDodgeDash,
+    onParry: triggerParryBlock,
+    onStopParry: () => setIsParrying(false),
+    onSwapPartyIndex: swapPartyIndex
+  });
 
   // Handle combat damage logic hitting player target
   const handlePlayerHit = (enemy: any, amount: number = 200) => {

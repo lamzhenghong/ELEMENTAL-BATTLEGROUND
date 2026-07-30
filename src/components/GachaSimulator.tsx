@@ -16,73 +16,18 @@ import CharacterRoleBadge from './CharacterRoleBadge';
 import GachaCanvasAnimation from './gacha/GachaCanvasAnimation';
 import GachaRadarScanner from './gacha/GachaRadarScanner';
 import {
+  BASE_BANNERS,
+  getBannerArtworkLayout,
+  getBannerGradient,
+  getBannerImage
+} from './gacha/bannerCatalog';
+import {
   FIVE_STAR_BASE_RATE,
   FOUR_STAR_BASE_RATE,
   getDuplicateWeaponMoraRefund,
   isFiveStarRoll,
   isFourStarRoll
 } from '../utils/gachaEconomy';
-import aureliaBanner from '../../assets/aurelia_banner.jpg';
-import kaelenBanner from '../../assets/kaelen_banner.jpg';
-import maelisBanner from '../../assets/maelis_banner.jpg';
-import veyraBanner from '../../assets/veyra_banner.jpg';
-import weaponBanner from '../../assets/weapon_banner.jpg';
-import standardBanner from '../../assets/standard_banner.jpg';
-
-const getBannerImage = (featured5StarId: string, type: 'character' | 'weapon') => {
-  if (type === 'weapon') return weaponBanner;
-  if (featured5StarId === 'aurelia') return aureliaBanner;
-  if (featured5StarId === 'kaelen') return kaelenBanner;
-  if (featured5StarId === 'maelis') return maelisBanner;
-  if (featured5StarId === 'veyra') return veyraBanner;
-  if (featured5StarId === 'standard_banner') return standardBanner;
-  return aureliaBanner;
-};
-
-interface BannerArtworkLayout {
-  desktopPosition: string;
-  mobilePosition: string;
-}
-
-const BANNER_ARTWORK_LAYOUTS: Record<string, BannerArtworkLayout> = {
-  aurelia: { desktopPosition: 'center 26%', mobilePosition: '66% 16%' },
-  kaelen: { desktopPosition: 'center 26%', mobilePosition: '66% 16%' },
-  maelis: { desktopPosition: 'center 24%', mobilePosition: '66% 16%' },
-  veyra: { desktopPosition: 'center 28%', mobilePosition: '66% 14%' },
-  standard_banner: { desktopPosition: '58% 30%', mobilePosition: '68% 25%' },
-  weapon: { desktopPosition: '60% 40%', mobilePosition: '66% 38%' },
-};
-
-const getBannerArtworkLayout = (featured5StarId: string, type: 'character' | 'weapon'): BannerArtworkLayout => {
-  if (type === 'weapon') return BANNER_ARTWORK_LAYOUTS.weapon;
-  return BANNER_ARTWORK_LAYOUTS[featured5StarId] ?? {
-    desktopPosition: 'center 24%',
-    mobilePosition: '66% 18%',
-  };
-};
-
-const getBannerGradient = (featured5StarId: string, type: 'character' | 'weapon') => {
-  if (type === 'weapon') {
-    return 'linear-gradient(to right, rgba(15, 10, 15, 0.95) 0%, rgba(15, 10, 15, 0.7) 55%, rgba(15, 10, 15, 0.2) 100%)';
-  }
-  if (featured5StarId === 'aurelia') {
-    return 'linear-gradient(to right, rgba(16, 10, 10, 0.95) 0%, rgba(16, 10, 10, 0.7) 55%, rgba(16, 10, 10, 0.2) 100%)';
-  }
-  if (featured5StarId === 'kaelen') {
-    return 'linear-gradient(to right, rgba(10, 16, 28, 0.95) 0%, rgba(10, 16, 28, 0.7) 55%, rgba(10, 16, 28, 0.2) 100%)';
-  }
-  if (featured5StarId === 'maelis') {
-    return 'linear-gradient(to right, rgba(5, 20, 13, 0.96) 0%, rgba(5, 20, 13, 0.72) 55%, rgba(5, 20, 13, 0.24) 100%)';
-  }
-  if (featured5StarId === 'veyra') {
-    return 'linear-gradient(to right, rgba(12, 8, 28, 0.96) 0%, rgba(12, 8, 28, 0.72) 55%, rgba(12, 8, 28, 0.24) 100%)';
-  }
-  if (featured5StarId === 'standard_banner') {
-    return 'linear-gradient(to right, rgba(15, 12, 28, 0.95) 0%, rgba(15, 12, 28, 0.7) 55%, rgba(15, 12, 28, 0.2) 100%)';
-  }
-  return 'linear-gradient(to right, rgba(11, 15, 25, 0.95) 0%, rgba(11, 15, 25, 0.75) 55%, rgba(11, 15, 25, 0.3) 100%)';
-};
-
 interface GachaSimulatorProps {
   aetherGems: number;
   mora: number;
@@ -104,66 +49,6 @@ interface GachaSimulatorProps {
   onNavigateToWikiChar?: (charId: string) => void;
   onNavigateToWikiWeapon?: (weaponName: string) => void;
 }
-
-interface BannerDetails {
-  id: string;
-  title: string;
-  subtitle: string;
-  desc: string;
-  type: 'character' | 'weapon';
-  featured5Star: string;
-  featured5StarId: string; // character id or weapon spec
-  featured4Stars: string[];
-  tag: string;
-  themeColor: string; // border/glow class
-  gradientStyle: string; // bg gradient
-  details: string;
-}
-
-const BANNERS: BannerDetails[] = [
-  {
-    id: 'char_banner_1',
-    title: 'Solar Crucible Dawning',
-    subtitle: 'LIMITED BANNER',
-    desc: 'Unleash the ultimate power of solar flames! Greatly enhanced drop-rates for 5★ Aurelia Sunflare. Commands lightning fast Sword slashes.',
-    type: 'character',
-    featured5Star: 'Aurelia Sunflare',
-    featured5StarId: 'aurelia',
-    featured4Stars: ['Ignis Hearthward', 'Raijin Volt'],
-    tag: 'LIMITED BANNER',
-    themeColor: 'border-orange-500/50 shadow-[0_0_20px_rgba(244,63,94,0.15)]',
-    gradientStyle: 'from-orange-950/70 via-[#100d1c] to-[#08070f]',
-    details: '5★ Rate: 50% chance to summon Aurelia Sunflare [EVENT LIMITED]. If not, any other random 5★ champion.'
-  },
-  {
-    id: 'char_banner_2',
-    title: 'Wanderlust Invocation',
-    subtitle: 'STANDARD BANNER',
-    desc: 'Summon standard characters with standard rates. A random 5★ champion is guaranteed on every 5★ drop. Includes Lyra, Zephyr, Goliath, and Raijin.',
-    type: 'character',
-    featured5Star: 'Lyra Frostbloom',
-    featured5StarId: 'standard_banner',
-    featured4Stars: ['Ignis Hearthward', 'Marina Dewdrop', 'Lyra Frostbloom', 'Raijin Volt', 'Tessa Shardweaver', 'Varek Ironfist'],
-    tag: 'STANDARD BANNER',
-    themeColor: 'border-indigo-500/50 shadow-[0_0_20px_rgba(99,102,241,0.15)]',
-    gradientStyle: 'from-indigo-950/70 via-[#0d1020] to-[#05060f]',
-    details: '5★ Rate: 100% chance to summon a random standard 5★ character. Excludes limited event characters.'
-  },
-  {
-    id: 'weapon_banner_1',
-    title: 'Epitome Invocation: Custom Armory',
-    subtitle: 'LEGENDARY WEAPON INVOCATION',
-    desc: 'Forge your armaments with absolute accuracy! Select your desired 5★ Legendary Weapon and obtain it with a 100% guarantee on your next 5★ pull!',
-    type: 'weapon',
-    featured5Star: 'Solar Searing Blade (Sword)',
-    featured5StarId: 'w_solar_searing',
-    featured4Stars: ['Favonius Greatsword', 'Sacrificial Sword'],
-    tag: '5★ Custom Weapon Selector',
-    themeColor: 'border-rose-500/50 shadow-[0_0_20px_rgba(239,68,68,0.15)]',
-    gradientStyle: 'from-rose-950/60 via-[#1c0d12] to-[#0f0709]',
-    details: 'Guaranteed selected 5★ target weapon on roll. Select your weapon below.'
-  }
-];
 
 export default function GachaSimulator({
   aetherGems,
@@ -217,7 +102,7 @@ export default function GachaSimulator({
 
   const activeLimitedBanner = getLimitedCharacterBannerForTime(Date.now(), devFeaturedOffset);
 
-  const limitedRotationBanners = BANNERS.map(banner => {
+  const limitedRotationBanners = BASE_BANNERS.map(banner => {
     if (banner.id === 'char_banner_1') {
       return { ...banner, ...activeLimitedBanner };
     }
@@ -499,12 +384,6 @@ export default function GachaSimulator({
       AetheriaAudioEngine.playWaveClear();
     }
     setPulling(false);
-  };
-
-  const getMeteorImageColor = () => {
-    if (maxRarityInPull === 5) return 'shadow-[0_0_80px_rgba(251,191,36,0.7)] border-amber-300';
-    if (maxRarityInPull === 4) return 'shadow-[0_0_60px_rgba(168,85,247,0.6)] border-purple-400';
-    return 'shadow-[0_0_40px_rgba(6,182,212,0.4)] border-cyan-500';
   };
 
   return (

@@ -40,12 +40,17 @@ const readJpegMetadata = (path: string) => {
 };
 
 const gachaSource = readFileSync(join(componentDir, 'GachaSimulator.tsx'), 'utf8');
-assert.match(gachaSource, /interface BannerArtworkLayout/);
-assert.match(gachaSource, /const getBannerArtworkLayout = \(/);
+const bannerCatalogSource = readFileSync(
+  join(componentDir, 'gacha', 'bannerCatalog.ts'),
+  'utf8'
+);
+assert.match(gachaSource, /from '.\/gacha\/bannerCatalog'/);
+assert.match(bannerCatalogSource, /interface BannerArtworkLayout/);
+assert.match(bannerCatalogSource, /const getBannerArtworkLayout = \(/);
 for (const id of ['aurelia', 'kaelen', 'maelis', 'veyra', 'standard_banner']) {
-  assert.match(gachaSource, new RegExp(`${id}:\\s*\\{`), `${id} must define explicit artwork focal positions.`);
+  assert.match(bannerCatalogSource, new RegExp(`${id}:\\s*\\{`), `${id} must define explicit artwork focal positions.`);
 }
-assert.match(gachaSource, /type === 'weapon'/);
+assert.match(bannerCatalogSource, /type === 'weapon'/);
 assert.match(gachaSource, /--banner-position-mobile/);
 assert.match(gachaSource, /--banner-position-desktop/);
 assert.match(gachaSource, /gacha-banner-art/);

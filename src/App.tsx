@@ -23,16 +23,17 @@ import MainMenuSettingsModal from './components/MainMenuSettingsModal';
 import CharacterRoleBadge from './components/CharacterRoleBadge';
 import CloudAccountModal from './components/CloudAccountModal';
 import CloudSaveConflictModal from './components/CloudSaveConflictModal';
-import { UsernameSettingsPanel } from './components/UsernameSettingsPanel';
+import InGameSettingsModal from './components/InGameSettingsModal';
+import PlayerStatsModal from './components/PlayerStatsModal';
 import { 
   Shield, Sparkles, Coins, HelpCircle, History, RefreshCw, Star, 
   BookOpen, Compass, Sword, Landmark, Hammer, Trophy, DollarSign, 
-  Info, Skull, LayoutGrid, CheckCircle2, Circle, Volume2, VolumeX, X, Award, Maximize2, Minimize2, Users, Lock, BarChart2
+  Info, Skull, LayoutGrid, X, Award, Maximize2, Minimize2, Users, Lock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AetheriaAudioEngine } from './utils/audio';
 import { getArtifactFusionRule, isSameArtifactPart } from './utils/artifactFusion';
-import { UI_THEMES, UI_THEME_UNLOCK_LEVEL, getUiTheme, isUiThemeUnlocked, normalizeUiTheme } from './utils/uiThemes';
+import { UI_THEME_UNLOCK_LEVEL, getUiTheme, isUiThemeUnlocked, normalizeUiTheme } from './utils/uiThemes';
 import { getStandardFiveStarCharacters } from './utils/limitedBanners';
 import { SPECIAL_ULTIMATE_UNLOCK_LEVEL } from './utils/specialUltimates';
 import { assignUniqueWeaponOwner, normalizeUniqueEquippedWeapons } from './utils/equipmentRules';
@@ -3726,472 +3727,95 @@ export default function App() {
         </p>
       </footer>
 
-      {/* ENHANCED SETTINGS MODAL */}
-      <AnimatePresence>
-        {showSettingsModal && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-slate-950/90 z-50 flex items-center justify-center p-4 backdrop-blur-md"
-            onClick={() => setShowSettingsModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: -20 }}
-              className={`max-w-md w-full border rounded-2xl shadow-2xl relative flex flex-col ${activeUiTheme.panelClass}`}
-              style={{ maxHeight: '90vh' }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Sticky header */}
-              <div className="flex justify-between items-center border-b border-white/10 px-6 py-4 shrink-0">
-                <h3 className="text-sm font-black text-slate-100 uppercase tracking-widest font-display flex items-center gap-2">
-                  <LayoutGrid className={`w-4 h-4 ${activeUiTheme.iconClass}`} />
-                  Aetheria Settings Control
-                </h3>
-                <button 
-                  onClick={() => setShowSettingsModal(false)}
-                  className="p-1 px-2 text-slate-400 hover:text-white bg-white/5 rounded hover:bg-white/10 transition-colors text-xs font-black cursor-pointer"
-                >
-                  CLOSE
-                </button>
-              </div>
-              {/* Scrollable body */}
-              <div className="overflow-y-auto flex-1 px-6 py-4 space-y-5 font-sans">
+      <InGameSettingsModal
+        open={showSettingsModal}
+        activeUiTheme={activeUiTheme}
+        activeUiThemeId={activeUiThemeId}
+        playerLevel={currentPlayerLevel}
+        devCheatsEnabled={devCheatsEnabled}
+        muteSfx={muteSfx}
+        bgmVolume={bgmVolume}
+        sfxVolume={sfxVolume}
+        screenShakeEnabled={screenShakeEnabled}
+        disableGameplayCutscenes={Boolean(saveState.disableGameplayCutscenes)}
+        combatSpeed={combatSpeed}
+        fpsLimit={fpsLimit}
+        language={language}
+        cloudSyncLabel={cloudSyncLabel}
+        cloudAccount={cloudAccount}
+        onClose={() => setShowSettingsModal(false)}
+        onOpenPlayerStats={() => {
+          AetheriaAudioEngine.playClick();
+          setShowPlayerStatsOverlay(true);
+        }}
+        onToggleMuteSfx={() => {
+          setMuteSfx(!muteSfx);
+          AetheriaAudioEngine.playClick();
+        }}
+        onBgmVolumeChange={(value) => {
+          setBgmVolume(value);
+          AetheriaAudioEngine.setBgmVolume(value / 100);
+        }}
+        onSfxVolumeChange={(value) => {
+          setSfxVolume(value);
+          AetheriaAudioEngine.setSfxVolume(value / 100);
+        }}
+        onToggleDevCheats={() => {
+          setDevCheatsEnabled(!devCheatsEnabled);
+          AetheriaAudioEngine.playClick();
+        }}
+        onSelectUiTheme={handleSelectUiTheme}
+        onToggleScreenShake={() => {
+          setScreenShakeEnabled(!screenShakeEnabled);
+          AetheriaAudioEngine.playClick();
+        }}
+        onToggleGameplayCutscenes={() => {
+          triggerSaveUpdate((previous) => ({
+            ...previous,
+            disableGameplayCutscenes: !previous.disableGameplayCutscenes
+          }));
+          AetheriaAudioEngine.playClick();
+        }}
+        onCombatSpeedChange={(speed) => {
+          setCombatSpeed(speed);
+          AetheriaAudioEngine.playClick();
+        }}
+        onFpsLimitChange={(limit) => {
+          setFpsLimit(limit);
+          localStorage.setItem('rpg_fps_limit', limit);
+        }}
+        onLanguageChange={(nextLanguage) => {
+          setLanguage(nextLanguage);
+          localStorage.setItem('rpg_language', nextLanguage);
+        }}
+        onOpenLoginRewards={() => {
+          setShowSettingsModal(false);
+          setShowLoginRewardsModal(true);
+          AetheriaAudioEngine.playClick();
+        }}
+        onReturnToMenu={handleReturnToMenu}
+      />
 
-                {/* PLAYER TELEMETRY & STATS ACCESS */}
-                <div className="bg-slate-950 p-4 rounded-xl border border-white/5 space-y-3">
-                  <span className={`text-[9px] font-mono tracking-wider uppercase font-black block ${activeUiTheme.textClass}`}>Player Analytics</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      AetheriaAudioEngine.playClick();
-                      setShowPlayerStatsOverlay(true);
-                    }}
-                    className={`w-full py-3 rounded-lg text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] ${activeUiTheme.settingsButtonClass}`}
-                  >
-                    <BarChart2 className="w-4 h-4" />
-                    PLAYER STAT
-                  </button>
-                </div>
-
-                {/* GAME AUDIO CONTROLS */}
-                <div className="bg-slate-950 p-4 rounded-xl border border-white/5 space-y-4">
-                  <span className={`text-[9px] font-mono tracking-wider uppercase font-black block ${activeUiTheme.textClass}`}>SYSTEM HARDWARE CONTROLS</span>
-                  
-                  <div className="flex justify-between items-center border-b border-white/5 pb-3">
-                    <span className="text-[11px] text-slate-350 uppercase font-bold">Simulator sound effects</span>
-                    <button
-                      onClick={() => {
-                        setMuteSfx(!muteSfx);
-                        AetheriaAudioEngine.playClick();
-                      }}
-                      className={`p-1.5 px-3 rounded text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer ${
-                        !muteSfx ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-800 text-slate-500 border border-white/5'
-                      }`}
-                    >
-                      {!muteSfx ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
-                      <span>{!muteSfx ? 'SFX ENABLED' : 'SFX MUTED'}</span>
-                    </button>
-                  </div>
-
-                  {/* BGM Volume Slider */}
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between text-[11px] text-slate-350 uppercase font-bold">
-                      <span>BGM Volume</span>
-                      <span className={`font-mono font-bold ${activeUiTheme.textClass}`}>{bgmVolume}%</span>
-                    </div>
-                    <input 
-                      type="range" 
-                      min="0" 
-                      max="100" 
-                      value={bgmVolume} 
-                      onChange={(e) => {
-                        const val = parseInt(e.target.value);
-                        setBgmVolume(val);
-                        AetheriaAudioEngine.setBgmVolume(val / 100);
-                      }}
-                      className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer"
-                      style={{ accentColor: activeUiTheme.accent }}
-                    />
-                  </div>
-
-                  {/* SFX Volume Slider */}
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between text-[11px] text-slate-350 uppercase font-bold">
-                      <span>SFX Volume</span>
-                      <span className={`font-mono font-bold ${activeUiTheme.textClass}`}>{sfxVolume}%</span>
-                    </div>
-                    <input 
-                      type="range" 
-                      min="0" 
-                      max="100" 
-                      value={sfxVolume} 
-                      onChange={(e) => {
-                        const val = parseInt(e.target.value);
-                        setSfxVolume(val);
-                        AetheriaAudioEngine.setSfxVolume(val / 100);
-                      }}
-                      className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer"
-                      style={{ accentColor: activeUiTheme.accent }}
-                    />
-                  </div>
-                </div>
-
-                {/* GENERAL PREFERENCES */}
-                <div className="bg-slate-950 p-4 rounded-xl border border-white/5 space-y-4 animate-fade-in">
-                  <span className={`text-[9px] font-mono tracking-wider uppercase font-black block ${activeUiTheme.textClass}`}>GENERAL PREFERENCES</span>
-                  
-                  <div className="flex justify-between items-center border-b border-white/5 pb-3">
-                    <span className="text-[11px] text-slate-300 uppercase font-bold">Developer Cheats</span>
-                    <button
-                      onClick={() => {
-                        setDevCheatsEnabled(!devCheatsEnabled);
-                        AetheriaAudioEngine.playClick();
-                      }}
-                      className={`p-1.5 px-3 rounded text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
-                        devCheatsEnabled ? activeUiTheme.settingsButtonClass : 'bg-slate-800 text-slate-500 border border-white/5'
-                      }`}
-                    >
-                      {devCheatsEnabled ? 'ENABLED' : 'DISABLED'}
-                    </button>
-                  </div>
-
-                  <div className="space-y-2 border-b border-white/5 pb-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <span className="text-[11px] text-slate-300 uppercase font-bold block">UI Theme</span>
-                        <span className="text-[9px] text-slate-500">
-                          Crimson, Emerald, Gold, and Void unlock at Player Level {UI_THEME_UNLOCK_LEVEL}.
-                        </span>
-                      </div>
-                      <span className={`text-[9px] font-black px-2 py-1 rounded uppercase border ${activeUiTheme.pillClass}`}>
-                        {activeUiTheme.label}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                      {UI_THEMES.map(theme => {
-                        const isUnlocked = isUiThemeUnlocked(theme.id, currentPlayerLevel, devCheatsEnabled);
-                        const isActive = activeUiThemeId === theme.id;
-                        return (
-                          <button
-                            key={theme.id}
-                            type="button"
-                            onClick={() => handleSelectUiTheme(theme.id)}
-                            className={`min-h-16 rounded-lg border p-2 text-left transition-all active:scale-95 cursor-pointer relative overflow-hidden ${
-                              isActive
-                                ? 'bg-white/10 border-white/40 shadow-[0_0_16px_rgba(255,255,255,0.10)]'
-                                : isUnlocked
-                                  ? 'bg-black/35 border-white/10 hover:border-white/30'
-                                  : 'bg-slate-900/50 border-slate-800/80 opacity-70'
-                            }`}
-                          >
-                            <span
-                              className="absolute inset-x-0 top-0 h-1"
-                              style={{ backgroundColor: theme.accent }}
-                            />
-                            <span className="flex items-center justify-between gap-2">
-                              <span className="text-[10px] font-black uppercase tracking-wider text-slate-100">
-                                {theme.label}
-                              </span>
-                              {!isUnlocked ? (
-                                <Lock className="w-3 h-3 text-slate-500" />
-                              ) : isActive ? (
-                                <CheckCircle2 className="w-3 h-3" style={{ color: theme.accent }} />
-                              ) : (
-                                <Circle className="w-3 h-3 text-slate-600" />
-                              )}
-                            </span>
-                            <span className="mt-2 flex items-center gap-1">
-                              <span className="w-3 h-3 rounded-full border border-white/20" style={{ backgroundColor: theme.accent }} />
-                              <span className="text-[8px] font-mono uppercase text-slate-500">
-                                {isUnlocked ? 'Available' : `LV ${theme.unlockLevel}`}
-                              </span>
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between items-center border-b border-white/5 pb-3">
-                    <span className="text-[11px] text-slate-300 uppercase font-bold">Screen Shake</span>
-                    <button
-                      onClick={() => {
-                        setScreenShakeEnabled(!screenShakeEnabled);
-                        AetheriaAudioEngine.playClick();
-                      }}
-                      className={`p-1.5 px-3 rounded text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
-                        screenShakeEnabled ? activeUiTheme.settingsButtonClass : 'bg-slate-800 text-slate-500 border border-white/5'
-                      }`}
-                    >
-                      {screenShakeEnabled ? 'ENABLED' : 'DISABLED'}
-                    </button>
-                  </div>
-
-                  <div className="flex justify-between items-center border-b border-white/5 pb-3">
-                    <div>
-                      <span className="text-[11px] text-slate-300 uppercase font-bold block">Disable Gameplay Cutscenes</span>
-                      <span className="text-[9px] text-slate-500">Skips Burst and Special Ultimate cinematic overlays.</span>
-                    </div>
-                    <button
-                      onClick={() => {
-                        triggerSaveUpdate(prev => ({ ...prev, disableGameplayCutscenes: !prev.disableGameplayCutscenes }));
-                        AetheriaAudioEngine.playClick();
-                      }}
-                      className={`p-1.5 px-3 rounded text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
-                        saveState.disableGameplayCutscenes ? activeUiTheme.settingsButtonClass : 'bg-slate-800 text-slate-500 border border-white/5'
-                      }`}
-                    >
-                      {saveState.disableGameplayCutscenes ? 'ENABLED' : 'DISABLED'}
-                    </button>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <span className="text-[11px] text-slate-300 uppercase font-bold block">Combat Speed Multiplier</span>
-                    <div className="flex gap-1.5">
-                      {[1.0, 1.5, 2.0].map((s) => (
-                        <button
-                          key={s}
-                          onClick={() => {
-                            setCombatSpeed(s);
-                            AetheriaAudioEngine.playClick();
-                          }}
-                          className={`flex-1 text-center py-2 text-xs font-black rounded uppercase tracking-wider cursor-pointer transition-all ${
-                            combatSpeed === s
-                              ? activeUiTheme.settingsButtonClass
-                              : 'bg-black/40 text-slate-400 hover:text-slate-200 border border-white/5'
-                          }`}
-                        >
-                          {s === 1.0 ? '1x (Normal)' : s === 1.5 ? '1.5x' : '2x (Fast)'}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Performance Mode / FPS Limit */}
-                  <div className="flex justify-between items-center border-b border-white/5 pb-3">
-                    <div>
-                      <span className="text-[11px] text-slate-350 uppercase font-bold block">{t('fps_limit_label', language)}</span>
-                      <span className="text-[9px] text-slate-500">{t('performance_desc', language)}</span>
-                    </div>
-                    <select
-                      value={fpsLimit}
-                      onChange={(e) => {
-                        const val = e.target.value as '60' | 'none';
-                        setFpsLimit(val);
-                        localStorage.setItem('rpg_fps_limit', val);
-                      }}
-                      className="bg-slate-800 text-slate-200 text-[10px] font-black border border-white/10 rounded px-2 py-1.5 cursor-pointer uppercase tracking-wider focus:outline-none focus:border-indigo-500"
-                    >
-                      <option value="60">{t('fps_limit_60', language)}</option>
-                      <option value="none">{t('fps_limit_none', language)}</option>
-                    </select>
-                  </div>
-
-                  {/* Language Selector */}
-                  <div className="flex justify-between items-center border-b border-white/5 pb-3">
-                    <span className="text-[11px] text-slate-300 uppercase font-bold">{t('language_label', language)}</span>
-                    <select
-                      value={language}
-                      onChange={(e) => {
-                        const val = e.target.value as LanguageType;
-                        setLanguage(val);
-                        localStorage.setItem('rpg_language', val);
-                      }}
-                      className="bg-slate-800 text-slate-200 text-[10px] font-black border border-white/10 rounded px-2 py-1.5 cursor-pointer uppercase tracking-wider focus:outline-none focus:border-indigo-500"
-                    >
-                      <option value="en">🇺🇸 English</option>
-                      <option value="jp">🇯🇵 Japanese</option>
-                      <option value="zh">🇨🇳 Chinese</option>
-                      <option value="ko">🇰🇷 Korean</option>
-                    </select>
-                  </div>
-
-                  {/* Display Mode */}
-                  <div className="flex justify-between items-center">
-                    <span className="text-[11px] text-slate-300 uppercase font-bold">Display Mode</span>
-                    <span className="text-[10px] font-black text-sky-400 bg-sky-900/20 border border-sky-500/20 px-2 py-1 rounded uppercase tracking-wider">DARK</span>
-                  </div>
-                </div>
-
-                {/* ACCOUNT & CLOUD SAVE */}
-                <div className="rounded-xl border border-cyan-400/15 bg-slate-950 p-4 space-y-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-[9px] font-mono tracking-wider text-cyan-300 uppercase font-bold">ACCOUNT & CLOUD SAVE</span>
-                    <span className="rounded border border-cyan-400/20 bg-cyan-400/10 px-2 py-1 font-mono text-[8px] font-black uppercase text-cyan-300">
-                      {cloudSyncLabel}
-                    </span>
-                  </div>
-                  {cloudAccount.user && cloudAccount.profile ? (
-                    <UsernameSettingsPanel
-                      profile={cloudAccount.profile}
-                      email={cloudAccount.user.email ?? ''}
-                      mutationStatus={cloudAccount.profileMutationStatus}
-                      mutationMessage={cloudAccount.profileMutationMessage}
-                      mutationError={cloudAccount.profileMutationError}
-                      onChangeUsername={cloudAccount.changeUsername}
-                    />
-                  ) : (
-                    <div className="rounded-lg border border-white/5 bg-black/30 p-3">
-                      <span className="block truncate text-[10px] font-black text-slate-200">
-                        {cloudAccount.user
-                          ? cloudAccount.profileStatus === 'loading' ? 'Loading player...' : 'Profile unavailable'
-                          : 'Guest device save'}
-                      </span>
-                      {cloudAccount.user?.email && (
-                        <span className="mt-2 block break-all font-mono text-[8px] text-slate-400">{cloudAccount.user.email}</span>
-                      )}
-                      <span className="mt-1 block font-mono text-[8px] uppercase leading-relaxed text-slate-500">
-                        {cloudAccount.user
-                          ? 'Automatic cloud backup and cross-device progress are active.'
-                          : 'Create an account or sign in to continue on another device.'}
-                      </span>
-                    </div>
-                  )}
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    <button
-                      type="button"
-                      onClick={() => cloudAccount.openAccountModal()}
-                      className="min-h-11 rounded-lg border border-cyan-400/25 bg-cyan-950/30 px-3 text-[9px] font-black uppercase tracking-wider text-cyan-100 transition-colors hover:bg-cyan-950/50 active:scale-[0.98]"
-                    >
-                      {cloudAccount.user ? 'MANAGE ACCOUNT' : 'SIGN IN'}
-                    </button>
-                    {cloudAccount.user ? (
-                      <button
-                        type="button"
-                        onClick={() => void cloudAccount.manualSync()}
-                        disabled={cloudAccount.syncStatus === 'saving' || cloudAccount.syncStatus === 'checking' || cloudAccount.syncStatus === 'conflict'}
-                        className="min-h-11 rounded-lg border border-white/10 bg-[#0e1628] px-3 text-[9px] font-black uppercase tracking-wider text-slate-200 disabled:opacity-45 active:scale-[0.98]"
-                      >
-                        SYNC NOW
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => cloudAccount.openAccountModal('sign-up')}
-                        className="min-h-11 rounded-lg bg-cyan-400 px-3 text-[9px] font-black uppercase tracking-wider text-slate-950 active:scale-[0.98]"
-                      >
-                        CREATE ACCOUNT
-                      </button>
-                    )}
-                  </div>
-                </div>
- 
-                {/* CORE ENGINE OPTIONS */}
-                <div className="bg-slate-950 p-4 rounded-xl border border-white/5 space-y-3">
-                  <span className="text-[9px] font-mono tracking-wider text-indigo-350 uppercase font-bold block">GAME SESSION</span>
-
-                  <div className="grid grid-cols-1 gap-2">
-                    <button
-                      onClick={() => {
-                        setShowSettingsModal(false);
-                        setShowLoginRewardsModal(true);
-                        AetheriaAudioEngine.playClick();
-                      }}
-                      className="py-2.5 bg-[#0e1628] hover:bg-slate-900 text-amber-350 border border-amber-500/20 hover:border-amber-500 rounded-lg text-[10px] font-black uppercase tracking-wider active:scale-95 transition-all cursor-pointer text-center block"
-                    >
-                      🎁 LOGIN REWARD
-                    </button>
-
-                    <button
-                      onClick={handleReturnToMenu}
-                      className="py-2.5 bg-indigo-650 hover:bg-indigo-550 text-white rounded-lg text-[10px] font-black uppercase tracking-wider active:scale-95 transition-all cursor-pointer text-center block shadow-md"
-                    >
-                      🔌 Return to Main Menu
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* PLAYER TELEMETRY & STATS POPUP MODAL */}
-      <AnimatePresence>
-        {showPlayerStatsOverlay && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-slate-950/95 z-[60] flex items-center justify-center p-4 backdrop-blur-md"
-            onClick={() => setShowPlayerStatsOverlay(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: -20 }}
-              className={`max-w-md w-full border rounded-2xl shadow-2xl relative flex flex-col ${activeUiTheme.panelClass}`}
-              style={{ maxHeight: '85vh' }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Sticky header */}
-              <div className="flex justify-between items-center border-b border-white/10 px-6 py-4 shrink-0">
-                <h3 className="text-sm font-black text-slate-100 uppercase tracking-widest font-display flex items-center gap-2">
-                  <BarChart2 className={`w-4 h-4 ${activeUiTheme.iconClass}`} />
-                  PLAYER TELEMETRY & STATS
-                </h3>
-                <button 
-                  onClick={() => setShowPlayerStatsOverlay(false)}
-                  className="p-1 px-2 text-slate-400 hover:text-white bg-white/5 rounded hover:bg-white/10 transition-colors text-xs font-black cursor-pointer"
-                >
-                  CLOSE
-                </button>
-              </div>
-
-              {/* Scrollable body with all statistics */}
-              <div className="overflow-y-auto flex-1 px-6 py-5 space-y-4 font-mono text-xs text-slate-350">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {[
-                    { label: 'Reactions Achieved', value: saveState.stats.reactionsTriggered || 0, color: 'text-sky-450 text-sky-400' },
-                    { label: 'Highest Story Unlocked', value: `Stage ${saveState.storyProgress?.currentStage || "1-1"}`, color: 'text-indigo-400 font-extrabold' },
-                    { label: 'Summons Performed', value: saveState.stats.totalPulls || 0, color: 'text-amber-500 font-bold' },
-                    { label: 'Characters Owned', value: `${(saveState.unlockedCharacterIds || []).length} / ${PLAYABLE_CHARACTERS.length}`, color: 'text-emerald-450 text-emerald-450' },
-                    { label: 'Weapons Owned', value: (saveState.inventoryWeapons || []).length, color: 'text-pink-400' },
-                    { label: 'Play Time', value: formatPlayTime(displayPlayTime), color: 'text-slate-200' },
-                    { label: 'Adventure Level', value: `LV.${saveState.playerLevel || 1}`, color: 'text-indigo-400 font-black' },
-                    { label: 'Total Mora Earned', value: `🪙 ${(saveState.stats.totalMoraEarned || 0).toLocaleString()}`, color: 'text-yellow-500 font-extrabold' },
-                    { label: 'Total Gems Earned', value: `💎 ${(saveState.stats.totalGemsEarned || 0).toLocaleString()}`, color: 'text-cyan-400 font-bold' },
-                    { label: 'Highest Wave Beaten', value: saveState.stats.highScoreWave || 1, color: 'text-amber-400 font-extrabold' },
-                    { label: 'Highest Room Cleared', value: `Room ${saveState.stats.highScoreRogueRoom || 0}`, color: 'text-purple-400' },
-                    { label: 'Longest Login Streak', value: `${(saveState.stats.longestLoginStreak || 1)} Days`, color: 'text-emerald-400' },
-                    { label: 'Current Login Streak', value: `${(saveState.stats.currentLoginStreak || 1)} Days`, color: 'text-emerald-500' },
-                  ].map((stat, i) => (
-                    <div 
-                      key={i} 
-                      className="bg-slate-950/60 p-3 rounded-lg border border-white/5 flex flex-col justify-between gap-1 shadow-inner"
-                    >
-                      <span className="text-[9px] uppercase tracking-wider text-slate-500 font-bold block">
-                        {stat.label}
-                      </span>
-                      <span className={`text-xs font-black font-mono ${stat.color}`}>
-                        {stat.value}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Modal Footer */}
-              <div className="px-6 py-4 border-t border-white/10 flex justify-end shrink-0 bg-slate-950/40 rounded-b-2xl">
-                <button
-                  onClick={() => {
-                    AetheriaAudioEngine.playClick();
-                    setShowPlayerStatsOverlay(false);
-                  }}
-                  className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider cursor-pointer ${activeUiTheme.settingsButtonClass}`}
-                >
-                  OK
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
+      <PlayerStatsModal
+        open={showPlayerStatsOverlay}
+        activeUiTheme={activeUiTheme}
+        stats={[
+          { label: 'Reactions Achieved', value: saveState.stats.reactionsTriggered || 0, color: 'text-sky-450 text-sky-400' },
+          { label: 'Highest Story Unlocked', value: `Stage ${saveState.storyProgress?.currentStage || '1-1'}`, color: 'text-indigo-400 font-extrabold' },
+          { label: 'Summons Performed', value: saveState.stats.totalPulls || 0, color: 'text-amber-500 font-bold' },
+          { label: 'Characters Owned', value: `${(saveState.unlockedCharacterIds || []).length} / ${PLAYABLE_CHARACTERS.length}`, color: 'text-emerald-450 text-emerald-450' },
+          { label: 'Weapons Owned', value: (saveState.inventoryWeapons || []).length, color: 'text-pink-400' },
+          { label: 'Play Time', value: formatPlayTime(displayPlayTime), color: 'text-slate-200' },
+          { label: 'Adventure Level', value: `LV.${saveState.playerLevel || 1}`, color: 'text-indigo-400 font-black' },
+          { label: 'Total Mora Earned', value: `🪙 ${(saveState.stats.totalMoraEarned || 0).toLocaleString()}`, color: 'text-yellow-500 font-extrabold' },
+          { label: 'Total Gems Earned', value: `💎 ${(saveState.stats.totalGemsEarned || 0).toLocaleString()}`, color: 'text-cyan-400 font-bold' },
+          { label: 'Highest Wave Beaten', value: saveState.stats.highScoreWave || 1, color: 'text-amber-400 font-extrabold' },
+          { label: 'Highest Room Cleared', value: `Room ${saveState.stats.highScoreRogueRoom || 0}`, color: 'text-purple-400' },
+          { label: 'Longest Login Streak', value: `${saveState.stats.longestLoginStreak || 1} Days`, color: 'text-emerald-400' },
+          { label: 'Current Login Streak', value: `${saveState.stats.currentLoginStreak || 1} Days`, color: 'text-emerald-500' }
+        ]}
+        onClose={() => setShowPlayerStatsOverlay(false)}
+      />
       {/* 7-DAY LOGIN REWARD MODAL */}
       <AnimatePresence>
         {showLoginRewardsModal && (

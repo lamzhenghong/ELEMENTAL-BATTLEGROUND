@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 
 const appSource = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
 const mainMenuSource = readFileSync(new URL('../components/MainMenu.tsx', import.meta.url), 'utf8');
+const settingsSource = readFileSync(new URL('../components/InGameSettingsModal.tsx', import.meta.url), 'utf8');
 
 assert.match(appSource, /import CloudAccountModal/);
 assert.match(appSource, /import CloudSaveConflictModal/);
@@ -16,11 +17,11 @@ assert.match(appSource, /hasLocalProgress:\s*localSaveExistedAtLaunch\s*\|\|\s*e
 assert.match(appSource, /const cloudAccount = useCloudAccount/);
 assert.match(appSource, /applyCloudBundle/);
 assert.match(mainMenuSource, /CLOUD ACCOUNT/);
-assert.match(appSource, /ACCOUNT & CLOUD SAVE/);
-assert.match(appSource, /cloudAccount\.manualSync\(\)/);
+assert.match(settingsSource, /ACCOUNT & CLOUD SAVE/);
+assert.match(settingsSource, /cloudAccount\.manualSync\(\)/);
 assert.match(mainMenuSource, /START GAME/);
 assert.match(mainMenuSource, /<span>Exit<\/span>/);
-assert.match(appSource, /SYNC NOW/);
+assert.match(settingsSource, /SYNC NOW/);
 assert.doesNotMatch(appSource, /START SIMULATION/);
 assert.doesNotMatch(appSource, /LEAVE WEBPAGE/);
 assert.doesNotMatch(appSource, /Synchronize Save State/i);
