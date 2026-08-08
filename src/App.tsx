@@ -215,10 +215,7 @@ export default function App() {
   const [bgmVolume, setBgmVolume] = useState<number>(100);
   const [sfxVolume, setSfxVolume] = useState<number>(100);
 
-  const [devCheatsEnabled, setDevCheatsEnabled] = useState<boolean>(() => {
-    const saved = localStorage.getItem('aetheria_pref_dev_cheats');
-    return saved !== null ? saved === 'true' : true;
-  });
+  const [devCheatsEnabled, setDevCheatsEnabled] = useState<boolean>(false);
 
   const [partySearchQuery, setPartySearchQuery] = useState('');
   const [wikiInitialTab, setWikiInitialTab] = useState<'lore' | 'nations' | 'characters' | 'weapons' | 'systems' | 'tutorial'>('lore');
@@ -341,10 +338,6 @@ export default function App() {
     const saved = localStorage.getItem('aetheria_pref_combat_speed');
     return saved !== null ? parseFloat(saved) : 1.0;
   });
-
-  useEffect(() => {
-    localStorage.setItem('aetheria_pref_dev_cheats', devCheatsEnabled.toString());
-  }, [devCheatsEnabled]);
 
   useEffect(() => {
     localStorage.setItem('aetheria_pref_screen_shake', screenShakeEnabled.toString());
