@@ -68,6 +68,12 @@ const ScreenLoadingFallback = () => (
 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
   || new URLSearchParams(window.location.search).has('mobileGate');
 
+type LockableScreenOrientation = {
+  lock?: (orientation: 'landscape') => Promise<void>;
+};
+
+const isLandscapeViewport = () => window.matchMedia('(orientation: landscape)').matches;
+
 const requestMobileGateFullscreen = async () => {
   if (document.fullscreenElement) {
     return true;
@@ -87,6 +93,24 @@ const requestMobileGateFullscreen = async () => {
     return true;
   } catch {
     return false;
+  }
+};
+
+const requestMobileLandscape = async () => {
+  if (!isMobile || isLandscapeViewport()) {
+    return true;
+  }
+
+  const orientation = screen.orientation as LockableScreenOrientation | undefined;
+  if (!orientation?.lock) {
+    return false;
+  }
+
+  try {
+    await orientation.lock('landscape');
+    return isLandscapeViewport();
+  } catch {
+    return isLandscapeViewport();
   }
 };
 
@@ -159,12 +183,20 @@ export default function App() {
     AetheriaAudioEngine.playClick();
 
     const enteredFullscreen = await requestMobileGateFullscreen();
-    if (enteredFullscreen) {
+    setMobileFullscreenActivated(enteredFullscreen);
+
+    if (!enteredFullscreen) {
+      setMobileFullscreenGateMessage('Fullscreen was blocked. Tap the button again to continue.');
+      return;
+    }
+
+    const enteredLandscape = await requestMobileLandscape();
+    if (enteredLandscape) {
       setMobileFullscreenGateOpen(false);
       return;
     }
 
-    setMobileFullscreenGateMessage('Fullscreen was blocked. Tap the button again to continue.');
+    setMobileFullscreenGateMessage('Rotate your device to landscape to continue.');
   };
 
   // Robust play time tracking using Date.now() and refs
@@ -178,8 +210,37 @@ export default function App() {
   const [activeScreen, setActiveScreen] = useState<'menu' | 'home' | 'wiki' | 'arena' | 'wish' | 'inventory' | 'quest' | 'dungeon' | 'party' | 'story' | 'shop'>('menu');
   const [mobileFullscreenGateOpen, setMobileFullscreenGateOpen] = useState<boolean>(isMobile);
   const [mobileFullscreenGateMessage, setMobileFullscreenGateMessage] = useState<string>('');
+  const [mobileFullscreenActivated, setMobileFullscreenActivated] = useState<boolean>(false);
   const [isFirstLoad, setIsFirstLoad] = useState<boolean>(true);
   const [loadProgress, setLoadProgress] = useState<number>(0);
+  useEffect(() => {
+    if (!isMobile) {
+      return;
+    }
+
+    const landscapeQuery = window.matchMedia('(orientation: landscape)');
+    const handleOrientationChange = () => {
+      if (!landscapeQuery.matches) {
+        setMobileFullscreenGateOpen(true);
+        setMobileFullscreenGateMessage('Rotate your device to landscape to continue.');
+        return;
+      }
+
+      if (mobileFullscreenActivated) {
+        setMobileFullscreenGateMessage('');
+        setMobileFullscreenGateOpen(false);
+      }
+    };
+
+    if (landscapeQuery.addEventListener) {
+      landscapeQuery.addEventListener('change', handleOrientationChange);
+      return () => landscapeQuery.removeEventListener('change', handleOrientationChange);
+    }
+
+    landscapeQuery.addListener(handleOrientationChange);
+    return () => landscapeQuery.removeListener(handleOrientationChange);
+  }, [mobileFullscreenActivated]);
+
   useEffect(() => {
     if (isMobile && mobileFullscreenGateOpen) {
       return;
@@ -2038,7 +2099,7 @@ export default function App() {
           <div className="space-y-3">
             <p className="text-[9px] font-black uppercase tracking-[0.32em] text-amber-200">Dawning Core Mobile Client</p>
             <h1 className="font-display text-3xl font-black uppercase tracking-[0.08em] text-white">Elemental Battleground</h1>
-            <p className="text-xs font-semibold text-slate-400">Play in full screen before loading the game.</p>
+            <p className="text-xs font-semibold text-slate-400">Enter full screen in landscape before loading the game.</p>
           </div>
 
           <button
@@ -2055,7 +2116,7 @@ export default function App() {
               {mobileFullscreenGateMessage}
             </p>
           ) : (
-            <p className="font-mono text-[9px] uppercase tracking-wider text-slate-500">Tap once to enter the game.</p>
+            <p className="font-mono text-[9px] uppercase tracking-wider text-slate-500">Tap once to enter in landscape.</p>
           )}
         </div>
       </div>
