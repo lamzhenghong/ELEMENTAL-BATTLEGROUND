@@ -12,6 +12,15 @@ import { formatCombatDuration, getImprovedClearTime } from '../utils/combatSessi
 import { LanguageType } from '../utils/i18n';
 import type { MobileControlLayout } from '../utils/mobileControlLayout';
 
+const MIN_PLAUSIBLE_RUN_STARTED_AT = 1_000_000_000_000;
+
+const isPlausibleRunStartedAt = (value: unknown): value is number => (
+  typeof value === 'number' &&
+  Number.isFinite(value) &&
+  value >= MIN_PLAUSIBLE_RUN_STARTED_AT &&
+  value <= Date.now()
+);
+
 interface RogueDungeonProps {
   partyIds: string[];
   ownedCharacterIds: string[];
@@ -105,9 +114,11 @@ export default function RogueDungeon({
   const [runPartyIds, setRunPartyIds] = useState<string[]>(() => getSavedValue('runPartyIds', []));
   const [runStartedAt, setRunStartedAt] = useState<number>(() => {
     const savedRunStartedAt = getSavedValue('runStartedAt', 0);
-    return runActive && (!Number.isFinite(savedRunStartedAt) || savedRunStartedAt <= 0)
-      ? Date.now()
-      : savedRunStartedAt;
+    return isPlausibleRunStartedAt(savedRunStartedAt)
+      ? savedRunStartedAt
+      : runActive
+        ? Date.now()
+        : 0;
   });
   const [completedRunDurationSecs, setCompletedRunDurationSecs] = useState<number | null>(() => getSavedValue('completedRunDurationSecs', null));
   const [completedRunIsNewRecord, setCompletedRunIsNewRecord] = useState<boolean>(() => getSavedValue('completedRunIsNewRecord', false));

@@ -24,7 +24,10 @@ assert.match(rogue, /useState<number \| null>\(\(\) => getSavedValue\('completed
 assert.match(rogue, /useState<boolean>\(\(\) => getSavedValue\('completedRunIsNewRecord', false\)\)/);
 assert.match(rogue, /runStartedAt,\s*completedRunDurationSecs,\s*completedRunIsNewRecord\s*\};/);
 assert.match(rogue, /runStartedAt,\s*completedRunDurationSecs,\s*completedRunIsNewRecord\s*\]\);/);
-assert.match(rogue, /runActive && \(!Number\.isFinite\(savedRunStartedAt\) \|\| savedRunStartedAt <= 0\)/);
+assert.match(rogue, /const MIN_PLAUSIBLE_RUN_STARTED_AT = 1_000_000_000_000/);
+assert.match(rogue, /value >= MIN_PLAUSIBLE_RUN_STARTED_AT/);
+assert.match(rogue, /value <= Date\.now\(\)/);
+assert.match(rogue, /isPlausibleRunStartedAt\(savedRunStartedAt\)\s*\?\s*savedRunStartedAt\s*:\s*runActive\s*\?\s*Date\.now\(\)\s*:\s*0/);
 assert.match(rogue, /onCompleteRun/);
 assert.match(rogue, /fastestClearSecs/);
 assert.match(rogue, /deepestRoom/);
