@@ -52,6 +52,17 @@ assert.match(
   }).progressLabel,
   /ROOM 6\/10 - ELITE/,
 );
+assert.equal(
+  getCombatSessionPresentation({
+    mode: 'rogue-ruins',
+    room: 10,
+    roomCount: 10,
+    roomType: 'boss',
+    deepestRoom: 10,
+    fastestClearSecs: 83,
+  }).recordLabel,
+  'FASTEST RUN',
+);
 
 assert.equal(
   getCombatSessionPresentation({ mode: 'story-campaign', stageId: '4-3' }).recordValue,

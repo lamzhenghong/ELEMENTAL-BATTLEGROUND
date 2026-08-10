@@ -125,7 +125,7 @@ export const getCombatSessionPresentation = (
         deploymentLabel: `ROGUE RUINS - ${progress}`,
         pauseLabel: progress,
         resultLabel: progress,
-        recordLabel: completedRun ? 'FASTEST CLEAR' : 'DEEPEST ROOM',
+        recordLabel: completedRun ? 'FASTEST RUN' : 'DEEPEST ROOM',
         recordValue: completedRun
           ? formatRecordTime(context.fastestClearSecs)
           : `ROOM ${clampInteger(context.deepestRoom)}`,

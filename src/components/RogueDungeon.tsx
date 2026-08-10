@@ -103,9 +103,14 @@ export default function RogueDungeon({
   const [roomBuffChosen, setRoomBuffChosen] = useState<boolean>(() => getSavedValue('roomBuffChosen', false));
   const [runFinished, setRunFinished] = useState<'victory' | 'defeat' | null>(() => getSavedValue('runFinished', null));
   const [runPartyIds, setRunPartyIds] = useState<string[]>(() => getSavedValue('runPartyIds', []));
-  const [runStartedAt, setRunStartedAt] = useState<number>(() => getSavedValue('runStartedAt', 0));
-  const [completedRunDurationSecs, setCompletedRunDurationSecs] = useState<number | null>(null);
-  const [completedRunIsNewRecord, setCompletedRunIsNewRecord] = useState(false);
+  const [runStartedAt, setRunStartedAt] = useState<number>(() => {
+    const savedRunStartedAt = getSavedValue('runStartedAt', 0);
+    return runActive && (!Number.isFinite(savedRunStartedAt) || savedRunStartedAt <= 0)
+      ? Date.now()
+      : savedRunStartedAt;
+  });
+  const [completedRunDurationSecs, setCompletedRunDurationSecs] = useState<number | null>(() => getSavedValue('completedRunDurationSecs', null));
+  const [completedRunIsNewRecord, setCompletedRunIsNewRecord] = useState<boolean>(() => getSavedValue('completedRunIsNewRecord', false));
   const hasCompletedRunRef = useRef(false);
   
   const [combatActive, setCombatActive] = useState<boolean>(false);
@@ -132,7 +137,9 @@ export default function RogueDungeon({
         runFinished,
         runPartyIds,
         roomBuffChosen,
-        runStartedAt
+        runStartedAt,
+        completedRunDurationSecs,
+        completedRunIsNewRecord
       };
       localStorage.setItem('aetheria_ruins_save_v1', JSON.stringify(saveData));
     } else {
@@ -150,7 +157,9 @@ export default function RogueDungeon({
     runFinished,
     runPartyIds,
     roomBuffChosen,
-    runStartedAt
+    runStartedAt,
+    completedRunDurationSecs,
+    completedRunIsNewRecord
   ]);
 
   // Report room progress to stats on mount/load
@@ -764,6 +773,8 @@ export default function RogueDungeon({
                       AetheriaAudioEngine.playClick();
                       setShowAbandonConfirm(false);
                       setRunStartedAt(0);
+                      setCompletedRunDurationSecs(null);
+                      setCompletedRunIsNewRecord(false);
                       setRunActive(false);
                       onBackToMenu();
                     }}
