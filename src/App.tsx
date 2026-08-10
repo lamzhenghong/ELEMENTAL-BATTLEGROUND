@@ -24,6 +24,7 @@ import CharacterRoleBadge from './components/CharacterRoleBadge';
 import CloudAccountModal from './components/CloudAccountModal';
 import CloudSaveConflictModal from './components/CloudSaveConflictModal';
 import InGameSettingsModal from './components/InGameSettingsModal';
+import MobileControlEditor from './components/MobileControlEditor';
 import PlayerStatsModal from './components/PlayerStatsModal';
 import { 
   Shield, Sparkles, Coins, HelpCircle, History, RefreshCw, Star, 
@@ -48,6 +49,11 @@ import { normalizeStoryProgress } from './data/story/progress';
 import { useCloudAccount } from './cloud/useCloudAccount';
 import { createInitialSaveState, formatPlayTime, normalizeLoadedSaveState } from './save/gameSave';
 import { GAME_VERSION } from './config/gameVersion';
+import {
+  loadMobileControlLayout,
+  persistMobileControlLayout,
+  type MobileControlLayout,
+} from './utils/mobileControlLayout';
 
 const GDDViewer = React.lazy(() => import('./components/GDDViewer'));
 const GachaSimulator = React.lazy(() => import('./components/GachaSimulator'));
@@ -424,6 +430,10 @@ export default function App() {
 
   // Custom HUD modals and shut downs
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showMobileControlEditor, setShowMobileControlEditor] = useState(false);
+  const [mobileControlLayout, setMobileControlLayout] = useState<MobileControlLayout>(() => (
+    loadMobileControlLayout(window.localStorage)
+  ));
   const [showPlayerStatsOverlay, setShowPlayerStatsOverlay] = useState(false);
   const [showCreditsModal, setShowCreditsModal] = useState(false);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
@@ -2374,6 +2384,7 @@ export default function App() {
           devCheatsEnabled={devCheatsEnabled}
           playerLevel={currentPlayerLevel}
           activeThemeId={activeUiThemeId}
+          isMobile={isMobile}
           onClose={() => setShowSettingsModal(false)}
           onBgmVolumeChange={(value) => {
             setBgmVolume(value);
@@ -2385,6 +2396,7 @@ export default function App() {
           }}
           onScreenShakeChange={setScreenShakeEnabled}
           onSelectTheme={handleSelectUiTheme}
+          onOpenMobileControlEditor={() => setShowMobileControlEditor(true)}
         />
         <MainMenuCreditsModal
           open={showCreditsModal}
@@ -2396,6 +2408,16 @@ export default function App() {
           onConfirm={() => {
             setShowLeaveModal(false);
             setIsTerminated(true);
+          }}
+        />
+        <MobileControlEditor
+          open={showMobileControlEditor}
+          initialLayout={mobileControlLayout}
+          onCancel={() => setShowMobileControlEditor(false)}
+          onSave={(layout) => {
+            setMobileControlLayout(layout);
+            persistMobileControlLayout(window.localStorage, layout);
+            setShowMobileControlEditor(false);
           }}
         />
         {cloudAccountOverlays}
@@ -3795,6 +3817,7 @@ export default function App() {
         combatSpeed={combatSpeed}
         fpsLimit={fpsLimit}
         language={language}
+        isMobile={isMobile}
         cloudSyncLabel={cloudSyncLabel}
         cloudAccount={cloudAccount}
         onClose={() => setShowSettingsModal(false)}
@@ -3848,6 +3871,7 @@ export default function App() {
           AetheriaAudioEngine.playClick();
         }}
         onReturnToMenu={handleReturnToMenu}
+        onOpenMobileControlEditor={() => setShowMobileControlEditor(true)}
       />
 
       <PlayerStatsModal
@@ -3960,6 +3984,16 @@ export default function App() {
           <span>Developer Mode Active</span>
         </div>
       )}
+      <MobileControlEditor
+        open={showMobileControlEditor}
+        initialLayout={mobileControlLayout}
+        onCancel={() => setShowMobileControlEditor(false)}
+        onSave={(layout) => {
+          setMobileControlLayout(layout);
+          persistMobileControlLayout(window.localStorage, layout);
+          setShowMobileControlEditor(false);
+        }}
+      />
       {cloudAccountOverlays}
     </div>
   );

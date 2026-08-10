@@ -1,4 +1,4 @@
-import { CheckCircle2, X } from 'lucide-react';
+import { CheckCircle2, Gamepad2, X } from 'lucide-react';
 import type { UiThemeId } from '../types';
 import { UI_THEMES } from '../utils/uiThemes';
 
@@ -10,11 +10,13 @@ interface MainMenuSettingsModalProps {
   devCheatsEnabled: boolean;
   playerLevel: number;
   activeThemeId: UiThemeId;
+  isMobile: boolean;
   onClose: () => void;
   onBgmVolumeChange: (value: number) => void;
   onSfxVolumeChange: (value: number) => void;
   onScreenShakeChange: (enabled: boolean) => void;
   onSelectTheme: (themeId: UiThemeId) => void;
+  onOpenMobileControlEditor: () => void;
 }
 
 export default function MainMenuSettingsModal({
@@ -25,11 +27,13 @@ export default function MainMenuSettingsModal({
   devCheatsEnabled,
   playerLevel,
   activeThemeId,
+  isMobile,
   onClose,
   onBgmVolumeChange,
   onSfxVolumeChange,
   onScreenShakeChange,
   onSelectTheme,
+  onOpenMobileControlEditor,
 }: MainMenuSettingsModalProps) {
   if (!open) return null;
 
@@ -63,6 +67,17 @@ export default function MainMenuSettingsModal({
               <input type="checkbox" checked={screenShakeEnabled} onChange={(event) => onScreenShakeChange(event.target.checked)} className="h-5 w-5 accent-cyan-400" />
             </label>
           </div>
+
+          {isMobile && (
+            <button
+              type="button"
+              onClick={onOpenMobileControlEditor}
+              className="flex min-h-14 w-full items-center justify-center gap-2 rounded-lg border border-cyan-400/25 bg-cyan-950/30 px-4 text-[10px] font-black uppercase tracking-wider text-cyan-100 active:scale-[0.98]"
+            >
+              <Gamepad2 className="h-4 w-4" />
+              CUSTOMIZE MOBILE CONTROLS
+            </button>
+          )}
 
           <div className="space-y-3 rounded-lg border border-white/10 bg-black/25 p-4">
             <div className="flex items-center justify-between gap-3">

@@ -3,6 +3,7 @@ import {
   BarChart2,
   CheckCircle2,
   Circle,
+  Gamepad2,
   LayoutGrid,
   Lock,
   Volume2,
@@ -35,6 +36,7 @@ interface InGameSettingsModalProps {
   combatSpeed: number;
   fpsLimit: '60' | 'none';
   language: LanguageType;
+  isMobile: boolean;
   cloudSyncLabel: string;
   cloudAccount: CloudAccountController;
   onClose: () => void;
@@ -51,6 +53,7 @@ interface InGameSettingsModalProps {
   onLanguageChange: (language: LanguageType) => void;
   onOpenLoginRewards: () => void;
   onReturnToMenu: () => void;
+  onOpenMobileControlEditor: () => void;
 }
 
 export default function InGameSettingsModal({
@@ -67,6 +70,7 @@ export default function InGameSettingsModal({
   combatSpeed,
   fpsLimit,
   language,
+  isMobile,
   cloudSyncLabel,
   cloudAccount,
   onClose,
@@ -82,7 +86,8 @@ export default function InGameSettingsModal({
   onFpsLimitChange,
   onLanguageChange,
   onOpenLoginRewards,
-  onReturnToMenu
+  onReturnToMenu,
+  onOpenMobileControlEditor,
 }: InGameSettingsModalProps) {
   return (
     <AnimatePresence>
@@ -191,6 +196,17 @@ export default function InGameSettingsModal({
                     {devCheatsEnabled ? 'ENABLED' : 'DISABLED'}
                   </button>
                 </div>
+
+                {isMobile && (
+                  <button
+                    type="button"
+                    onClick={onOpenMobileControlEditor}
+                    className={`flex min-h-12 w-full items-center justify-center gap-2 rounded-lg px-3 text-[10px] font-black uppercase tracking-wider active:scale-[0.98] ${activeUiTheme.settingsButtonClass}`}
+                  >
+                    <Gamepad2 className="h-4 w-4" />
+                    CUSTOMIZE MOBILE CONTROLS
+                  </button>
+                )}
 
                 <div className="space-y-2 border-b border-white/5 pb-3">
                   <div className="flex items-start justify-between gap-3">
