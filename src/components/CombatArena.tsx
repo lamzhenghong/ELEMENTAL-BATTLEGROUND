@@ -27,7 +27,7 @@ import {
 import MobileJoystick from './MobileJoystick';
 import MobileControls from './MobileControls';
 import CharacterRoleBadge from './CharacterRoleBadge';
-import { FloatingDamageTextDOM } from './combat/CombatVisuals';
+import { FloatingDamageTextDOM, type FloatingDamageTextEntry } from './combat/CombatVisuals';
 import { drawEnemyArchetypeEnemy } from './combat/enemyArchetypeVfx';
 import { drawBossModel } from './combat/bossModelRenderer';
 import {
@@ -140,10 +140,13 @@ import {
 } from '../utils/mobileControlLayout';
 import {
   getCombatImpactProfile,
+  createDamageTextBucket,
   getDirectionalKnockback,
+  mergeDamageTextBucket,
   requestStrongestHitStop,
   selectImpactSoundRequest,
   type CombatImpactSource,
+  type DamageTextBucket,
   type ImpactSoundRequest,
 } from '../utils/combatImpact';
 import {
@@ -155,6 +158,14 @@ import {
 } from '../utils/combatActionQueue';
 
 const EMPTY_STORY_CHOICE_SELECTIONS: StoryChoiceSelections = {};
+
+interface DamageTextMeta {
+  targetId: string;
+  source: CombatImpactSource;
+  amount: number;
+  reaction: string;
+  isDot?: boolean;
+}
 
 interface CombatArenaProps {
   onEarnRewards: (gems: number, mora: number, exp: number) => void;
@@ -433,7 +444,12 @@ export default function CombatArena({
   const weatherMeteorTimerRef = useRef<number>(0);
   const [stamina, setStamina] = useState<number>(100);
   const staminaRef = useRef<number>(100);
-  const [domDamageTexts, setDomDamageTexts] = useState<{ id: string; x: number; y: number; text: string; color: string; size: number; isCrit: boolean; skin?: string }[]>([]);
+  const [domDamageTexts, setDomDamageTexts] = useState<FloatingDamageTextEntry[]>([]);
+  const damageTextBucketsRef = useRef(new Map<string, {
+    id: string;
+    bucket: DamageTextBucket;
+    timeoutId: ReturnType<typeof setTimeout>;
+  }>());
   const lightningWarningRef = useRef<{ x: number; y: number; timer: number } | null>(null);
   const lightningStrikeVisualRef = useRef<{ x: number; y: number; duration: number } | null>(null);
   const lightningTimerRef = useRef<number>(0);
@@ -487,7 +503,16 @@ export default function CombatArena({
     return textStr.replace(/\d+/, replaceNumber);
   };
 
-  const spawnFloatingDamageText = (x: number, y: number, text: string, color: string, size: number = 14, isCrit: boolean = false, isWorldSpace: boolean = true) => {
+  const spawnFloatingDamageText = (
+    x: number,
+    y: number,
+    text: string,
+    color: string,
+    size: number = 14,
+    isCrit: boolean = false,
+    isWorldSpace: boolean = true,
+    damageMeta?: DamageTextMeta,
+  ) => {
     const id = Math.random().toString(36).substring(2, 9);
     
     let renderX = x;
@@ -501,7 +526,49 @@ export default function CombatArena({
       renderY = y - camY;
     }
 
-    const formattedText = formatWithDamageSkin(text, activeDamageSkin);
+    let bucketKey: string | null = null;
+    let damageBucket: DamageTextBucket | null = null;
+    let displayText = text;
+    if (damageMeta) {
+      const event = {
+        targetId: damageMeta.targetId,
+        source: damageMeta.source,
+        amount: damageMeta.amount,
+        isCrit,
+        reaction: damageMeta.reaction,
+        at: performance.now(),
+      };
+      bucketKey = [
+        event.targetId,
+        event.source,
+        event.isCrit ? 'crit' : 'normal',
+        event.reaction,
+        activeDamageSkin,
+      ].join('|');
+      const existing = damageTextBucketsRef.current.get(bucketKey);
+      const merged = existing ? mergeDamageTextBucket(existing.bucket, event) : null;
+      if (existing && merged) {
+        clearTimeout(existing.timeoutId);
+        const mergedText = `${merged.isCrit ? 'CRIT ' : ''}${merged.amount}${merged.hitCount > 1 ? ` x${merged.hitCount}` : ''}`;
+        setDomDamageTexts(previous => previous.map(entry => (
+          entry.id === existing.id
+            ? { ...entry, text: formatWithDamageSkin(mergedText, activeDamageSkin) }
+            : entry
+        )));
+        const timeoutId = setTimeout(() => {
+          setDomDamageTexts(previous => previous.filter(entry => entry.id !== existing.id));
+          if (damageTextBucketsRef.current.get(bucketKey!)?.id === existing.id) {
+            damageTextBucketsRef.current.delete(bucketKey!);
+          }
+        }, 750);
+        damageTextBucketsRef.current.set(bucketKey, { id: existing.id, bucket: merged, timeoutId });
+        return;
+      }
+      damageBucket = createDamageTextBucket(event);
+      displayText = `${isCrit ? 'CRIT ' : ''}${damageBucket.amount}`;
+    }
+
+    const formattedText = formatWithDamageSkin(displayText, activeDamageSkin);
 
     // 2. Celestial screen flash sparkle effect on crits (via direct overlay DOM style update)
     if (isCrit && activeDamageSkin === 'Celestial') {
@@ -537,13 +604,33 @@ export default function CombatArena({
       }
     }
 
-    setDomDamageTexts(prev => [
-      ...prev,
-      { id, x: renderX, y: renderY, text: formattedText, color, size, isCrit, skin: activeDamageSkin }
-    ]);
-    setTimeout(() => {
-      setDomDamageTexts(prev => prev.filter(t => t.id !== id));
+    const nextEntry: FloatingDamageTextEntry = {
+      id,
+      x: renderX,
+      y: renderY,
+      text: formattedText,
+      color,
+      size: damageMeta?.isDot ? Math.min(size, 11) : size,
+      isCrit: damageMeta?.isDot ? false : isCrit,
+      skin: activeDamageSkin,
+      isDot: damageMeta?.isDot,
+    };
+    setDomDamageTexts(previous => {
+      const next = [...previous, nextEntry];
+      if (next.length <= 24) return next;
+      const oldestNonCritical = next.findIndex(entry => !entry.isCrit);
+      next.splice(oldestNonCritical >= 0 ? oldestNonCritical : 0, 1);
+      return next;
+    });
+    const timeoutId = setTimeout(() => {
+      setDomDamageTexts(previous => previous.filter(entry => entry.id !== id));
+      if (bucketKey && damageTextBucketsRef.current.get(bucketKey)?.id === id) {
+        damageTextBucketsRef.current.delete(bucketKey);
+      }
     }, 750);
+    if (bucketKey && damageBucket) {
+      damageTextBucketsRef.current.set(bucketKey, { id, bucket: damageBucket, timeoutId });
+    }
   };
   const spawnTextRef = useRef(spawnFloatingDamageText);
   spawnTextRef.current = spawnFloatingDamageText;
@@ -618,6 +705,9 @@ export default function CombatArena({
     attackAnticipationRef.current = null;
     skillAnticipationRef.current = null;
     pendingImpactSoundRef.current = null;
+    damageTextBucketsRef.current.forEach(entry => clearTimeout(entry.timeoutId));
+    damageTextBucketsRef.current.clear();
+    setDomDamageTexts([]);
     resetComboState();
     perfectDodgeWindowRef.current = 0;
     perfectDodgeCooldownRef.current = 0;
@@ -3118,32 +3208,35 @@ export default function CombatArena({
       }
     }
 
-    // Differentiate basic attack (left click), E skill, and Ultimate
-    let dmgText = '';
+    let dmgText = `${isCrit ? 'CRIT ' : ''}${finalDmg}`;
     let textFontSize = 14;
     if (source === 'normal-attack') {
-      dmgText = `${isCrit ? 'CRIT ' : ''}Click ${finalDmg}`;
       textFontSize = isCrit ? 16 : 13;
     } else if (source === 'elemental-skill') {
-      dmgText = `${isCrit ? 'CRIT ' : ''}Skill ${finalDmg}`;
       textFontSize = isCrit ? 20 : 16;
     } else if (source === 'elemental-burst' || source === 'special-ultimate') {
-      dmgText = `${isCrit ? 'CRIT ' : ''}ULT ${finalDmg}`;
       textFontSize = isCrit ? 26 : 20;
-    } else {
-      dmgText = `${isCrit ? 'CRIT ' : ''}${finalDmg}`;
+    } else if (impactSource === 'dot' || impactSource === 'persistent-field') {
       textFontSize = isCrit ? 19 : 14;
     }
 
     // Floating damage integer (DOM Floaters)
     const finalTextColor = isCrit ? '#facc15' : damageColor;
     spawnTextRef.current(
-      enemy.x + (Math.random() - 0.5) * 30,
+      enemy.x + (Math.random() - 0.5) * 20,
       enemy.y - enemy.radius - 10,
       dmgText,
       finalTextColor,
       textFontSize,
-      isCrit
+      isCrit,
+      true,
+      {
+        targetId: String(enemy.id),
+        source: impactSource,
+        amount: finalDmg,
+        reaction: reactionName,
+        isDot: impactSource === 'dot' || impactSource === 'persistent-field',
+      },
     );
 
     if (reactionName) {
@@ -5154,6 +5247,8 @@ export default function CombatArena({
       combatActionQueueRef.current = clearCombatActionQueue();
       hitStopRemainingMsRef.current = 0;
       pendingImpactSoundRef.current = null;
+      damageTextBucketsRef.current.forEach(entry => clearTimeout(entry.timeoutId));
+      damageTextBucketsRef.current.clear();
       AetheriaAudioEngine.setBossFightActive(false);
     };
   }, []);

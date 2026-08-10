@@ -1,17 +1,20 @@
 import React, { useMemo } from 'react';
 import { motion } from 'motion/react';
 
+export interface FloatingDamageTextEntry {
+  id: string;
+  x: number;
+  y: number;
+  text: string;
+  color: string;
+  size: number;
+  isCrit: boolean;
+  skin?: string;
+  isDot?: boolean;
+}
+
 interface FloatingDamageTextDOMProps {
-  t: {
-    id: string;
-    x: number;
-    y: number;
-    text: string;
-    color: string;
-    size: number;
-    isCrit: boolean;
-    skin?: string;
-  };
+  t: FloatingDamageTextEntry;
   key?: any;
 }
 
@@ -19,13 +22,13 @@ export function FloatingDamageTextDOM({ t }: FloatingDamageTextDOMProps) {
   const keyframes = useMemo(() => {
     // Generate random angle (-20 to 20 degrees) and initial speed for the burst
     const angle = (Math.random() * 40 - 20) * (Math.PI / 180);
-    const speed = t.isCrit ? (150 + Math.random() * 70) : (100 + Math.random() * 60);
+    const speed = t.isDot ? 45 : t.isCrit ? (150 + Math.random() * 70) : (100 + Math.random() * 60);
     const dir = Math.random() > 0.5 ? 1 : -1;
 
     // vx is horizontal, vy is vertical (upward)
     const vx = dir * speed * Math.sin(Math.abs(angle) + 0.18);
     const vy = -speed * Math.cos(angle);
-    const gravity = t.isCrit ? 520 : 440;
+    const gravity = t.isDot ? 120 : t.isCrit ? 520 : 440;
     const duration = 0.75; // 750ms total lifetime
 
     const xPath: number[] = [];
@@ -55,17 +58,17 @@ export function FloatingDamageTextDOM({ t }: FloatingDamageTextDOMProps) {
 
       // Pop scale on spawn, then slightly shrink
       if (r < 0.12) {
-        const peakScale = t.isCrit ? 1.65 : 1.15;
+        const peakScale = t.isDot ? 1 : t.isCrit ? 1.65 : 1.15;
         scalePath.push(0.5 + (peakScale - 0.5) * (r / 0.12));
       } else {
-        const peakScale = t.isCrit ? 1.65 : 1.15;
-        const endScale = t.isCrit ? 1.1 : 0.8;
+        const peakScale = t.isDot ? 1 : t.isCrit ? 1.65 : 1.15;
+        const endScale = t.isDot ? 0.85 : t.isCrit ? 1.1 : 0.8;
         scalePath.push(peakScale - (peakScale - endScale) * ((r - 0.12) / 0.88));
       }
     }
 
     return { x: xPath, y: yPath, opacity: opacityPath, scale: scalePath };
-  }, [t.id, t.isCrit]);
+  }, [t.id, t.isCrit, t.isDot]);
 
   let skinStyle: React.CSSProperties = {
     position: 'absolute',

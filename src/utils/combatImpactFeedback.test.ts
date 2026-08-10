@@ -113,3 +113,13 @@ test('audio engine exposes reusable compressed combat impact layers', () => {
   assert.match(audioSource, /DynamicsCompressor/);
   assert.match(audioSource, /impactNoiseBuffer/);
 });
+
+test('arena damage copy omits redundant attack source labels', () => {
+  const arenaSource = readFileSync(new URL('../components/CombatArena.tsx', import.meta.url), 'utf8');
+  assert.doesNotMatch(arenaSource, /Click \$\{finalDmg\}/);
+  assert.doesNotMatch(arenaSource, /Skill \$\{finalDmg\}/);
+  assert.doesNotMatch(arenaSource, /ULT \$\{finalDmg\}/);
+  assert.match(arenaSource, /createDamageTextBucket/);
+  assert.match(arenaSource, /mergeDamageTextBucket/);
+  assert.match(arenaSource, /next\.length <= 24/);
+});
