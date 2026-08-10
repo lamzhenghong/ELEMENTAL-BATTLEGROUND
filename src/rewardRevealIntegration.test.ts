@@ -15,5 +15,7 @@ assert.match(layer, /clearTimeout/);
 assert.match(layer, /reducedMotion/);
 assert.match(layer, /left: reducedMotion \? reveal\.destination\.x : reveal\.source\.x/);
 assert.match(layer, /top: reducedMotion \? reveal\.destination\.y : reveal\.source\.y/);
+assert.match(layer, /createRewardPulseController/);
+assert.match(layer, /pulseController\.current\?\.reset\(\)/);
 
 console.log('reward reveal layer contracts ok');

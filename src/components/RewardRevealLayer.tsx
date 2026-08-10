@@ -2,8 +2,10 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProp
 import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
 import {
+  createRewardPulseController,
   getRewardRevealTarget,
   INVENTORY_FALLBACK_SELECTOR,
+  type RewardPulseController,
   type RewardRevealEvent,
 } from '../utils/rewardReveal';
 
@@ -26,7 +28,6 @@ interface MeasuredRewardReveal {
 
 const MAX_ACTIVE_REVEALS = 4;
 const LOW_GRAPHICS_ACTIVE_REVEALS = 1;
-const DESTINATION_PULSE_MS = 260;
 
 const rewardLabels: Record<RewardRevealEvent['kind'], string> = {
   mora: 'Mora',
@@ -88,7 +89,7 @@ export function RewardRevealLayer({ events, onComplete, lowGraphics }: RewardRev
   const reducedMotion = useReducedMotionPreference();
   const measurements = useRef(new Map<string, MeasuredRewardReveal>());
   const completedIds = useRef(new Set<string>());
-  const pulseTimers = useRef(new Set<number>());
+  const pulseController = useRef<RewardPulseController | null>(null);
   const [visibleReveals, setVisibleReveals] = useState<MeasuredRewardReveal[]>([]);
 
   useLayoutEffect(() => {
@@ -117,8 +118,8 @@ export function RewardRevealLayer({ events, onComplete, lowGraphics }: RewardRev
   }, [events, lowGraphics]);
 
   useEffect(() => () => {
-    for (const timer of pulseTimers.current) window.clearTimeout(timer);
-    pulseTimers.current.clear();
+    pulseController.current?.reset();
+    pulseController.current = null;
   }, []);
 
   const completeReveal = useCallback((reveal: MeasuredRewardReveal) => {
@@ -127,12 +128,11 @@ export function RewardRevealLayer({ events, onComplete, lowGraphics }: RewardRev
 
     const target = getDestinationElement(reveal.event);
     if (target instanceof HTMLElement) {
-      target.dataset.rewardPulse = 'true';
-      const timer = window.setTimeout(() => {
-        target.removeAttribute('data-reward-pulse');
-        pulseTimers.current.delete(timer);
-      }, DESTINATION_PULSE_MS);
-      pulseTimers.current.add(timer);
+      pulseController.current ??= createRewardPulseController({
+        setTimeout: (callback, delay) => window.setTimeout(callback, delay),
+        clearTimeout: (timer) => window.clearTimeout(timer),
+      });
+      pulseController.current.trigger(target);
     }
 
     onComplete(reveal.event.id);
