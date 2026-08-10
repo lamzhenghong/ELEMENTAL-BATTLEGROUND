@@ -38,6 +38,12 @@ assert.match(combatArenaSource, /const renderSpecialUltimateButton/);
 assert.match(combatArenaSource, /storyMode \? renderSpecialUltimateButton\('desktop-story'\)/);
 assert.doesNotMatch(combatArenaSource, /element:\s*(tpl|bossTpl|enemySpec)\.element/);
 assert.doesNotMatch(combatArenaSource, /element:\s*enemySpec\.element/);
+assert.match(combatArenaSource, /combatActionQueueRef/);
+assert.match(combatArenaSource, /hitStopRemainingMsRef/);
+assert.match(combatArenaSource, /visualRecoilRef/);
+assert.match(combatArenaSource, /getDirectionalKnockback/);
+assert.match(combatArenaSource, /clearCombatActionQueue/);
+assert.doesNotMatch(combatArenaSource, /AetheriaAudioEngine\.playHit\(\);/);
 
 const appSource = readFileSync(new URL('./App.tsx', import.meta.url), 'utf8');
 const settingsSource = readFileSync(new URL('./components/InGameSettingsModal.tsx', import.meta.url), 'utf8');

@@ -138,6 +138,21 @@ import {
   type MobileControlId,
   type MobileControlLayout,
 } from '../utils/mobileControlLayout';
+import {
+  getCombatImpactProfile,
+  getDirectionalKnockback,
+  requestStrongestHitStop,
+  selectImpactSoundRequest,
+  type CombatImpactSource,
+  type ImpactSoundRequest,
+} from '../utils/combatImpact';
+import {
+  clearCombatActionQueue,
+  createCombatActionQueue,
+  enqueueCombatAction,
+  tickCombatActionQueue,
+  type QueuedCombatAction,
+} from '../utils/combatActionQueue';
 
 const EMPTY_STORY_CHOICE_SELECTIONS: StoryChoiceSelections = {};
 
@@ -362,6 +377,19 @@ export default function CombatArena({
   const dodgeCdRef = useRef(0);
   const parryCdRef = useRef(0);
   const basicAttackCooldownRef = useRef(0);
+  const combatActionQueueRef = useRef(createCombatActionQueue());
+  const combatActionSequenceRef = useRef(0);
+  const hitStopRemainingMsRef = useRef(0);
+  const hitStopRenderPendingRef = useRef(false);
+  const visualRecoilRef = useRef({ x: 0, y: 0, remainingMs: 0 });
+  const attackAnticipationRef = useRef<{ remainingMs: number; x: number; y: number; color: string } | null>(null);
+  const skillAnticipationRef = useRef<{ remainingMs: number; color: string } | null>(null);
+  const pendingImpactSoundRef = useRef<{
+    request: ImpactSoundRequest;
+    element: ElementType;
+    isCrit: boolean;
+  } | null>(null);
+  const impactSoundFlushScheduledRef = useRef(false);
   const [shieldActive, setShieldActive] = useState<ElementType | null>(null);
   const [shieldWeight, setShieldWeight] = useState(0);
   const partyEffectsRef = useRef(createPartyEffectState());
@@ -583,6 +611,13 @@ export default function CombatArena({
   };
 
   const resetCombatPolishState = (resetWeather: boolean = false) => {
+    combatActionQueueRef.current = clearCombatActionQueue();
+    hitStopRemainingMsRef.current = 0;
+    hitStopRenderPendingRef.current = false;
+    visualRecoilRef.current = { x: 0, y: 0, remainingMs: 0 };
+    attackAnticipationRef.current = null;
+    skillAnticipationRef.current = null;
+    pendingImpactSoundRef.current = null;
     resetComboState();
     perfectDodgeWindowRef.current = 0;
     perfectDodgeCooldownRef.current = 0;
@@ -613,6 +648,37 @@ export default function CombatArena({
       spawnTextRef.current(playerRef.current.x, playerRef.current.y - 86, 'BLOOD MOON REWARD +20%', '#ef4444', 12, true);
     }
     return rewards;
+  };
+
+  const requestCombatImpactSound = (
+    tier: ImpactSoundRequest['tier'],
+    element: ElementType,
+    isCrit: boolean,
+  ) => {
+    const incoming = { tier, at: performance.now() };
+    const current = pendingImpactSoundRef.current;
+    if (!current) {
+      pendingImpactSoundRef.current = { request: incoming, element, isCrit };
+    } else {
+      const selected = selectImpactSoundRequest(current.request, incoming);
+      if (selected === incoming) {
+        pendingImpactSoundRef.current = { request: incoming, element, isCrit };
+      }
+    }
+    if (impactSoundFlushScheduledRef.current) return;
+    impactSoundFlushScheduledRef.current = true;
+    queueMicrotask(() => {
+      impactSoundFlushScheduledRef.current = false;
+      const pending = pendingImpactSoundRef.current;
+      pendingImpactSoundRef.current = null;
+      if (pending) {
+        AetheriaAudioEngine.playCombatImpact(
+          pending.request.tier,
+          pending.element,
+          pending.isCrit,
+        );
+      }
+    });
   };
 
   const registerComboHit = (x: number, y: number) => {
@@ -1600,6 +1666,9 @@ export default function CombatArena({
     const { combatParty: currentParty, activePartyIndex: currentPartyIndex } = loopStateRef.current;
     if (isPaused || isGameOver || countdownValue !== null) return;
     if (idx >= currentParty.length || idx < 0 || idx === currentPartyIndex) return;
+    combatActionQueueRef.current = clearCombatActionQueue();
+    attackAnticipationRef.current = null;
+    skillAnticipationRef.current = null;
     setActivePartyIndex(idx);
     const swapped = currentParty[idx];
     const echo = activeAetherEchoRef.current;
@@ -1845,10 +1914,11 @@ export default function CombatArena({
     AetheriaAudioEngine.playParry();
   };
 
-  const triggerElementalSkill = () => {
+  const resolveElementalSkill = (action: QueuedCombatAction) => {
     const { combatParty: currentParty, activePartyIndex: currentPartyIndex } = loopStateRef.current;
     const currentActiveChar = currentParty[currentPartyIndex] || null;
     if (!currentActiveChar) return;
+    if (currentActiveChar.id !== action.characterId || currentActiveChar.currentHp <= 0) return;
 
     if (currentActiveChar.skillCooldownRemaining > 0) {
       // Feedback for skill on cooldown
@@ -1865,6 +1935,7 @@ export default function CombatArena({
       return;
     }
 
+    skillAnticipationRef.current = null;
     // Play SFX
     AetheriaAudioEngine.playSkill();
 
@@ -1972,6 +2043,39 @@ export default function CombatArena({
       }
       return c;
     }));
+  };
+
+  const triggerElementalSkill = () => {
+    const { combatParty: currentParty, activePartyIndex: currentPartyIndex } = loopStateRef.current;
+    const currentActiveChar = currentParty[currentPartyIndex] || null;
+    if (!currentActiveChar) return;
+    if (currentActiveChar.skillCooldownRemaining > 0) {
+      spawnTextRef.current(
+        playerRef.current.x,
+        playerRef.current.y - 55,
+        `COOLDOWN: ${Math.ceil(currentActiveChar.skillCooldownRemaining)}s`,
+        '#ef4444',
+        13,
+      );
+      AetheriaAudioEngine.playClick();
+      return;
+    }
+    if (combatActionQueueRef.current.actions.some(action => (
+      action.kind === 'elemental-skill' && action.characterId === currentActiveChar.id
+    ))) return;
+
+    skillAnticipationRef.current = {
+      remainingMs: 70,
+      color: getElementColorHex(currentActiveChar.element),
+    };
+    combatActionSequenceRef.current += 1;
+    combatActionQueueRef.current = enqueueCombatAction(combatActionQueueRef.current, {
+      id: `skill-${combatActionSequenceRef.current}`,
+      kind: 'elemental-skill',
+      characterId: currentActiveChar.id,
+      remainingMs: 70,
+      direction: { x: playerRef.current.lastDirX, y: playerRef.current.lastDirY },
+    });
   };
 
   const clearSpecialUltimateTimeouts = () => {
@@ -2219,12 +2323,11 @@ export default function CombatArena({
     ];
   };
 
-  const triggerBasicAttack = () => {
+  const resolveBasicAttack = (action: QueuedCombatAction) => {
     const { combatParty: currentParty, activePartyIndex: currentPartyIndex } = loopStateRef.current;
     const currentActiveChar = currentParty[currentPartyIndex] || null;
     if (!currentActiveChar) return;
-    if (basicAttackCooldownRef.current > 0) return;
-    basicAttackCooldownRef.current = 0.18 / getRoleNormalAttackSpeedMultiplier(currentActiveChar.role ?? 'sub-dps');
+    if (currentActiveChar.id !== action.characterId || currentActiveChar.currentHp <= 0) return;
     const normalAttackReactionContext = createReactionContext('normal-attack', true, false);
     const normalAttackKit = getCharacterKit(currentActiveChar.id);
     const activeDominion = partyEffectsRef.current.effects.find(effect =>
@@ -2232,12 +2335,12 @@ export default function CombatArena({
     );
 
     // Play SFX
-    AetheriaAudioEngine.playSlash();
+    attackAnticipationRef.current = null;
 
     const px = playerRef.current.x;
     const py = playerRef.current.y;
-    const dirX = playerRef.current.lastDirX;
-    const dirY = playerRef.current.lastDirY;
+    const dirX = action.direction.x;
+    const dirY = action.direction.y;
     const pColor = getElementColorHex(currentActiveChar.element);
 
     // Throw particles in front of looking direction
@@ -2388,6 +2491,30 @@ export default function CombatArena({
     }));
   };
 
+  const triggerBasicAttack = () => {
+    const { combatParty: currentParty, activePartyIndex: currentPartyIndex } = loopStateRef.current;
+    const currentActiveChar = currentParty[currentPartyIndex] || null;
+    if (!currentActiveChar || basicAttackCooldownRef.current > 0) return;
+
+    basicAttackCooldownRef.current = 0.18 / getRoleNormalAttackSpeedMultiplier(currentActiveChar.role ?? 'sub-dps');
+    AetheriaAudioEngine.playSlash();
+    const direction = { x: playerRef.current.lastDirX, y: playerRef.current.lastDirY };
+    attackAnticipationRef.current = {
+      remainingMs: 45,
+      x: direction.x,
+      y: direction.y,
+      color: getElementColorHex(currentActiveChar.element),
+    };
+    combatActionSequenceRef.current += 1;
+    combatActionQueueRef.current = enqueueCombatAction(combatActionQueueRef.current, {
+      id: `attack-${combatActionSequenceRef.current}`,
+      kind: 'normal-attack',
+      characterId: currentActiveChar.id,
+      remainingMs: 45,
+      direction,
+    });
+  };
+
   const resolveAllEnemiesDefeated = () => {
     const combatState = loopStateRef.current;
     if (
@@ -2532,6 +2659,17 @@ export default function CombatArena({
 
     let finalDmg = baseDmg;
     const source = reactionContext.source;
+    const impactSource: CombatImpactSource = source === 'normal-attack'
+      ? 'normal-attack'
+      : source === 'elemental-skill'
+        ? 'elemental-skill'
+        : source === 'elemental-burst'
+          ? 'ultimate'
+          : source === 'special-ultimate'
+            ? 'special-ultimate'
+            : source === 'damage-over-time'
+              ? 'dot'
+              : 'persistent-field';
     const usesActiveAttackerModifiers = source !== 'damage-over-time'
       && source !== 'persistent-field'
       && source !== 'reaction'
@@ -2887,6 +3025,10 @@ export default function CombatArena({
       restoreSiphonedEnergy(enemy);
     }
 
+    const wasShielded = enemy.type !== 'Boss'
+      && enemy.archetypeId === 'bulwark'
+      && (enemy.archetypeState?.shieldHp ?? 0) > 0;
+
     if (enemy.type !== 'Boss' && finalDmg > 0) {
       if (
         enemy.archetypeId === 'bulwark'
@@ -2926,16 +3068,37 @@ export default function CombatArena({
     finalDmg = Math.round(finalDmg);
     enemy.hp = Math.max(0, enemy.hp - finalDmg);
     
-    const impactTier = enemy.type === 'Boss'
-      ? 'boss'
-      : enemy.archetypeId === 'bulwark' && (enemy.archetypeState?.shieldHp ?? 0) > 0
-        ? 'shield'
-        : isCrit
-          ? 'critical'
-          : source === 'normal-attack'
-            ? 'light'
-            : 'heavy';
-    AetheriaAudioEngine.playCombatImpact(impactTier, type, isCrit);
+    const impactProfile = getCombatImpactProfile({
+      source: impactSource,
+      isCrit,
+      targetClass: enemy.type === 'Boss' ? 'boss' : enemy.type === 'Elite' ? 'elite' : 'normal',
+      combatSpeed,
+      screenShakeEnabled,
+      shielded: wasShielded,
+    });
+    if (finalDmg > 0 && impactProfile.hitStopMs > 0) {
+      hitStopRemainingMsRef.current = requestStrongestHitStop(
+        hitStopRemainingMsRef.current,
+        impactProfile.hitStopMs,
+      );
+      hitStopRenderPendingRef.current = true;
+      if (impactProfile.recoilPx >= Math.hypot(visualRecoilRef.current.x, visualRecoilRef.current.y)) {
+        visualRecoilRef.current = {
+          x: -playerRef.current.lastDirX * impactProfile.recoilPx,
+          y: -playerRef.current.lastDirY * impactProfile.recoilPx,
+          remainingMs: 90,
+        };
+      }
+    }
+
+    const hasConfiguredKnockback = reactionName.includes('OVERLOADED')
+      || currentActiveChar.equippedWeaponName?.includes('Calamity Blaze');
+    if (finalDmg > 0 && impactProfile.knockbackDistance > 0 && !hasConfiguredKnockback) {
+      const knockback = getDirectionalKnockback(playerRef.current, enemy, impactProfile.knockbackDistance);
+      enemy.x = Math.max(enemy.radius, Math.min(WORLD_WIDTH - enemy.radius, enemy.x + knockback.x));
+      enemy.y = Math.max(enemy.radius, Math.min(WORLD_HEIGHT - enemy.radius, enemy.y + knockback.y));
+    }
+    requestCombatImpactSound(impactProfile.soundTier, type, isCrit);
     if (finalDmg > 0) {
       registerComboHit(enemy.x, enemy.y);
     }
@@ -3251,6 +3414,49 @@ export default function CombatArena({
         animationId = requestAnimationFrame(updateGameLoop);
         return;
       }
+
+      if (hitStopRemainingMsRef.current > 0) {
+        if (!hitStopRenderPendingRef.current) {
+          hitStopRemainingMsRef.current = Math.max(0, hitStopRemainingMsRef.current - delta);
+          animationId = requestAnimationFrame(updateGameLoop);
+          return;
+        }
+        hitStopRenderPendingRef.current = false;
+      }
+
+      if (visualRecoilRef.current.remainingMs > 0) {
+        const previousRemaining = visualRecoilRef.current.remainingMs;
+        const nextRemaining = Math.max(0, previousRemaining - delta);
+        const decay = previousRemaining > 0 ? nextRemaining / previousRemaining : 0;
+        visualRecoilRef.current = {
+          x: visualRecoilRef.current.x * decay,
+          y: visualRecoilRef.current.y * decay,
+          remainingMs: nextRemaining,
+        };
+      }
+      if (attackAnticipationRef.current) {
+        attackAnticipationRef.current.remainingMs = Math.max(
+          0,
+          attackAnticipationRef.current.remainingMs - delta * combatSpeed,
+        );
+      }
+      if (skillAnticipationRef.current) {
+        skillAnticipationRef.current.remainingMs = Math.max(
+          0,
+          skillAnticipationRef.current.remainingMs - delta * combatSpeed,
+        );
+      }
+
+      const actionTick = tickCombatActionQueue(
+        combatActionQueueRef.current,
+        delta * combatSpeed,
+        false,
+      );
+      combatActionQueueRef.current = actionTick.queue;
+      actionTick.ready.forEach(action => {
+        if (action.kind === 'normal-attack') resolveBasicAttack(action);
+        else resolveElementalSkill(action);
+      });
 
       if (enemiesRef.current.length > 0 && enemiesRef.current.every(e => e.hp <= 0)) {
         resolveAllEnemiesDefeated();
@@ -4588,8 +4794,34 @@ export default function CombatArena({
         ctx.restore();
       });
 
+      if (attackAnticipationRef.current?.remainingMs) {
+        const anticipation = attackAnticipationRef.current;
+        const angle = Math.atan2(anticipation.y, anticipation.x);
+        ctx.save();
+        ctx.strokeStyle = anticipation.color;
+        ctx.globalAlpha = Math.max(0.25, anticipation.remainingMs / 45);
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(playerRef.current.x, playerRef.current.y, 43, angle - 0.72, angle + 0.72);
+        ctx.stroke();
+        ctx.restore();
+      }
+      if (skillAnticipationRef.current?.remainingMs) {
+        const anticipation = skillAnticipationRef.current;
+        ctx.save();
+        ctx.strokeStyle = anticipation.color;
+        ctx.globalAlpha = Math.max(0.2, anticipation.remainingMs / 70);
+        ctx.lineWidth = 3;
+        ctx.setLineDash([7, 6]);
+        ctx.beginPath();
+        ctx.arc(playerRef.current.x, playerRef.current.y, 58 - anticipation.remainingMs * 0.15, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
       // --- DRAW PLAYER CORE SHIELD AND MODEL ---
       ctx.save();
+      ctx.translate(visualRecoilRef.current.x, visualRecoilRef.current.y);
       ctx.beginPath();
       ctx.arc(playerRef.current.x, playerRef.current.y, playerRef.current.radius, 0, Math.PI * 2);
       ctx.fillStyle = getElementColorHex(currentActiveChar.element);
@@ -4912,12 +5144,16 @@ export default function CombatArena({
         }
       }
 
+      hitStopRenderPendingRef.current = false;
       animationId = requestAnimationFrame(updateGameLoop);
     };
 
     updateGameLoop();
     return () => {
       cancelAnimationFrame(animationId);
+      combatActionQueueRef.current = clearCombatActionQueue();
+      hitStopRemainingMsRef.current = 0;
+      pendingImpactSoundRef.current = null;
       AetheriaAudioEngine.setBossFightActive(false);
     };
   }, []);
