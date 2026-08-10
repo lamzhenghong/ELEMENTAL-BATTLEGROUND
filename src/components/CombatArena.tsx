@@ -2926,8 +2926,16 @@ export default function CombatArena({
     finalDmg = Math.round(finalDmg);
     enemy.hp = Math.max(0, enemy.hp - finalDmg);
     
-    // Play crispy hit sound!
-    AetheriaAudioEngine.playHit();
+    const impactTier = enemy.type === 'Boss'
+      ? 'boss'
+      : enemy.archetypeId === 'bulwark' && (enemy.archetypeState?.shieldHp ?? 0) > 0
+        ? 'shield'
+        : isCrit
+          ? 'critical'
+          : source === 'normal-attack'
+            ? 'light'
+            : 'heavy';
+    AetheriaAudioEngine.playCombatImpact(impactTier, type, isCrit);
     if (finalDmg > 0) {
       registerComboHit(enemy.x, enemy.y);
     }

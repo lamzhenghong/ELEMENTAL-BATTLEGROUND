@@ -9,6 +9,7 @@ import {
   type BgmTrackId
 } from './bgm';
 import { AetheriaSpecialUltimateBgmPlayer } from './specialUltimateBgm';
+import type { ImpactSoundTier } from './combatImpact';
 
 export { getBgmVolumeMultiplierForDevice } from './bgm';
 
@@ -20,6 +21,10 @@ class AudioEngine {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
   private sfxGain: GainNode | null = null;
+  private impactCompressor: DynamicsCompressorNode | null = null;
+  private impactNoiseBuffer: AudioBuffer | null = null;
+  private lastImpactAt = -Infinity;
+  private lastImpactPriority = -1;
   private isMuted: boolean = false;
   private isMusicPlaying: boolean = false;
   private bgmVolScale: number = 1.0;
@@ -43,6 +48,21 @@ class AudioEngine {
       this.sfxGain = this.ctx.createGain();
       this.sfxGain.gain.value = this.sfxVolScale * 0.5; // Scaled SFX
       this.sfxGain.connect(this.masterGain);
+
+      this.impactCompressor = this.ctx.createDynamicsCompressor();
+      this.impactCompressor.threshold.value = -18;
+      this.impactCompressor.knee.value = 12;
+      this.impactCompressor.ratio.value = 6;
+      this.impactCompressor.attack.value = 0.003;
+      this.impactCompressor.release.value = 0.12;
+      this.impactCompressor.connect(this.sfxGain);
+
+      const noiseLength = Math.floor(this.ctx.sampleRate * 0.18);
+      this.impactNoiseBuffer = this.ctx.createBuffer(1, noiseLength, this.ctx.sampleRate);
+      const noiseData = this.impactNoiseBuffer.getChannelData(0);
+      for (let i = 0; i < noiseLength; i += 1) {
+        noiseData[i] = (Math.random() * 2 - 1) * (1 - (i / noiseLength));
+      }
 
       // Start music if flags were active
       if (this.isMusicPlaying) {
@@ -284,6 +304,84 @@ class AudioEngine {
     osc2.start();
     osc.stop(this.ctx.currentTime + 0.15);
     osc2.stop(this.ctx.currentTime + 0.15);
+  }
+
+  public playCombatImpact(tier: ImpactSoundTier, element: string, isCritical: boolean = false) {
+    this.resume();
+    if (!this.ctx || !this.impactCompressor || !this.impactNoiseBuffer || this.isMuted) return;
+
+    const priority: Record<ImpactSoundTier, number> = {
+      light: 0,
+      heavy: 1,
+      shield: 2,
+      critical: 3,
+      boss: 4,
+    };
+    const nowMs = performance.now();
+    const throttleMs = tier === 'light' ? 30 : 45;
+    if (nowMs - this.lastImpactAt < throttleMs && priority[tier] <= this.lastImpactPriority) return;
+    this.lastImpactAt = nowMs;
+    this.lastImpactPriority = priority[tier];
+
+    const config: Record<ImpactSoundTier, { frequency: number; gain: number; duration: number; noise: number }> = {
+      light: { frequency: 190, gain: 0.12, duration: 0.08, noise: 0.035 },
+      heavy: { frequency: 135, gain: 0.19, duration: 0.12, noise: 0.06 },
+      shield: { frequency: 310, gain: 0.17, duration: 0.15, noise: 0.075 },
+      critical: { frequency: 225, gain: 0.22, duration: 0.16, noise: 0.08 },
+      boss: { frequency: 90, gain: 0.26, duration: 0.2, noise: 0.09 },
+    };
+    const elementPitch: Record<string, number> = {
+      Pyro: 1.08,
+      Hydro: 0.96,
+      Cryo: 1.15,
+      Electro: 1.22,
+      Anemo: 1.04,
+      Geo: 0.84,
+      Dendro: 0.92,
+    };
+    const values = config[tier];
+    const currentTime = this.ctx.currentTime;
+    const destination = this.impactCompressor;
+
+    const body = this.ctx.createOscillator();
+    const bodyGain = this.ctx.createGain();
+    body.type = tier === 'shield' ? 'triangle' : 'sine';
+    body.frequency.setValueAtTime(values.frequency * (elementPitch[element] ?? 1), currentTime);
+    body.frequency.exponentialRampToValueAtTime(Math.max(35, values.frequency * 0.32), currentTime + values.duration);
+    bodyGain.gain.setValueAtTime(values.gain, currentTime);
+    bodyGain.gain.exponentialRampToValueAtTime(0.001, currentTime + values.duration);
+    body.connect(bodyGain);
+    bodyGain.connect(destination);
+    body.start(currentTime);
+    body.stop(currentTime + values.duration);
+
+    const noise = this.ctx.createBufferSource();
+    const noiseFilter = this.ctx.createBiquadFilter();
+    const noiseGain = this.ctx.createGain();
+    noise.buffer = this.impactNoiseBuffer;
+    noiseFilter.type = tier === 'shield' ? 'highpass' : 'bandpass';
+    noiseFilter.frequency.value = tier === 'shield' ? 1800 : 720;
+    noiseGain.gain.setValueAtTime(values.noise, currentTime);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, currentTime + values.duration * 0.75);
+    noise.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(destination);
+    noise.start(currentTime);
+    noise.stop(currentTime + values.duration);
+
+    if (isCritical || tier === 'critical' || tier === 'boss') {
+      const accent = this.ctx.createOscillator();
+      const accentGain = this.ctx.createGain();
+      accent.type = 'triangle';
+      accent.frequency.setValueAtTime(tier === 'boss' ? 360 : 720, currentTime);
+      accent.frequency.exponentialRampToValueAtTime(tier === 'boss' ? 120 : 420, currentTime + 0.11);
+      accentGain.gain.setValueAtTime(tier === 'boss' ? 0.1 : 0.075, currentTime);
+      accentGain.gain.exponentialRampToValueAtTime(0.001, currentTime + 0.12);
+      accent.connect(accentGain);
+      accentGain.connect(destination);
+      accent.start(currentTime);
+      accent.stop(currentTime + 0.12);
+    }
   }
 
   public playDodge() {

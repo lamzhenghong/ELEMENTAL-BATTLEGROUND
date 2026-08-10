@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import {
   createDamageTextBucket,
@@ -104,4 +105,11 @@ test('damage text buckets only merge matching hits inside 90 milliseconds', () =
   assert.equal(mergeDamageTextBucket(first, {
     targetId: 'enemy', source: 'normal-attack', amount: 75, isCrit: false, reaction: '', at: 191,
   }), null);
+});
+
+test('audio engine exposes reusable compressed combat impact layers', () => {
+  const audioSource = readFileSync(new URL('./audio.ts', import.meta.url), 'utf8');
+  assert.match(audioSource, /playCombatImpact/);
+  assert.match(audioSource, /DynamicsCompressor/);
+  assert.match(audioSource, /impactNoiseBuffer/);
 });
