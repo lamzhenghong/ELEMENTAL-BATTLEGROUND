@@ -1,6 +1,7 @@
 import React from 'react';
 import { Star, Trophy, Sparkles, Coins, Award, ShieldAlert } from 'lucide-react';
 import { motion } from 'motion/react';
+import { formatCombatDuration } from '../utils/combatSessionPresentation';
 
 interface StoryRewardsProps {
   stageId: string;
@@ -9,6 +10,8 @@ interface StoryRewardsProps {
   starsEarned: number;
   deathsCount: number;
   durationSecs: number;
+  bestTimeSecs?: number;
+  isNewRecord: boolean;
   gemsReward: number;
   moraReward: number;
   charXpReward: number;
@@ -24,6 +27,8 @@ export default function StoryRewards({
   starsEarned,
   deathsCount,
   durationSecs,
+  bestTimeSecs,
+  isNewRecord,
   gemsReward,
   moraReward,
   charXpReward,
@@ -92,6 +97,22 @@ export default function StoryRewards({
                 </span>
               </div>
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 text-left font-mono text-[10px]">
+            <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/10 p-2.5">
+              <span className="block text-[8px] uppercase text-slate-400">CLEAR TIME</span>
+              <span className="font-black text-cyan-300">{formatCombatDuration(durationSecs)}</span>
+            </div>
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-2.5">
+              <span className="block text-[8px] uppercase text-slate-400">BEST TIME</span>
+              <span className="font-black text-amber-300">{formatCombatDuration(bestTimeSecs ?? durationSecs)}</span>
+            </div>
+            {isNewRecord && (
+              <div className="col-span-2 rounded-lg border border-emerald-400/30 bg-emerald-500/10 p-2 text-center font-black uppercase text-emerald-300">
+                NEW RECORD
+              </div>
+            )}
           </div>
 
           {/* Rewards grid */}

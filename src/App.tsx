@@ -46,6 +46,7 @@ import { personalizeCampaignScene } from './utils/storyDialoguePersonalization';
 import type { StoryChoiceSelections, StoryScene } from './data/story';
 import { mergeUnlockedStoryMemories } from './data/story/memories';
 import { normalizeStoryProgress } from './data/story/progress';
+import { getImprovedClearTime } from './utils/combatSessionPresentation';
 import { useCloudAccount } from './cloud/useCloudAccount';
 import { createInitialSaveState, formatPlayTime, normalizeLoadedSaveState } from './save/gameSave';
 import { GAME_VERSION } from './config/gameVersion';
@@ -1373,6 +1374,10 @@ export default function App() {
 
     triggerSaveUpdate(prev => {
       const progress = normalizeStoryProgress(prev.storyProgress);
+      const improvedTime = getImprovedClearTime(progress.fastestClearTimes[stageId], stats.duration);
+      const nextFastestClearTimes = improvedTime === undefined
+        ? progress.fastestClearTimes
+        : { ...progress.fastestClearTimes, [stageId]: improvedTime };
 
       let nextCompletedStages = [...progress.completedStages];
       let nextHardCompletedStages = [...(progress.hardModeCompletedStages || [])];
@@ -1464,7 +1469,8 @@ export default function App() {
           hardModeCompletedStages: nextHardCompletedStages,
           starRatings: nextStarRatings,
           unlockedLoreEntries: nextUnlockedLoreEntries,
-          completedCharacterStoryActs: nextCompletedCharacterStoryActs
+          completedCharacterStoryActs: nextCompletedCharacterStoryActs,
+          fastestClearTimes: nextFastestClearTimes,
         }
       };
 
@@ -2898,16 +2904,22 @@ export default function App() {
                     inventoryWeapons={saveState.inventoryWeapons}
                     characterPortraits={saveState.characterPortraits || {}}
                     highScoreWave={saveState.stats.highScoreWave || 1}
-                    onUpdateHighScore={(wave, points) => {
+                    highScoreArtifactWave={saveState.stats.highScoreArtifactWave || 1}
+                    onUpdateWaveRecord={(mode, wave, points) => {
                       triggerSaveUpdate(prev => {
                         const statsCopy = { ...prev.stats };
                         let mutated = false;
-                        if (wave > (statsCopy.highScoreWave || 0)) {
-                          statsCopy.highScoreWave = wave;
-                          mutated = true;
-                        }
-                        if (points > (statsCopy.highScorePoints || 0)) {
-                          statsCopy.highScorePoints = points;
+                        if (mode === 'endless-arena') {
+                          if (wave > (statsCopy.highScoreWave || 0)) {
+                            statsCopy.highScoreWave = wave;
+                            mutated = true;
+                          }
+                          if (points > (statsCopy.highScorePoints || 0)) {
+                            statsCopy.highScorePoints = points;
+                            mutated = true;
+                          }
+                        } else if (wave > (statsCopy.highScoreArtifactWave || 0)) {
+                          statsCopy.highScoreArtifactWave = wave;
                           mutated = true;
                         }
                         if (mutated) {
@@ -3952,6 +3964,10 @@ export default function App() {
               language={language}
               storyMode={true}
               storyStageId={storyBattleConfig.stageId}
+              storyIsCharacterStory={storyBattleConfig.isCharStory}
+              storyCharacterName={PLAYABLE_CHARACTERS.find(c => c.id === storyBattleConfig.charId)?.name}
+              storyAct={storyBattleConfig.act}
+              storyBestClearSecs={saveState.storyProgress?.fastestClearTimes?.[storyBattleConfig.stageId]}
               storyChoiceSelections={storyBattleConfig.choiceSelections}
               isHardMode={storyBattleConfig.isHardMode}
               saveState={saveState}

@@ -42,6 +42,11 @@ import { getStageSpec, getStoryModifier } from '../data/storyStages';
 import type { StoryChoiceSelections } from '../data/story';
 import StoryRewards from './StoryRewards';
 import {
+  getCombatSessionPresentation,
+  getImprovedClearTime,
+  type CombatSessionContext,
+} from '../utils/combatSessionPresentation';
+import {
   getReactionDamageOutcome,
   getSpecialUltimateStatDamage,
   getStatScaledAttackDamage
@@ -174,7 +179,8 @@ interface CombatArenaProps {
   partyIds: string[];
   onChangeParty: (partyIds: string[]) => void;
   highScoreWave?: number;
-  onUpdateHighScore?: (wave: number, score: number) => void;
+  highScoreArtifactWave?: number;
+  onUpdateWaveRecord?: (mode: 'endless-arena' | 'artifact-grind', wave: number, score: number) => void;
   onBackToMenu?: () => void;
   onExitToWiki?: () => void;
   onAddItems?: (itemType: 'char_xp' | 'ascension', amount: number) => void;
@@ -202,6 +208,10 @@ interface CombatArenaProps {
   // Story Mode props
   storyMode?: boolean;
   storyStageId?: string;
+  storyIsCharacterStory?: boolean;
+  storyCharacterName?: string;
+  storyAct?: number;
+  storyBestClearSecs?: number;
   storyChoiceSelections?: StoryChoiceSelections;
   isHardMode?: boolean;
   onStoryBattleEnd?: (victory: boolean, stats: { stars: number; hp: Record<string, number>; ult: Record<string, number>; duration: number; deaths: number }) => void;
@@ -218,7 +228,8 @@ export default function CombatArena({
   partyIds,
   onChangeParty,
   highScoreWave = 1,
-  onUpdateHighScore,
+  highScoreArtifactWave = 1,
+  onUpdateWaveRecord,
   onBackToMenu,
   characterLevels = {},
   characterEquippedWeapon = {},
@@ -244,6 +255,10 @@ export default function CombatArena({
   onAddItems,
   storyMode = false,
   storyStageId = '',
+  storyIsCharacterStory = false,
+  storyCharacterName,
+  storyAct,
+  storyBestClearSecs,
   storyChoiceSelections = EMPTY_STORY_CHOICE_SELECTIONS,
   isHardMode = false,
   onStoryBattleEnd,
@@ -886,6 +901,32 @@ export default function CombatArena({
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const [isGameOver, setIsGameOver] = useState<boolean>(false);
   const [waveClearMessage, setWaveClearMessage] = useState<string | null>(null);
+
+  const rogueDeepestRoom = saveState?.stats?.highScoreRogueRoom || 0;
+  const rogueFastestClearSecs = saveState?.stats?.fastestRogueClearSecs;
+  const sessionContext: CombatSessionContext = storyMode
+    ? storyIsCharacterStory
+      ? {
+          mode: 'character-story',
+          stageId: storyStageId,
+          characterName: storyCharacterName || 'Character',
+          act: storyAct || 1,
+          bestClearSecs: storyBestClearSecs,
+        }
+      : { mode: 'story-campaign', stageId: storyStageId, bestClearSecs: storyBestClearSecs }
+    : dungeonMode
+      ? {
+          mode: 'rogue-ruins',
+          room: dungeonRoomIdx + 1,
+          roomCount: 10,
+          roomType: dungeonRoomType || 'battle',
+          deepestRoom: rogueDeepestRoom,
+          fastestClearSecs: rogueFastestClearSecs,
+        }
+      : isArtifactGrindMode
+        ? { mode: 'artifact-grind', wave: currentWave, bestWave: highScoreArtifactWave }
+        : { mode: 'endless-arena', wave: currentWave, bestWave: highScoreWave };
+  const sessionPresentation = getCombatSessionPresentation(sessionContext);
   const showSpecialUltimateButton = Boolean(
     availableSpecialUltimate &&
     battleStarted &&
@@ -2672,7 +2713,11 @@ export default function CombatArena({
     }
 
     const nextWave = waveNumber + 1;
-    onUpdateHighScore?.(waveNumber, combatState.gameScore + 200);
+    if (combatState.isArtifactGrindMode) {
+      onUpdateWaveRecord?.('artifact-grind', waveNumber, combatState.gameScore + 200);
+    } else {
+      onUpdateWaveRecord?.('endless-arena', waveNumber, combatState.gameScore + 200);
+    }
 
     setWaveClearMessage(`WAVE ${waveNumber} SECURED! +${boostedRewards.gems} Gems / +${boostedRewards.mora} Mora / +${boostedRewards.exp} XP${artifactMessage}`);
     setTimeout(() => {
@@ -3339,8 +3384,10 @@ export default function CombatArena({
           }
 
           const nextWave = currentWave + 1;
-          if (onUpdateHighScore) {
-            onUpdateHighScore(currentWave, gameScore + 200);
+          if (isArtifactGrindMode) {
+            onUpdateWaveRecord?.('artifact-grind', currentWave, gameScore + 200);
+          } else {
+            onUpdateWaveRecord?.('endless-arena', currentWave, gameScore + 200);
           }
 
           setWaveClearMessage(`WAVE ${currentWave} SECURED! +${boostedRewards.gems} Gems / +${boostedRewards.mora} Mora / +${boostedRewards.exp} XP${artifactMessage}`);
@@ -5496,7 +5543,12 @@ export default function CombatArena({
     })));
     
     // Quick indicator float
-    spawnFloatingDamageText(400, 200, 'WARFARE RESET • WAVE 1 PREPARED', '#10b981', 16, true, false);
+    const resetProgressLabel = storyMode
+      ? 'STAGE READY'
+      : dungeonMode
+        ? 'ROOM READY'
+        : 'WAVE 1 PREPARED';
+    spawnFloatingDamageText(400, 200, `WARFARE RESET • ${resetProgressLabel}`, '#10b981', 16, true, false);
   };
 
   const bossHpPct = bossHp !== null ? bossHp / bossMaxHp : null;
@@ -5586,7 +5638,7 @@ export default function CombatArena({
           <div className="flex items-center gap-2">
             <div className="w-1.5 h-3.5 bg-red-500 rounded-sm"></div>
             <h3 className="text-xs font-black text-rose-450 uppercase tracking-widest leading-none font-display flex flex-wrap items-center gap-2">
-              <span>ACTIVE STAGE CONSOLE • <span className="text-yellow-450 font-mono">{dungeonMode ? 'DUNGEON' : 'WAVE'} {currentWave}</span></span>
+              <span>{sessionPresentation.eyebrow} • <span className="text-yellow-450 font-mono">{sessionPresentation.progressLabel}</span></span>
               {/* Weather HUD Badge */}
               <span className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded border ${
                 currentWeather === 'Sunny' ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' :
@@ -5617,7 +5669,7 @@ export default function CombatArena({
               )}
             </h3>
           </div>
-          {!isMobile && (
+          {!isMobile && !storyMode && !dungeonMode && (
             <p className="text-[10.5px] text-slate-400 mt-1 uppercase font-mono tracking-wide">
               Score: <span className="text-white font-bold">{gameScore} pts</span> • Aim Option: <span className="text-cyan-400">Mouse Click Strike</span>
             </p>
@@ -5654,7 +5706,7 @@ export default function CombatArena({
           {/* Highscore indicator badges */}
           {!isMobile && (
             <div className="bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono text-[9px] font-black uppercase rounded py-1 px-2.5 flex items-center gap-1">
-              <Trophy className="w-2.5 h-2.5" /> High Score: Wave {highScoreWave}
+              <Trophy className="w-2.5 h-2.5" /> {sessionPresentation.recordLabel}: {sessionPresentation.recordValue}
             </div>
           )}
 
@@ -5781,6 +5833,8 @@ export default function CombatArena({
             const gemsReward = isHardMode ? 0 : spec.firstClearRewards.gems;
             const moraReward = isHardMode ? spec.firstClearRewards.mora * 2 : spec.firstClearRewards.mora;
             const charXpReward = isHardMode ? spec.firstClearRewards.charXp * 2 : spec.firstClearRewards.charXp;
+            const improvedTime = getImprovedClearTime(storyBestClearSecs, storyElapsedSecs);
+            const displayedBestTime = improvedTime ?? storyBestClearSecs ?? storyElapsedSecs;
 
             return (
               <StoryRewards
@@ -5790,6 +5844,8 @@ export default function CombatArena({
                 starsEarned={storyStarsEarned}
                 deathsCount={characterDeathsRef.current}
                 durationSecs={storyElapsedSecs}
+                bestTimeSecs={displayedBestTime}
+                isNewRecord={improvedTime !== undefined}
                 gemsReward={gemsReward}
                 moraReward={moraReward}
                 charXpReward={charXpReward}
@@ -6005,7 +6061,7 @@ export default function CombatArena({
                     READY TO DEPLOY
                   </h3>
                   <p className="text-[10px] md:text-xs text-slate-400 font-mono uppercase tracking-wide">
-                    {dungeonMode ? `Rogue Ruins Node • ${dungeonRoomType?.toUpperCase()}` : `Combat Arena • Wave ${currentWave}`}
+                    {sessionPresentation.deploymentLabel}
                   </p>
                 </div>
                 
@@ -6106,7 +6162,7 @@ export default function CombatArena({
                 <Pause className="w-5 h-5 text-red-500" /> {t('paused', language)}
               </h3>
               <p className="text-slate-400 text-xs uppercase font-mono">
-                {t('wave', language)}: {currentWave} • {t('score', language)}: {gameScore}
+                {sessionPresentation.pauseLabel}{!storyMode && !dungeonMode && ` • ${t('score', language)}: ${gameScore}`}
               </p>
               
               <div className="border border-white/5 bg-black/30 p-3 rounded-lg text-left text-[10px] text-slate-400 space-y-1 font-mono">
@@ -6132,7 +6188,7 @@ export default function CombatArena({
                   }}
                   className="w-full p-2.5 bg-black/45 hover:bg-black/75 border border-white/10 text-slate-200 text-xs rounded-lg font-black uppercase tracking-wider cursor-pointer"
                 >
-                  🔄 {t('restart_wave_1', language)}
+                  🔄 {storyMode ? 'RETRY STAGE' : dungeonMode ? 'RETRY ROOM' : t('restart_wave_1', language)}
                 </button>
                 <button
                   onClick={() => {
@@ -6242,13 +6298,15 @@ export default function CombatArena({
                 All frontline elemental combatants have fallen. The rift structures collapsed.
               </p>
               
-              <div className="grid grid-cols-2 gap-4 border border-white/10 bg-black/50 p-4 rounded-lg font-mono">
+              <div className={`grid ${storyMode || dungeonMode ? 'grid-cols-1' : 'grid-cols-2'} gap-4 border border-white/10 bg-black/50 p-4 rounded-lg font-mono`}>
                 <div className="text-left text-[11px] text-slate-400">
-                  WAVE REACHED: <div className="text-lg font-black text-white">{currentWave}</div>
+                  {sessionPresentation.resultLabel}: <div className="text-lg font-black text-white">{sessionPresentation.progressLabel}</div>
                 </div>
-                <div className="text-left text-[11px] text-slate-400">
-                  COMBAT SCORE: <div className="text-lg font-black text-yellow-500">{gameScore} pts</div>
-                </div>
+                {!storyMode && !dungeonMode && (
+                  <div className="text-left text-[11px] text-slate-400">
+                    COMBAT SCORE: <div className="text-lg font-black text-yellow-500">{gameScore} pts</div>
+                  </div>
+                )}
               </div>
 
               {isArtifactGrindMode && (
