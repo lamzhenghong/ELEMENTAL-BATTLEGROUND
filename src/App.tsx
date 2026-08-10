@@ -2930,6 +2930,7 @@ export default function App() {
                     onAwardArtifact={handleAwardArtifact}
                     activeDamageSkin={saveState.activeDamageSkin || 'Default'}
                     disableGameplayCutscenes={saveState.disableGameplayCutscenes || false}
+                    mobileControlLayout={mobileControlLayout}
                   />
                 </motion.div>
               )}
@@ -2963,6 +2964,7 @@ export default function App() {
                     language={language}
                     activeDamageSkin={saveState.activeDamageSkin || 'Default'}
                     disableGameplayCutscenes={saveState.disableGameplayCutscenes || false}
+                    mobileControlLayout={mobileControlLayout}
                   />
                 </motion.div>
               )}
@@ -3959,6 +3961,7 @@ export default function App() {
               onAwardArtifact={handleAwardArtifact}
               activeDamageSkin={saveState.activeDamageSkin || 'Default'}
               disableGameplayCutscenes={saveState.disableGameplayCutscenes || false}
+              mobileControlLayout={mobileControlLayout}
             />
           </motion.div>
         </React.Suspense>

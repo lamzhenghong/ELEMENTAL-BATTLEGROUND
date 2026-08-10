@@ -2,9 +2,10 @@ import React, { useState, useRef } from 'react';
 
 interface MobileJoystickProps {
   onMove: (x: number, y: number, active: boolean) => void;
+  placementStyle?: React.CSSProperties;
 }
 
-export default function MobileJoystick({ onMove }: MobileJoystickProps) {
+export default function MobileJoystick({ onMove, placementStyle }: MobileJoystickProps) {
   const [knobOffset, setKnobOffset] = useState({ x: 0, y: 0 });
   const [isActive, setIsActive] = useState(false);
   const dragStart = useRef({ x: 0, y: 0 });
@@ -65,12 +66,12 @@ export default function MobileJoystick({ onMove }: MobileJoystickProps) {
 
   return (
     <div
-      className="fixed bottom-8 left-8 z-50 select-none touch-none flex items-center justify-center pointer-events-auto"
+      className="fixed z-50 select-none touch-none flex items-center justify-center pointer-events-auto"
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
-      style={{ width: '120px', height: '120px' }}
+      style={{ width: '120px', height: '120px', ...placementStyle }}
     >
       {/* Joystick Base Ring */}
       <div 

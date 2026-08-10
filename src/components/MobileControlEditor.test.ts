@@ -20,3 +20,16 @@ test('mobile settings expose a validated touch-control editor', () => {
   assert.match(app, /loadMobileControlLayout/);
   assert.match(app, /persistMobileControlLayout/);
 });
+
+test('saved positions drive every mobile combat control', () => {
+  const arena = readFileSync(new URL('./CombatArena.tsx', import.meta.url), 'utf8');
+  const controls = readFileSync(new URL('./MobileControls.tsx', import.meta.url), 'utf8');
+  const joystick = readFileSync(new URL('./MobileJoystick.tsx', import.meta.url), 'utf8');
+  const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
+
+  assert.match(arena, /mobileControlLayout/);
+  assert.match(controls, /attack.*layoutStyles|layoutStyles.*attack/s);
+  assert.match(joystick, /placementStyle/);
+  assert.match(arena, /specialUltimate.*mobileControlLayout|mobileControlLayout.*specialUltimate/s);
+  assert.ok((app.match(/mobileControlLayout=/g) ?? []).length >= 3);
+});

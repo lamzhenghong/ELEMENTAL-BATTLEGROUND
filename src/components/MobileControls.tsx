@@ -1,5 +1,6 @@
 import React from 'react';
 import { Sword, Zap, Sparkles, RefreshCw, ShieldAlert } from 'lucide-react';
+import type { MobileControlId } from '../utils/mobileControlLayout';
 
 interface MobileControlsProps {
   onAttack: () => void;
@@ -14,6 +15,7 @@ interface MobileControlsProps {
   ultimateEnergy: number;
   ultimateMaxEnergy: number;
   activeElement: string;
+  layoutStyles: Record<MobileControlId, React.CSSProperties>;
 }
 
 export default function MobileControls({
@@ -28,7 +30,8 @@ export default function MobileControls({
   parryCooldown,
   ultimateEnergy,
   ultimateMaxEnergy,
-  activeElement
+  activeElement,
+  layoutStyles,
 }: MobileControlsProps) {
   
   // Element colors helper
@@ -58,21 +61,19 @@ export default function MobileControls({
 
   return (
     <div 
-      className="fixed bottom-6 right-6 z-50 select-none touch-none pointer-events-auto"
-      style={{ width: '192px', height: '192px' }}
+      className="pointer-events-none fixed inset-0 z-50 select-none touch-none"
       onPointerDown={(e) => e.stopPropagation()} // Stop propagation to canvas
     >
       {/* 1. Attack Button (Center, largest) */}
       <button
         onPointerDown={(e) => handleAction(e, onAttack)}
-        className="absolute bg-[#0d131f]/80 border border-white/20 active:bg-white/10 text-white rounded-full flex items-center justify-center active:scale-95 transition-all cursor-pointer overflow-hidden z-20"
+        className="pointer-events-auto fixed bg-[#0d131f]/80 border border-white/20 active:bg-white/10 text-white rounded-full flex items-center justify-center active:scale-95 transition-all cursor-pointer overflow-hidden z-20"
         style={{
           width: '72px',
           height: '72px',
-          top: '60px',
-          left: '60px',
           boxShadow: `0 0 12px rgba(255, 255, 255, 0.15), inset 0 0 8px rgba(255, 255, 255, 0.05)`,
-          touchAction: 'none'
+          touchAction: 'none',
+          ...layoutStyles.attack,
         }}
       >
         <Sword className="w-8 h-8 text-slate-100" />
@@ -88,16 +89,15 @@ export default function MobileControls({
           }
         }}
         disabled={skillCooldown > 0}
-        className="absolute rounded-full flex flex-col items-center justify-center active:scale-95 transition-all cursor-pointer border overflow-hidden bg-[#0d131f]/80 disabled:opacity-50 z-20"
+        className="pointer-events-auto fixed rounded-full flex flex-col items-center justify-center active:scale-95 transition-all cursor-pointer border overflow-hidden bg-[#0d131f]/80 disabled:opacity-50 z-20"
         style={{
           width: '44px',
           height: '44px',
-          top: '12px',
-          left: '74px',
           borderColor: skillCooldown > 0 ? 'rgba(255,255,255,0.05)' : `${elemColor}80`,
           color: skillCooldown > 0 ? '#64748b' : elemColor,
           boxShadow: skillCooldown > 0 ? 'none' : `0 0 15px ${elemColor}40, inset 0 0 8px ${elemColor}15`,
-          touchAction: 'none'
+          touchAction: 'none',
+          ...layoutStyles.skill,
         }}
       >
         <Zap className="w-4 h-4" />
@@ -129,16 +129,15 @@ export default function MobileControls({
           onParryEnd?.();
         }}
         disabled={parryCooldown > 0}
-        className="absolute rounded-full flex flex-col items-center justify-center active:scale-95 transition-all cursor-pointer border overflow-hidden bg-[#0d131f]/80 disabled:opacity-50 z-20"
+        className="pointer-events-auto fixed rounded-full flex flex-col items-center justify-center active:scale-95 transition-all cursor-pointer border overflow-hidden bg-[#0d131f]/80 disabled:opacity-50 z-20"
         style={{
           width: '44px',
           height: '44px',
-          top: '74px',
-          left: '12px',
           borderColor: parryCooldown > 0 ? 'rgba(255,255,255,0.05)' : 'rgba(6, 182, 212, 0.6)',
           color: parryCooldown > 0 ? '#64748b' : '#22d3ee',
           boxShadow: parryCooldown > 0 ? 'none' : '0 0 15px rgba(6, 182, 212, 0.4), inset 0 0 8px rgba(6, 182, 212, 0.1)',
-          touchAction: 'none'
+          touchAction: 'none',
+          ...layoutStyles.parry,
         }}
       >
         <ShieldAlert className="w-4 h-4" />
@@ -160,16 +159,15 @@ export default function MobileControls({
           }
         }}
         disabled={dodgeCooldown > 0}
-        className="absolute rounded-full flex flex-col items-center justify-center active:scale-95 transition-all cursor-pointer border overflow-hidden bg-[#0d131f]/80 disabled:opacity-50 z-20"
+        className="pointer-events-auto fixed rounded-full flex flex-col items-center justify-center active:scale-95 transition-all cursor-pointer border overflow-hidden bg-[#0d131f]/80 disabled:opacity-50 z-20"
         style={{
           width: '44px',
           height: '44px',
-          top: '136px',
-          left: '74px',
           borderColor: dodgeCooldown > 0 ? 'rgba(255,255,255,0.05)' : 'rgba(16, 185, 129, 0.6)',
           color: dodgeCooldown > 0 ? '#64748b' : '#34d399',
           boxShadow: dodgeCooldown > 0 ? 'none' : '0 0 15px rgba(16, 185, 129, 0.4), inset 0 0 8px rgba(16, 185, 129, 0.1)',
-          touchAction: 'none'
+          touchAction: 'none',
+          ...layoutStyles.dash,
         }}
       >
         <RefreshCw className="w-4 h-4" />
@@ -184,18 +182,17 @@ export default function MobileControls({
       {/* 5. Ultimate Burst Button (Right) */}
       <button
         onPointerDown={(e) => handleAction(e, onUltimate)}
-        className="absolute rounded-full flex flex-col items-center justify-center active:scale-95 transition-all cursor-pointer border overflow-hidden bg-[#0d131f]/80 z-20"
+        className="pointer-events-auto fixed rounded-full flex flex-col items-center justify-center active:scale-95 transition-all cursor-pointer border overflow-hidden bg-[#0d131f]/80 z-20"
         style={{
           width: '44px',
           height: '44px',
-          top: '74px',
-          left: '136px',
           borderColor: ultReady ? '#eab308' : 'rgba(255, 255, 255, 0.3)',
           color: ultReady ? '#fbbf24' : '#e2e8f0',
           boxShadow: ultReady 
             ? '0 0 15px rgba(234, 179, 8, 0.4), inset 0 0 8px rgba(234, 179, 8, 0.1)' 
             : '0 0 12px rgba(255, 255, 255, 0.15), inset 0 0 6px rgba(255, 255, 255, 0.05)',
-          touchAction: 'none'
+          touchAction: 'none',
+          ...layoutStyles.ultimate,
         }}
       >
         <Sparkles className="w-4 h-4" />

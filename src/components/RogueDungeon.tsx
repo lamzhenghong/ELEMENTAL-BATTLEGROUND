@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AetheriaAudioEngine } from '../utils/audio';
 import CombatArena from './CombatArena';
 import { LanguageType } from '../utils/i18n';
+import type { MobileControlLayout } from '../utils/mobileControlLayout';
 
 interface RogueDungeonProps {
   partyIds: string[];
@@ -30,6 +31,7 @@ interface RogueDungeonProps {
   language?: LanguageType;
   activeDamageSkin?: string;
   disableGameplayCutscenes?: boolean;
+  mobileControlLayout: MobileControlLayout;
 }
 
 const DUNGEON_BUFFS = [
@@ -61,7 +63,8 @@ export default function RogueDungeon({
   fpsLimit = '60',
   language = 'en',
   activeDamageSkin = 'Default',
-  disableGameplayCutscenes = false
+  disableGameplayCutscenes = false,
+  mobileControlLayout,
 }: RogueDungeonProps) {
   // Parse helper for loading state from localStorage
   const getSavedValue = (key: string, defaultValue: any) => {
@@ -399,6 +402,7 @@ export default function RogueDungeon({
           fpsLimit={fpsLimit}
           language={language}
           disableGameplayCutscenes={disableGameplayCutscenes}
+          mobileControlLayout={mobileControlLayout}
         />
       );
     }

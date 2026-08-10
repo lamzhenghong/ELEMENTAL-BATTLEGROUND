@@ -130,6 +130,14 @@ import {
   type CampaignBossAction,
 } from '../utils/campaignBossMechanics';
 import { useCombatKeyboardInput } from './combat/useCombatKeyboardInput';
+import {
+  DEFAULT_MOBILE_CONTROL_LAYOUT,
+  MOBILE_CONTROL_IDS,
+  clampMobileControlLayout,
+  toMobileControlPixelRect,
+  type MobileControlId,
+  type MobileControlLayout,
+} from '../utils/mobileControlLayout';
 
 const EMPTY_STORY_CHOICE_SELECTIONS: StoryChoiceSelections = {};
 
@@ -174,6 +182,7 @@ interface CombatArenaProps {
   saveState?: any;
   activeDamageSkin?: string;
   disableGameplayCutscenes?: boolean;
+  mobileControlLayout?: MobileControlLayout;
 }
 
 export default function CombatArena({
@@ -214,7 +223,8 @@ export default function CombatArena({
   onStoryBattleEnd,
   saveState,
   activeDamageSkin = 'Default',
-  disableGameplayCutscenes = false
+  disableGameplayCutscenes = false,
+  mobileControlLayout = DEFAULT_MOBILE_CONTROL_LAYOUT
 }: CombatArenaProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const minimapCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -733,6 +743,43 @@ export default function CombatArena({
   // Refs for keyboard controls to prevent scope-binding loss in standard fast loops
   const keyboardState = useRef<Record<string, boolean>>({});
   const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const [mobileViewport, setMobileViewport] = useState(() => ({
+    width: Math.max(1, window.innerWidth),
+    height: Math.max(1, window.innerHeight),
+  }));
+  useEffect(() => {
+    if (!isMobile) return;
+    const updateViewport = () => setMobileViewport({
+      width: Math.max(1, window.innerWidth),
+      height: Math.max(1, window.innerHeight),
+    });
+    window.addEventListener('resize', updateViewport);
+    window.addEventListener('orientationchange', updateViewport);
+    return () => {
+      window.removeEventListener('resize', updateViewport);
+      window.removeEventListener('orientationchange', updateViewport);
+    };
+  }, [isMobile]);
+  const mobileControlStyles = useMemo(() => {
+    const metrics = {
+      ...mobileViewport,
+      safeInsets: { top: 0, right: 0, bottom: 0, left: 0 },
+    };
+    const clamped = clampMobileControlLayout(mobileControlLayout, metrics);
+    return Object.fromEntries(MOBILE_CONTROL_IDS.map(id => {
+      const rect = toMobileControlPixelRect(id, clamped[id], metrics);
+      return [id, {
+        position: 'fixed',
+        left: rect.left,
+        top: rect.top,
+        width: rect.width,
+        height: rect.height,
+        right: 'auto',
+        bottom: 'auto',
+        transform: 'none',
+      } satisfies React.CSSProperties];
+    })) as Record<MobileControlId, React.CSSProperties>;
+  }, [mobileControlLayout, mobileViewport]);
   const mobileJoystickState = useRef({ active: false, x: 0, y: 0 });
   const playerRef = useRef({ x: 1000, y: 1000, radius: 26, lastDirX: 1, lastDirY: 0, skillCc: 0 });
   const enemiesRef = useRef<any[]>([]);
@@ -5155,7 +5202,7 @@ export default function CombatArena({
             triggerSpecialUltimate();
           }}
           className="special-ultimate-mobile-button rgb-special-button z-50 rounded-xl border border-white/60 px-3 py-1.5 text-center font-black uppercase tracking-widest shadow-2xl active:scale-95 transition-all touch-none"
-          style={{ touchAction: 'none' }}
+          style={{ ...mobileControlStyles.specialUltimate, touchAction: 'none' }}
         >
           <span className="block text-[8.5px] leading-tight">SPECIAL ULTIMATE READY!</span>
           <span className="block text-[7px] font-mono opacity-80 mt-0.5 leading-tight">{availableSpecialUltimate.combo.name}</span>
@@ -6385,6 +6432,7 @@ export default function CombatArena({
           </div>
 
           <MobileJoystick 
+            placementStyle={mobileControlStyles.joystick}
             onMove={(x, y, active) => {
               mobileJoystickState.current = { active, x, y };
             }}
@@ -6418,6 +6466,7 @@ export default function CombatArena({
             ultimateEnergy={activeChar?.ultimateEnergy || 0}
             ultimateMaxEnergy={activeChar?.ultimateMaxEnergy || 100}
             activeElement={activeChar?.element || 'Anemo'}
+            layoutStyles={mobileControlStyles}
           />
         </>
       )}
