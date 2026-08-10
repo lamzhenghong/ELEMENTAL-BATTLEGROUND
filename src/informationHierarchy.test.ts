@@ -58,19 +58,19 @@ const activeScreenDeclaration = appSource.match(
   /const \[activeScreen, setActiveScreen\] = useState<([^>]+)>\('menu'\);/,
 );
 assert.ok(activeScreenDeclaration, 'App must declare the active-screen state from the menu default');
-assert.match(activeScreenDeclaration[1], /'home'/, 'active-screen state must include the home screen');
+assert.equal(activeScreenDeclaration[1].trim(), 'AppScreen', 'active-screen state must use the shared AppScreen alias');
 
 const startSimulationBody = extractBracedBlock(appSource, 'const handleStartSimulation = () =>');
 assert.match(
   startSimulationBody,
-  /scheduleMenuTransitionStep\(completeStartSimulation/,
-  'starting the simulation must pass through the menu transition',
+  /navigateWithTransition\('home',[\s\S]*?kind:\s*'title',[\s\S]*?onCovered:\s*completeStartSimulation/,
+  'starting the simulation must initialize Home under the shared title transition',
 );
 const completeStartSimulationBody = extractBracedBlock(appSource, 'const completeStartSimulation = () =>');
-assert.match(
+assert.doesNotMatch(
   completeStartSimulationBody,
-  /setActiveScreen\('home'\)/,
-  'completing the start transition must select the home screen',
+  /setActiveScreen/,
+  'title initialization must leave the covered transition controller responsible for selecting Home',
 );
 
 assert.match(
@@ -133,7 +133,7 @@ const wikiButtonStart = appSource.lastIndexOf('<button', wikiIdIndex);
 const wikiButtonEnd = appSource.indexOf('</button>', wikiIdIndex);
 assert.ok(wikiButtonStart !== -1 && wikiButtonEnd !== -1, 'Wiki navigation id must belong to a complete button block');
 const wikiNavigation = appSource.slice(wikiButtonStart, wikiButtonEnd + '</button>'.length);
-assert.match(wikiNavigation, /onClick=\{[\s\S]*?setActiveScreen\('wiki'\)[\s\S]*?\}/, 'Wiki navigation must use the gameplay screen navigation path');
+assert.match(wikiNavigation, /onClick=\{[\s\S]*?navigateWithTransition\('wiki'\)[\s\S]*?\}/, 'Wiki navigation must use the shared transition path');
 
 const disclosureContracts: Record<string, { source: string; label: string; controls: string }> = {
   'Banner Details': { source: gachaSource, label: 'Banner Details', controls: 'banner-details-panel' },

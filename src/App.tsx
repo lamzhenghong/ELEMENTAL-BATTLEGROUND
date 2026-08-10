@@ -366,6 +366,7 @@ export default function App() {
     charId?: string;
     act?: number;
   }>({ stageId: '1-1', isHardMode: false, isCharStory: false, choiceSelections: {} });
+  const storyBattleOutcomeHandledRef = useRef(false);
   const [activeCutsceneScene, setActiveCutsceneScene] = useState<StoryScene | null>(null);
   const [pullHistory, setPullHistory] = useState<{ name: string; rarity: number; time: string }[]>([]);
   
@@ -1439,6 +1440,7 @@ export default function App() {
   };
 
   const handleStartStoryBattle = (config: { stageId: string; isHardMode: boolean; isCharStory: boolean; choiceSelections: StoryChoiceSelections; charId?: string; act?: number }) => {
+    storyBattleOutcomeHandledRef.current = false;
     setStoryBattleConfig(config);
     runWithTransition('arena', () => {
       AetheriaAudioEngine.setBgmContext('story-battle');
@@ -1446,19 +1448,24 @@ export default function App() {
     });
   };
 
-  const handleExitStoryBattle = () => {
+  const handleExitStoryBattle = (coveredAction: () => void = () => {}) => {
     runWithTransition('story', () => {
       setStoryBattleActive(false);
       AetheriaAudioEngine.setBgmContext(storyBattleConfig.isCharStory
         ? 'character-stories-memories'
         : 'story-map');
+      coveredAction();
     });
   };
 
   const handleStoryBattleEnd = (victory: boolean, stats: { stars: number; hp: Record<string, number>; ult: Record<string, number>; duration: number; deaths: number }) => {
-    handleExitStoryBattle();
+    if (storyBattleOutcomeHandledRef.current) return;
+    storyBattleOutcomeHandledRef.current = true;
+
     if (!victory) {
-      showInGameAlert("Story Battle Defeated!", "Adjust your party elements, upgrade character levels, or forge better weapons to try again!", "error");
+      handleExitStoryBattle(() => {
+        showInGameAlert("Story Battle Defeated!", "Adjust your party elements, upgrade character levels, or forge better weapons to try again!", "error");
+      });
       return;
     }
 
@@ -1586,21 +1593,25 @@ export default function App() {
 
     if (isCharStory) {
       const spec = getStageSpec(stageId, choiceSelections);
-      if (storyBattleConfig.charId && storyBattleConfig.act) {
-        const authoredScene = getStoryScene(stageId, 'after', choiceSelections);
-        const script = getCharacterStoryScript(storyBattleConfig.charId, storyBattleConfig.act);
-        const scene = authoredScene.slides.length > 0
-          ? authoredScene
-          : { slides: script.after, backgroundId: authoredScene.backgroundId };
-        if (scene.slides.length > 0) {
-          setActiveCutsceneScene(scene);
+      const characterStoryScene = storyBattleConfig.charId && storyBattleConfig.act
+        ? (() => {
+            const authoredScene = getStoryScene(stageId, 'after', choiceSelections);
+            const script = getCharacterStoryScript(storyBattleConfig.charId, storyBattleConfig.act);
+            return authoredScene.slides.length > 0
+              ? authoredScene
+              : { slides: script.after, backgroundId: authoredScene.backgroundId };
+          })()
+        : null;
+      handleExitStoryBattle(() => {
+        if (characterStoryScene?.slides.length) {
+          setActiveCutsceneScene(characterStoryScene);
         }
-      }
-      showInGameAlert(
-        "Character Story Cleared!",
-        `Received +${spec.firstClearRewards.gems} Gems and +${spec.firstClearRewards.mora.toLocaleString()} Mora. Character Stories do not grant stat bonuses or combat power.`,
-        "success"
-      );
+        showInGameAlert(
+          "Character Story Cleared!",
+          `Received +${spec.firstClearRewards.gems} Gems and +${spec.firstClearRewards.mora.toLocaleString()} Mora. Character Stories do not grant stat bonuses or combat power.`,
+          "success"
+        );
+      });
       return;
     }
 
@@ -1610,11 +1621,13 @@ export default function App() {
       ? authoredScene
       : { slides: dialogue?.after ?? [], backgroundId: authoredScene.backgroundId };
     const scene = personalizeCampaignScene(sourceScene, cloudAccount.profile?.username);
-    if (scene.slides.length > 0) {
-      setActiveCutsceneScene(scene);
-    } else {
-      showInGameAlert("Victory!", "Story battle resolved successfully. First-clear drops added where available!", "success");
-    }
+    handleExitStoryBattle(() => {
+      if (scene.slides.length > 0) {
+        setActiveCutsceneScene(scene);
+      } else {
+        showInGameAlert("Victory!", "Story battle resolved successfully. First-clear drops added where available!", "success");
+      }
+    });
   };
 
   // Claim specific finished Quest rewards
@@ -2184,7 +2197,7 @@ export default function App() {
   );
 
   if (isMobile && mobileFullscreenGateOpen) {
-    return (
+    return withTransitionHost(
       <div className="fixed inset-0 z-[99999] flex min-h-[100dvh] items-center justify-center bg-black px-6 text-white font-sans">
         <div className="flex w-full max-w-sm flex-col items-center gap-5 text-center">
           <img
@@ -2221,7 +2234,7 @@ export default function App() {
 
   // Custom simulation closing shutdown state (Immersive terminal leave replacement)
   if (isTerminated) {
-    return (
+    return withTransitionHost(
       <div className="min-h-screen bg-[#020306] text-[#22c55e] flex items-center justify-center font-mono p-6 relative">
         <div className="absolute inset-x-0 top-0 h-1 bg-[#10b981]/25 animate-pulse" />
         <div className="max-w-md w-full space-y-6">

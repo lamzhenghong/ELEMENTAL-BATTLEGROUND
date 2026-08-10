@@ -17,6 +17,7 @@ assert.doesNotMatch(appSource, /const \[menuTransition,/);
 assert.doesNotMatch(appSource, /setActiveScreen\('story'\); AetheriaAudioEngine\.playClick/);
 assert.match(cssSource, /--aether-transition-color/);
 assert.match(cssSource, /#050815/);
+assert.match(cssSource, /\.aether-transition\s*\{[\s\S]*?z-index:\s*100000/);
 assert.match(
   cssSource,
   /\[data-phase="covering"\] \.aether-transition__sigil,\s*\.aether-transition\[data-phase="covered"\] \.aether-transition__sigil/,
