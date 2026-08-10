@@ -32,6 +32,7 @@ const iconBySilhouette = {
   axe: Axe,
   bow: BowArrow,
   wand: WandSparkles,
+  polearm: null,
   shield: HardHat,
   hand: Hand,
   legs: PersonStanding,
@@ -63,6 +64,23 @@ function getItemSilhouette(item: ForgeVisualItem): ForgeSilhouette {
 function ForgeSilhouetteMark({ item, compact = false }: { item: ForgeVisualItem; compact?: boolean }) {
   const silhouette = getItemSilhouette(item);
   const Icon = iconBySilhouette[silhouette.icon];
+
+  if (silhouette.icon === 'polearm') {
+    return (
+      <span
+        aria-hidden="true"
+        className={compact ? 'relative block h-5 w-5' : 'relative block h-16 w-16 sm:h-20 sm:w-20'}
+        data-forge-polearm
+      >
+        <span className="absolute bottom-[12%] left-1/2 top-[12%] w-[2px] -translate-x-1/2 bg-current" data-forge-polearm-shaft />
+        <span className="absolute left-1/2 top-[5%] h-3 w-3 -translate-x-1/2 rotate-45 border-l-2 border-t-2 border-current" data-forge-polearm-tip />
+        <span className="absolute left-1/2 top-[48%] h-px w-7 -translate-x-1/2 bg-current" data-forge-polearm-guard />
+        <span className="absolute bottom-[14%] left-1/2 h-1.5 w-3 -translate-x-1/2 rounded-full bg-current" data-forge-polearm-grip />
+      </span>
+    );
+  }
+
+  if (!Icon) return null;
 
   return (
     <Icon
