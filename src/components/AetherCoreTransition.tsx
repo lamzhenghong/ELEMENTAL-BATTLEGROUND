@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import { useEffect, type CSSProperties } from 'react';
 import type { AetherTransitionState } from '../utils/aetherTransition';
 import { getTransitionTone } from '../utils/aetherTransition';
 
@@ -15,6 +15,18 @@ export function AetherCoreTransition({
   lowGraphics,
   reducedMotion,
 }: AetherCoreTransitionProps) {
+  useEffect(() => {
+    if (state.phase === 'idle') return;
+
+    const blockKeyboardInput = (event: KeyboardEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
+    window.addEventListener('keydown', blockKeyboardInput, true);
+    return () => window.removeEventListener('keydown', blockKeyboardInput, true);
+  }, [state.phase]);
+
   if (state.phase === 'idle') return null;
 
   const tone = getTransitionTone(state.destination);
@@ -29,6 +41,7 @@ export function AetherCoreTransition({
       className="aether-transition fixed inset-0 z-[100] pointer-events-auto"
       data-phase={state.phase}
       data-kind={state.kind}
+      data-low-graphics={lowGraphics ? 'true' : 'false'}
       data-reduced-motion={reducedMotion || undefined}
       style={style}
     >
