@@ -9,6 +9,10 @@ assert.match(arena, /getCombatSessionPresentation/);
 assert.match(arena, /onUpdateWaveRecord\?\.\('artifact-grind'/);
 assert.match(arena, /onUpdateWaveRecord\?\.\('endless-arena'/);
 assert.doesNotMatch(arena, /High Score: Wave \{highScoreWave\}/);
+assert.match(
+  arena,
+  /pendingAction === 'restart' &&\s*\(\s*storyMode\s*\?\s*'Restart this stage from the beginning\.'\s*:\s*dungeonMode\s*\?\s*'Restart this room from the beginning\.'\s*:\s*t\('notice_restart_run', language\)/,
+);
 assert.match(rewards, /CLEAR TIME/);
 assert.match(rewards, /BEST TIME/);
 assert.match(rewards, /NEW RECORD/);

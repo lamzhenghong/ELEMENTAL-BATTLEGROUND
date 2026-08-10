@@ -6229,7 +6229,13 @@ export default function CombatArena({
                         {t('misclick_notice', language)}
                       </h4>
                       <p className="text-[10px] text-slate-300 max-w-[200px] leading-relaxed">
-                        {pendingAction === 'restart' && t('notice_restart_run', language)}
+                        {pendingAction === 'restart' && (
+                          storyMode
+                            ? 'Restart this stage from the beginning.'
+                            : dungeonMode
+                              ? 'Restart this room from the beginning.'
+                              : t('notice_restart_run', language)
+                        )}
                         {pendingAction === 'end_run' && t('notice_end_run', language)}
                         {pendingAction === 'home' && t('notice_home', language)}
                         {pendingAction === 'wiki' && (storyMode ? t('notice_exit_to_story', language) : t('notice_exit_to_home', language))}
