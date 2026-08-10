@@ -36,7 +36,7 @@ assert.equal(typeof canvasEffectsModule.WORLD_HEIGHT, 'number');
 const arenaSource = readFileSync(new URL('../CombatArena.tsx', import.meta.url), 'utf8');
 assert.match(
   arenaSource,
-  /import\s*\{\s*FloatingDamageTextDOM\s*\}\s*from ['"]\.\/combat\/CombatVisuals['"];/,
+  /import\s*\{[^}]*\bFloatingDamageTextDOM\b[^}]*\}\s*from ['"]\.\/combat\/CombatVisuals['"];/,
 );
 assert.match(
   arenaSource,
