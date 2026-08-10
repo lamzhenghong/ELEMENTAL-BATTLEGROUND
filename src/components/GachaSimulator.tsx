@@ -400,8 +400,8 @@ export default function GachaSimulator({
       {/* Splash card popup for 4* or 5* characters/weapons */}
       <AnimatePresence>
         {showSplashItem && (
-          <motion.div 
-            initial={{ opacity: 0 }} 
+          <motion.div
+            initial={{ opacity: 0 }}
             animate={{ opacity: 1 }} 
             exit={{ opacity: 0 }} 
             className="fixed inset-0 bg-[#04060c]/95 z-55 flex items-center justify-center p-4"
@@ -494,6 +494,7 @@ export default function GachaSimulator({
       <AnimatePresence>
         {animationPhase === 'showcase' && currentPullResults.length > 0 && (
           <motion.div
+            data-reward-source="summon-results"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

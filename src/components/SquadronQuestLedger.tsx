@@ -91,6 +91,7 @@ export default function SquadronQuestLedger({ activeQuests, onClaimQuestReward, 
           </div>
           {claimableCount > 0 ? (
             <button
+              data-reward-source="quest-claim-all"
               onClick={() => {
                 onClaimAllQuestRewards();
                 AetheriaAudioEngine.playClick();
@@ -232,6 +233,7 @@ export default function SquadronQuestLedger({ activeQuests, onClaimQuestReward, 
 
                     {q.completed ? (
                       <button
+                        data-reward-source={`quest-${q.id}`}
                         onClick={() => onClaimQuestReward(q.id)}
                         className="bg-amber-400 hover:bg-amber-350 text-slate-950 text-[9px] font-black px-2.5 py-1 rounded-sm uppercase tracking-wider transition-all duration-150 transform hover:scale-105 active:scale-95 cursor-pointer"
                       >
@@ -279,6 +281,7 @@ export default function SquadronQuestLedger({ activeQuests, onClaimQuestReward, 
         <div className="flex items-center gap-3">
           {claimableCount > 0 && (
             <button
+              data-reward-source="quest-claim-all"
               onClick={() => {
                 onClaimAllQuestRewards();
                 AetheriaAudioEngine.playClick();
@@ -421,6 +424,7 @@ export default function SquadronQuestLedger({ activeQuests, onClaimQuestReward, 
 
                   {q.completed ? (
                     <button
+                      data-reward-source={`quest-${q.id}`}
                       onClick={() => onClaimQuestReward(q.id)}
                       className="bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black px-5 py-2.5 rounded-lg uppercase tracking-wider transition-all duration-150 transform hover:scale-105 active:scale-95 cursor-pointer shadow-[0_0_15px_rgba(251,191,36,0.35)]"
                     >

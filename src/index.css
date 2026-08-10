@@ -1435,3 +1435,32 @@ canvas {
   background: transparent !important;
 }
 
+@keyframes reward-target-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgb(251 191 36 / 0);
+  }
+  50% {
+    transform: scale(1.06);
+    box-shadow: 0 0 18px rgb(251 191 36 / 0.65);
+  }
+}
+
+[data-reward-pulse="true"] {
+  animation: reward-target-pulse 260ms ease-out;
+  transform-origin: center;
+}
+
+@keyframes reward-target-outline {
+  0%, 100% { outline-color: rgb(255 255 255 / 0); }
+  50% { outline-color: rgb(255 255 255 / 0.9); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-reward-pulse="true"] {
+    animation: reward-target-outline 260ms ease-out;
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+  }
+}
+

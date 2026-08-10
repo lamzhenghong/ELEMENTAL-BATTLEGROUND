@@ -11,6 +11,7 @@ import {
 import { SaveState, Artifact, ArtifactSlot, ArtifactSet } from '../types';
 import { ARTIFACT_SETS, ARTIFACT_NAMES } from '../data/artifacts';
 import { AetheriaAudioEngine } from '../utils/audio';
+import type { RewardRevealEvent } from '../utils/rewardReveal';
 
 // Seeded random number generator for deterministic hourly rotation
 class SeededRandom {
@@ -56,9 +57,10 @@ interface GemsShopProps {
   saveState: SaveState;
   onUpdateSaveState: React.Dispatch<React.SetStateAction<SaveState>>;
   onShowAlert: (msg: string, solution?: string, type?: 'success' | 'error' | 'info') => void;
+  onRewardReveal?: (events: readonly RewardRevealEvent[], sourceAnchor?: string) => void;
 }
 
-export default function GemsShop({ saveState, onUpdateSaveState, onShowAlert }: GemsShopProps) {
+export default function GemsShop({ saveState, onUpdateSaveState, onShowAlert, onRewardReveal }: GemsShopProps) {
   const [timeLeft, setTimeLeft] = useState<string>('59:59');
   
   // Current hour index
@@ -242,6 +244,8 @@ export default function GemsShop({ saveState, onUpdateSaveState, onShowAlert }: 
 
   // Handle Purchasing an Item
   const handlePurchase = (item: ShopItem) => {
+    if ((saveState.purchasedShopItemIds || []).includes(item.id)) return;
+
     const unlockedSkins = saveState.unlockedDamageSkins || ['Default'];
     if (item.type === 'skin' && item.skinId && unlockedSkins.includes(item.skinId)) {
       onShowAlert('Already Owned!', 'You already own this damage skin.', 'info');
@@ -305,6 +309,14 @@ export default function GemsShop({ saveState, onUpdateSaveState, onShowAlert }: 
         purchasedShopItemIds: purchased
       };
     });
+
+    if (item.type === 'artifact') {
+      onRewardReveal?.([{
+        id: `shop-reward-${currentHourBlock}-${item.id}`,
+        kind: 'artifact',
+        quantity: 1,
+      }], `shop-${item.id}`);
+    }
   };
 
   return (
@@ -417,6 +429,7 @@ export default function GemsShop({ saveState, onUpdateSaveState, onShowAlert }: 
                   </button>
                 ) : (
                   <button
+                    data-reward-source={`shop-${item.id}`}
                     onClick={() => handlePurchase(item)}
                     className={`w-full py-2 rounded-lg flex items-center justify-center gap-1.5 text-[9px] font-black uppercase tracking-wider cursor-pointer font-mono transition-all active:scale-95 ${
                       canAfford 

@@ -48,6 +48,7 @@ import { mergeUnlockedStoryMemories } from './data/story/memories';
 import { normalizeStoryProgress } from './data/story/progress';
 import { getImprovedClearTime } from './utils/combatSessionPresentation';
 import AetherCoreTransition from './components/AetherCoreTransition';
+import RewardRevealLayer from './components/RewardRevealLayer';
 import {
   createIdleTransition,
   getTransitionTimings,
@@ -55,6 +56,11 @@ import {
   type AppScreen,
   type TransitionKind,
 } from './utils/aetherTransition';
+import {
+  appendRewardEvents,
+  normalizeRewardEvents,
+  type RewardRevealEvent,
+} from './utils/rewardReveal';
 import { useCloudAccount } from './cloud/useCloudAccount';
 import { createInitialSaveState, formatPlayTime, normalizeLoadedSaveState } from './save/gameSave';
 import { GAME_VERSION } from './config/gameVersion';
@@ -231,6 +237,31 @@ export default function App() {
   const [activeScreen, setActiveScreen] = useState<AppScreen>('menu');
   const activeScreenRef = useRef<AppScreen>('menu');
   const [aetherTransition, dispatchAetherTransition] = useReducer(reduceAetherTransition, 'menu', createIdleTransition);
+  const [rewardRevealQueue, setRewardRevealQueue] = useState<RewardRevealEvent[]>([]);
+  const rewardRevealSequenceRef = useRef(0);
+  const createRewardRevealEvent = useCallback((
+    kind: RewardRevealEvent['kind'],
+    quantity: number,
+  ): RewardRevealEvent => ({
+    id: `reward-${kind}-${Date.now()}-${++rewardRevealSequenceRef.current}`,
+    kind,
+    quantity,
+  }), []);
+  const enqueueRewardReveal = useCallback((
+    events: readonly RewardRevealEvent[],
+    sourceAnchor?: string,
+  ) => {
+    const normalizedEvents = normalizeRewardEvents(events.map(event => ({
+      ...event,
+      source: sourceAnchor ?? event.source,
+    })));
+    if (normalizedEvents.length === 0) return;
+
+    setRewardRevealQueue(current => appendRewardEvents(current, normalizedEvents));
+  }, []);
+  const completeRewardReveal = useCallback((id: string) => {
+    setRewardRevealQueue(current => current.filter(event => event.id !== id));
+  }, []);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(
     () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
   );
@@ -914,6 +945,10 @@ export default function App() {
   };
 
   const handleModifyCurrencies = (gemsDiff: number, moraDiff: number, expDiff: number = 0) => {
+    const rewardEvents: RewardRevealEvent[] = [];
+    if (gemsDiff > 0) rewardEvents.push(createRewardRevealEvent('gems', gemsDiff));
+    if (moraDiff > 0) rewardEvents.push(createRewardRevealEvent('mora', moraDiff));
+
     triggerSaveUpdate(prev => {
       let currentLevel = prev.playerLevel !== undefined ? prev.playerLevel : 1;
       let currentExp = prev.playerExp !== undefined ? prev.playerExp : 0;
@@ -988,6 +1023,8 @@ export default function App() {
       }
       return withMoraQuest;
     });
+
+    enqueueRewardReveal(rewardEvents);
   };
 
   const handleUnlockCharacter = (id: string) => {
@@ -1109,6 +1146,7 @@ export default function App() {
       ...prev,
       inventoryWeapons: [...prev.inventoryWeapons, weapon]
     }));
+    enqueueRewardReveal([createRewardRevealEvent('weapon', 1)], 'summon-results');
   };
 
   const handleUpgradeWeapon = (weaponId: string) => {
@@ -1283,6 +1321,7 @@ export default function App() {
       ...prev,
       inventoryArtifacts: [...(prev.inventoryArtifacts || []), newArt]
     }));
+    enqueueRewardReveal([createRewardRevealEvent('artifact', 1)]);
   };
 
   const handleAwardArtifacts = (newArtifacts: Artifact[]) => {
@@ -1290,6 +1329,7 @@ export default function App() {
       ...prev,
       inventoryArtifacts: [...(prev.inventoryArtifacts || []), ...newArtifacts]
     }));
+    enqueueRewardReveal([createRewardRevealEvent('artifact', newArtifacts.length)]);
   };
 
   const handleFuseArtifacts = (consumeArtifactIds: string[], upgradedArtifact: Artifact, costMora: number, costGems: number) => {
@@ -1591,6 +1631,28 @@ export default function App() {
       return updatedState;
     });
 
+    const currentProgress = normalizeStoryProgress(saveState.storyProgress);
+    const rewardSpec = getStageSpec(stageId, choiceSelections);
+    const storyRewardEvents: RewardRevealEvent[] = [];
+
+    if (isCharStory) {
+      const charId = storyBattleConfig.charId!;
+      const act = storyBattleConfig.act!;
+      if ((currentProgress.completedCharacterStoryActs[charId] || 0) < act) {
+        storyRewardEvents.push(createRewardRevealEvent('gems', rewardSpec.firstClearRewards.gems));
+        storyRewardEvents.push(createRewardRevealEvent('mora', rewardSpec.firstClearRewards.mora));
+      }
+    } else if (isHardMode) {
+      if (!currentProgress.hardModeCompletedStages?.includes(stageId)) {
+        storyRewardEvents.push(createRewardRevealEvent('mora', rewardSpec.firstClearRewards.mora * 2));
+      }
+    } else if (!currentProgress.completedStages.includes(stageId)) {
+      storyRewardEvents.push(createRewardRevealEvent('gems', rewardSpec.firstClearRewards.gems));
+      storyRewardEvents.push(createRewardRevealEvent('mora', rewardSpec.firstClearRewards.mora));
+    }
+
+    enqueueRewardReveal(storyRewardEvents, `story-${stageId}`);
+
     if (isCharStory) {
       const spec = getStageSpec(stageId, choiceSelections);
       const characterStoryScene = storyBattleConfig.charId && storyBattleConfig.act
@@ -1634,6 +1696,17 @@ export default function App() {
   const claimQuestReward = (questId: string) => {
     const quest = saveState.activeQuests.find(q => q.id === questId);
     if (!quest || !quest.completed) return;
+    const duplicateCharacterMora = quest.rewardCharacterId
+      && saveState.unlockedCharacterIds.includes(quest.rewardCharacterId)
+      ? 2000
+      : 0;
+    const questRewardEvents: RewardRevealEvent[] = [
+      createRewardRevealEvent('gems', quest.rewardTokens),
+      createRewardRevealEvent('mora', quest.rewardMora + duplicateCharacterMora),
+    ];
+    if (quest.rewardWeaponName) {
+      questRewardEvents.push(createRewardRevealEvent('weapon', 1));
+    }
 
     triggerSaveUpdate(prev => {
       let nextGems = prev.aetherGems + quest.rewardTokens;
@@ -1731,6 +1804,8 @@ export default function App() {
       return nextState;
     });
 
+    enqueueRewardReveal(questRewardEvents, `quest-${quest.id}`);
+
     const quest2 = saveState.activeQuests.find(q => q.id === questId);
     const witBonus2 = quest2 && ['kill_enemy','kill_boss','parry','reaction'].includes(quest2.type) ? 3 : 0;
     showInGameAlert(
@@ -1780,6 +1855,11 @@ export default function App() {
       };
     });
 
+    enqueueRewardReveal([
+      createRewardRevealEvent('gems', totalTokens),
+      createRewardRevealEvent('mora', totalMora),
+    ], 'quest-claim-all');
+
     showInGameAlert(
       "Claimed All Quest Rewards!",
       `Received +${totalTokens} Aether Gems and +${totalMora.toLocaleString()} Mora. All completed quests successfully cataloged!`,
@@ -1806,6 +1886,13 @@ export default function App() {
       showInGameAlert("Day is locked!", "Wait for the 24-hour timer to expire to unlock this day's reward.", "error");
       return;
     }
+
+    const loginRewardEvents: RewardRevealEvent[] = [];
+    if (day === 2) loginRewardEvents.push(createRewardRevealEvent('weapon', 1));
+    if (day === 3) loginRewardEvents.push(createRewardRevealEvent('gems', 3000));
+    if (day === 4) loginRewardEvents.push(createRewardRevealEvent('mora', 20000));
+    if (day === 5) loginRewardEvents.push(createRewardRevealEvent('mora', 50000));
+    if (day === 6) loginRewardEvents.push(createRewardRevealEvent('gems', 5000));
 
     triggerSaveUpdate(prev => {
       const currentClaimed = prev.loginRewardClaimedDays || [];
@@ -1984,6 +2071,8 @@ export default function App() {
       }
       return updated;
     });
+
+    enqueueRewardReveal(loginRewardEvents, `login-${day}`);
   };
 
   const completeStartSimulation = () => {
@@ -2154,6 +2243,19 @@ export default function App() {
   const withTransitionHost = (screen: React.ReactNode) => (
     <>
       {screen}
+      <div
+        className="pointer-events-none fixed h-0 w-0"
+        data-reward-target="inventory-fallback"
+        style={{
+          top: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)',
+          right: 'calc(env(safe-area-inset-right, 0px) + 0.75rem)',
+        }}
+      />
+      <RewardRevealLayer
+        events={rewardRevealQueue}
+        onComplete={completeRewardReveal}
+        lowGraphics={isMobile}
+      />
       <AetherCoreTransition
         state={aetherTransition}
         lowGraphics={isMobile}
@@ -2633,14 +2735,14 @@ export default function App() {
           </div>
 
           {/* Mora Currency */}
-          <div className="flex items-center gap-1 md:gap-1.5 p-1 px-2 md:px-3 rounded-lg bg-black/40 border border-white/15 shrink-0">
+          <div data-reward-target="mora" className="flex items-center gap-1 md:gap-1.5 p-1 px-2 md:px-3 rounded-lg bg-black/40 border border-white/15 shrink-0">
             <Coins className="w-3.5 h-3.5 text-amber-400" />
             <span className="hidden md:inline text-slate-400 font-mono text-[10px] uppercase">Mora:</span>
             <span className="font-black text-amber-305 font-mono text-[10px] md:text-[11px] text-amber-400">{saveState.mora.toLocaleString()}</span>
           </div>
 
           {/* Aether Gems */}
-          <div className={`flex items-center gap-1 md:gap-1.5 p-1 px-2 md:px-3 rounded-lg border shrink-0 ${activeUiTheme.pillClass}`}>
+          <div data-reward-target="gems" className={`flex items-center gap-1 md:gap-1.5 p-1 px-2 md:px-3 rounded-lg border shrink-0 ${activeUiTheme.pillClass}`}>
             <Sparkles className={`w-3.5 h-3.5 ${activeUiTheme.iconClass}`} />
             <span className="hidden md:inline text-slate-400 font-mono text-[10px] uppercase">Gems:</span>
             <span className="font-black font-mono text-[10px] md:text-[11px]">{saveState.aetherGems.toLocaleString()}</span>
@@ -2801,6 +2903,7 @@ export default function App() {
             )}
 
             <button
+              data-reward-target="forge"
               onClick={() => {
                 navigateWithTransition('inventory');
                 AetheriaAudioEngine.playClick();
@@ -2950,6 +3053,7 @@ export default function App() {
                     saveState={saveState}
                     onUpdateSaveState={handleUpdateSaveState}
                     onShowAlert={showInGameAlert}
+                    onRewardReveal={enqueueRewardReveal}
                   />
                 </motion.div>
               )}
@@ -4028,6 +4132,7 @@ export default function App() {
       {storyBattleActive && (
         <React.Suspense fallback={<div className="fixed inset-0 z-50 bg-slate-950"><ScreenLoadingFallback /></div>}>
           <motion.div
+            data-reward-source={`story-${storyBattleConfig.stageId}`}
             className="fixed inset-0 z-50 w-screen h-screen bg-slate-950 overflow-hidden flex flex-col min-h-0"
             key="story_battle_arena"
           >

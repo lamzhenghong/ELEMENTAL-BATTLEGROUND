@@ -173,6 +173,7 @@ export default function LoginRewardModal({
               return (
                 <div 
                   key={day}
+                  data-reward-source={`login-${day}`}
                   className={`p-4.5 rounded-xl border flex flex-col justify-between relative min-h-[220px] transition-all group ${reward.colorClass} ${
                     isClaimable 
                       ? 'ring-2 ring-amber-400 border-amber-300 shadow-[0_0_20px_rgba(251,191,36,0.2)] bg-slate-900/60 scale-[1.02] -translate-y-1' 
