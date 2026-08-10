@@ -574,142 +574,261 @@ canvas {
   text-transform: uppercase;
 }
 
-.aether-menu-transition {
+.aether-transition {
+  --aether-transition-color: #94a3b8;
   position: fixed;
   inset: 0;
-  z-index: 20000;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0;
+  z-index: 30000;
   overflow: hidden;
-  background: #05070d;
-  color: #fff4cf;
+  background: #050815;
+  color: var(--aether-transition-color);
+  isolation: isolate;
   pointer-events: auto;
-  text-align: center;
-  animation: aether-transition-veil 1550ms ease both;
 }
 
-.aether-menu-transition__sigil {
-  position: relative;
-  width: 100px;
-  height: 100px;
-  border: 1px solid rgba(255, 226, 132, 0.9);
-  box-shadow: 0 0 36px rgba(255, 196, 61, 0.62);
-  opacity: 0;
-  transform: rotate(45deg) scale(0.35);
+.aether-transition[data-kind="title"] {
+  --aether-transition-color: #fbbf24 !important;
 }
 
-.aether-menu-transition__sigil::before,
-.aether-menu-transition__sigil::after,
-.aether-menu-transition__sigil i,
-.aether-menu-transition__sigil b {
+.aether-transition::before,
+.aether-transition::after {
   position: absolute;
+  inset: 0;
+  z-index: -1;
   content: "";
-  background: #fff0a8;
-  box-shadow: 0 0 18px rgba(255, 217, 82, 0.9);
+  pointer-events: none;
 }
 
-.aether-menu-transition__sigil::before {
-  top: 50%;
-  left: -34px;
-  width: 168px;
-  height: 1px;
+.aether-transition::before {
+  background-image:
+    linear-gradient(rgba(129, 140, 248, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(129, 140, 248, 0.045) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: radial-gradient(circle at center, #000 0%, transparent 76%);
 }
 
-.aether-menu-transition__sigil::after {
-  top: -34px;
+.aether-transition::after {
+  background:
+    radial-gradient(circle at center, color-mix(in srgb, var(--aether-transition-color) 18%, transparent) 0%, transparent 36%),
+    radial-gradient(ellipse at center, rgba(49, 46, 129, 0.16) 0%, transparent 68%);
+}
+
+.aether-transition[data-phase="covering"] {
+  animation: aether-field-cover 220ms ease-out both;
+}
+
+.aether-transition[data-phase="covered"] {
+  opacity: 1;
+}
+
+.aether-transition[data-phase="revealing"] {
+  animation: aether-field-reveal 400ms ease-in both;
+}
+
+.aether-transition[data-kind="title"][data-phase="covering"] {
+  animation-duration: 420ms;
+}
+
+.aether-transition[data-kind="title"][data-phase="revealing"] {
+  animation-duration: 790ms;
+}
+
+.aether-transition__field {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+.aether-transition__arc {
+  position: absolute;
   left: 50%;
-  width: 1px;
-  height: 168px;
+  width: min(560px, 82vw);
+  height: min(220px, 34vw);
+  border: 1px solid color-mix(in srgb, var(--aether-transition-color) 40%, transparent);
+  border-radius: 50%;
+  opacity: 0.48;
+  transform: translateX(-50%) scaleX(0.35);
 }
 
-.aether-menu-transition__sigil i {
-  inset: 24px;
+.aether-transition__arc--north {
+  top: calc(50% - min(176px, 27vw));
+  clip-path: inset(0 0 50% 0);
+}
+
+.aether-transition__arc--south {
+  bottom: calc(50% - min(176px, 27vw));
+  clip-path: inset(50% 0 0 0);
+}
+
+.aether-transition[data-phase="covering"] .aether-transition__arc,
+.aether-transition[data-phase="covered"] .aether-transition__arc {
+  transform: translateX(-50%) scaleX(1);
+}
+
+.aether-transition[data-phase="covering"] .aether-transition__arc {
+  transition: transform 220ms ease-out;
+}
+
+.aether-transition[data-phase="revealing"] .aether-transition__arc {
+  opacity: 0;
+  transform: translateX(-50%) scaleX(1.16);
+  transition: opacity 300ms ease, transform 400ms ease;
+}
+
+.aether-transition__constellation {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(430px, 78vw);
+  height: min(190px, 36vw);
+  transform: translate(-50%, -50%);
+}
+
+.aether-transition__sigil {
+  --aether-sigil-x: 0px;
+  --aether-sigil-y: -82px;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 28px;
+  height: 28px;
+  opacity: 0.82;
+  transform: translate(calc(-50% + var(--aether-sigil-x)), calc(-50% + var(--aether-sigil-y)));
+}
+
+.aether-transition__sigil:nth-child(2) { --aether-sigil-x: 145px; --aether-sigil-y: -52px; }
+.aether-transition__sigil:nth-child(3) { --aether-sigil-x: 190px; --aether-sigil-y: 20px; }
+.aether-transition__sigil:nth-child(4) { --aether-sigil-x: 88px; --aether-sigil-y: 76px; }
+.aether-transition__sigil:nth-child(5) { --aether-sigil-x: -88px; --aether-sigil-y: 76px; }
+.aether-transition__sigil:nth-child(6) { --aether-sigil-x: -190px; --aether-sigil-y: 20px; }
+.aether-transition__sigil:nth-child(7) { --aether-sigil-x: -145px; --aether-sigil-y: -52px; }
+
+.aether-transition__sigil-mark {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 1px solid currentColor;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--aether-transition-color) 58%, transparent);
   transform: rotate(45deg);
 }
 
-.aether-menu-transition__sigil b {
-  top: 50%;
-  left: 50%;
-  width: 22px;
-  height: 22px;
-  transform: translate(-50%, -50%) rotate(45deg);
+.aether-transition__sigil[data-sigil="bar"] .aether-transition__sigil-mark,
+.aether-transition__sigil[data-sigil="arc"] .aether-transition__sigil-mark {
+  height: 10px;
+  margin-top: 9px;
 }
 
-.aether-menu-transition > span {
-  margin-top: 30px;
-  color: #ffc43d;
-  font: 900 8px/1 var(--font-mono);
-  letter-spacing: 0.28em;
-  text-indent: 0.28em;
-  text-transform: uppercase;
+.aether-transition__sigil[data-sigil="arc"] .aether-transition__sigil-mark,
+.aether-transition__sigil[data-sigil="ring"] .aether-transition__sigil-mark {
+  border-radius: 50%;
 }
 
-.aether-menu-transition > strong {
-  display: flex;
-  margin-top: 10px;
-  flex-direction: column;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(30px, 5vw, 48px);
-  letter-spacing: 0.06em;
-  line-height: 0.96;
-  text-transform: uppercase;
+.aether-transition__sigil[data-sigil="cross"] .aether-transition__sigil-mark {
+  transform: rotate(45deg) scale(0.72);
+  border-width: 2px;
 }
 
-.aether-menu-transition__bar {
-  width: min(334px, calc(100vw - 64px));
-  height: 4px;
-  margin-top: 28px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.1);
+.aether-transition__sigil[data-sigil="triangle"] .aether-transition__sigil-mark {
+  border-radius: 50% 0 50% 50%;
 }
 
-.aether-menu-transition__bar i {
+.aether-transition[data-phase="covering"] .aether-transition__sigil,
+.aether-transition[data-phase="covered"] .aether-transition__sigil {
+  animation: aether-sigil-converge 450ms cubic-bezier(0.2, 0.75, 0.2, 1) both;
+  animation-delay: calc(var(--aether-sigil-index) * 18ms);
+}
+
+.aether-transition[data-phase="revealing"] .aether-transition__sigil {
+  opacity: 0;
+  transform: translate(calc(-50% + var(--aether-sigil-x)), calc(-50% + var(--aether-sigil-y))) scale(1.4);
+  transition: opacity 260ms ease, transform 380ms ease-out;
+}
+
+.aether-transition__core {
+  position: relative;
+  width: 116px;
+  height: 116px;
+  transform: rotate(45deg);
+}
+
+.aether-transition__core::after {
+  position: absolute;
+  inset: 39px;
+  border: 1px solid currentColor;
+  background: #050815;
+  box-shadow: 0 0 26px color-mix(in srgb, var(--aether-transition-color) 72%, transparent);
+  content: "";
+}
+
+.aether-transition__petal {
+  --aether-petal-angle: 0deg;
+  position: absolute;
+  inset: 35px;
+  transform: rotate(var(--aether-petal-angle)) translateY(-27px);
+  transform-origin: center;
+}
+
+.aether-transition__petal[data-petal="1"] { --aether-petal-angle: 90deg; }
+.aether-transition__petal[data-petal="2"] { --aether-petal-angle: 180deg; }
+.aether-transition__petal[data-petal="3"] { --aether-petal-angle: 270deg; }
+
+.aether-transition__facet {
   display: block;
-  width: 0;
-  height: 100%;
-  background: #ffc43d;
-  box-shadow: 0 0 12px #ffc43d;
+  width: 46px;
+  height: 46px;
+  border: 1px solid currentColor;
+  background: color-mix(in srgb, var(--aether-transition-color) 18%, #050815);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--aether-transition-color) 48%, transparent);
+  clip-path: polygon(50% 0, 100% 100%, 50% 78%, 0 100%);
 }
 
-.aether-menu-transition.is-active .aether-menu-transition__sigil {
-  animation: aether-gold-sigil-open 1.35s cubic-bezier(0.2, 0.75, 0.2, 1) forwards;
+.aether-transition[data-phase="covering"] .aether-transition__core,
+.aether-transition[data-phase="covered"] .aether-transition__core {
+  animation: aether-core-open 450ms cubic-bezier(0.2, 0.75, 0.2, 1) both;
 }
 
-.aether-menu-transition.is-active .aether-menu-transition__bar i {
-  animation: aether-transition-progress 1.35s cubic-bezier(0.2, 0.75, 0.2, 1) forwards;
+.aether-transition[data-phase="revealing"] .aether-transition__core {
+  opacity: 0;
+  transform: rotate(135deg) scale(2.6);
+  transition: opacity 320ms ease, transform 400ms ease-out;
 }
 
-@keyframes aether-transition-veil {
-  0% { opacity: 0; }
-  17%, 79% { opacity: 1; }
-  100% { opacity: 0; }
+.aether-transition__destination {
+  position: absolute;
+  top: calc(50% + 108px);
+  color: currentColor;
+  font: 900 9px/1 var(--font-mono);
+  letter-spacing: 0.22em;
+  text-indent: 0.22em;
+  text-shadow: 0 0 14px color-mix(in srgb, var(--aether-transition-color) 72%, transparent);
+  text-transform: uppercase;
 }
 
-@keyframes aether-gold-sigil-open {
-  0% {
+@keyframes aether-field-cover {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes aether-field-reveal {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes aether-sigil-converge {
+  from {
     opacity: 0;
-    transform: rotate(45deg) scale(0.35);
+    transform: translate(calc(-50% + var(--aether-sigil-x)), calc(-50% + var(--aether-sigil-y))) scale(0.55);
   }
-  32% {
-    opacity: 1;
-  }
-  76% {
-    opacity: 1;
-    transform: rotate(225deg) scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: rotate(315deg) scale(5);
+  to {
+    opacity: 0.82;
+    transform: translate(calc(-50% + var(--aether-sigil-x)), calc(-50% + var(--aether-sigil-y))) scale(1);
   }
 }
 
-@keyframes aether-transition-progress {
-  0% { width: 0; }
-  55% { width: 66%; }
-  100% { width: 100%; }
+@keyframes aether-core-open {
+  from { opacity: 0; transform: rotate(0deg) scale(0.35); }
+  to { opacity: 1; transform: rotate(45deg) scale(1); }
 }
 
 @keyframes aether-button-glint {
@@ -1044,15 +1163,86 @@ canvas {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .aether-menu-transition {
-    opacity: 1;
-    animation: none;
+  .aether-transition[data-phase="covering"] {
+    animation: aether-field-cover 100ms linear both;
   }
 
-  .aether-menu-transition__sigil,
-  .aether-menu-transition__bar i,
+  .aether-transition[data-phase="revealing"] {
+    animation: aether-field-reveal 140ms linear both;
+  }
+
+  .aether-transition__arc,
+  .aether-transition__constellation {
+    display: none;
+  }
+
+  .aether-transition__core,
+  .aether-transition__petal,
+  .aether-transition__facet,
   .aether-main-menu__start-glint {
     animation: none !important;
+    transition: none !important;
+  }
+}
+
+.aether-transition[data-reduced-motion="true"][data-phase="covering"] {
+  animation-duration: 100ms;
+}
+
+.aether-transition[data-reduced-motion="true"][data-phase="revealing"] {
+  animation-duration: 140ms;
+}
+
+.aether-transition[data-reduced-motion="true"] .aether-transition__arc,
+.aether-transition[data-reduced-motion="true"] .aether-transition__constellation {
+  display: none;
+}
+
+.aether-transition[data-reduced-motion="true"] .aether-transition__core {
+  animation: none;
+  transition: none;
+}
+
+.aether-transition[data-low-graphics="true"]::before,
+.aether-transition[data-low-graphics="true"] .aether-transition__arc {
+  display: none;
+}
+
+.aether-transition[data-low-graphics="true"],
+.aether-transition[data-low-graphics="true"]::after,
+.aether-transition[data-low-graphics="true"] .aether-transition__sigil-mark,
+.aether-transition[data-low-graphics="true"] .aether-transition__core::after,
+.aether-transition[data-low-graphics="true"] .aether-transition__facet {
+  filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+.aether-transition[data-low-graphics="true"] .aether-transition__sigil:nth-child(1) {
+  --aether-sigil-x: -106px;
+  --aether-sigil-y: 28px;
+}
+
+.aether-transition[data-low-graphics="true"] .aether-transition__sigil:nth-child(2) {
+  --aether-sigil-x: 0px;
+  --aether-sigil-y: -72px;
+}
+
+.aether-transition[data-low-graphics="true"] .aether-transition__sigil:nth-child(3) {
+  --aether-sigil-x: 106px;
+  --aether-sigil-y: 28px;
+}
+
+@media (max-width: 767px) {
+  .aether-transition,
+  .aether-transition::before,
+  .aether-transition::after,
+  .aether-transition__field,
+  .aether-transition__core,
+  .aether-transition__sigil,
+  .aether-transition__sigil-mark {
+    filter: none !important;
+    backdrop-filter: none !important;
   }
 }
 

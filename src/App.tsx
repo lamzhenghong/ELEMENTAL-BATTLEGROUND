@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useReducer } from 'react';
 import GemsShop, { DAMAGE_SKINS } from './components/GemsShop';
 import { SaveState, Weapon, Artifact, InventoryItem, Quest, ElementType, ArtifactSlot, UiThemeId, CharacterRole } from './types';
 import { t, LanguageType } from './utils/i18n';
@@ -47,6 +47,14 @@ import type { StoryChoiceSelections, StoryScene } from './data/story';
 import { mergeUnlockedStoryMemories } from './data/story/memories';
 import { normalizeStoryProgress } from './data/story/progress';
 import { getImprovedClearTime } from './utils/combatSessionPresentation';
+import AetherCoreTransition from './components/AetherCoreTransition';
+import {
+  createIdleTransition,
+  getTransitionTimings,
+  reduceAetherTransition,
+  type AppScreen,
+  type TransitionKind,
+} from './utils/aetherTransition';
 import { useCloudAccount } from './cloud/useCloudAccount';
 import { createInitialSaveState, formatPlayTime, normalizeLoadedSaveState } from './save/gameSave';
 import { GAME_VERSION } from './config/gameVersion';
@@ -80,6 +88,12 @@ type LockableScreenOrientation = {
 };
 
 const isLandscapeViewport = () => window.matchMedia('(orientation: landscape)').matches;
+
+interface TransitionOptions {
+  kind?: TransitionKind;
+  onCovered?: () => void;
+  onComplete?: () => void;
+}
 
 const requestMobileGateFullscreen = async () => {
   if (document.fullscreenElement) {
@@ -214,7 +228,14 @@ export default function App() {
     return basePlayTimeRef.current + Math.floor((Date.now() - sessionStartRef.current) / 1000);
   }, []);
   // Default to Main Menu as requested: 'menu'
-  const [activeScreen, setActiveScreen] = useState<'menu' | 'home' | 'wiki' | 'arena' | 'wish' | 'inventory' | 'quest' | 'dungeon' | 'party' | 'story' | 'shop'>('menu');
+  const [activeScreen, setActiveScreen] = useState<AppScreen>('menu');
+  const activeScreenRef = useRef<AppScreen>('menu');
+  const [aetherTransition, dispatchAetherTransition] = useReducer(reduceAetherTransition, 'menu', createIdleTransition);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(
+    () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  );
+  const transitionRequestIdRef = useRef(0);
+  const transitionTimersRef = useRef<number[]>([]);
   const [mobileFullscreenGateOpen, setMobileFullscreenGateOpen] = useState<boolean>(isMobile);
   const [mobileFullscreenGateMessage, setMobileFullscreenGateMessage] = useState<string>('');
   const [mobileFullscreenActivated, setMobileFullscreenActivated] = useState<boolean>(false);
@@ -247,6 +268,74 @@ export default function App() {
     landscapeQuery.addListener(handleOrientationChange);
     return () => landscapeQuery.removeListener(handleOrientationChange);
   }, [mobileFullscreenActivated]);
+
+  useEffect(() => {
+    const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const handleReducedMotionChange = () => setPrefersReducedMotion(reducedMotionQuery.matches);
+
+    if (reducedMotionQuery.addEventListener) {
+      reducedMotionQuery.addEventListener('change', handleReducedMotionChange);
+      return () => reducedMotionQuery.removeEventListener('change', handleReducedMotionChange);
+    }
+
+    reducedMotionQuery.addListener(handleReducedMotionChange);
+    return () => reducedMotionQuery.removeListener(handleReducedMotionChange);
+  }, []);
+
+  const clearTransitionTimers = useCallback(() => {
+    transitionTimersRef.current.forEach(timerId => window.clearTimeout(timerId));
+    transitionTimersRef.current = [];
+  }, []);
+
+  const runWithTransition = useCallback((
+    destination: AppScreen,
+    coveredAction: () => void,
+    options: TransitionOptions = {},
+  ) => {
+    clearTransitionTimers();
+
+    const requestId = ++transitionRequestIdRef.current;
+    const kind = options.kind ?? 'standard';
+    const timings = getTransitionTimings(kind, prefersReducedMotion);
+    const schedule = (callback: () => void, delay: number) => {
+      transitionTimersRef.current.push(window.setTimeout(callback, delay));
+    };
+
+    dispatchAetherTransition({ type: 'request', requestId, destination, kind });
+    schedule(() => {
+      if (requestId !== transitionRequestIdRef.current) return;
+      dispatchAetherTransition({ type: 'covered', requestId });
+    }, timings.coverMs);
+    schedule(() => {
+      if (requestId !== transitionRequestIdRef.current) return;
+      coveredAction();
+      dispatchAetherTransition({ type: 'reveal', requestId });
+    }, timings.swapMs);
+    schedule(() => {
+      if (requestId !== transitionRequestIdRef.current) return;
+      dispatchAetherTransition({ type: 'complete', requestId });
+      transitionTimersRef.current = [];
+      options.onComplete?.();
+    }, timings.totalMs);
+  }, [clearTransitionTimers, prefersReducedMotion]);
+
+  const navigateWithTransition = useCallback((
+    destination: AppScreen,
+    options: TransitionOptions = {},
+  ) => {
+    if (destination === activeScreenRef.current) return;
+
+    runWithTransition(destination, () => {
+      options.onCovered?.();
+      activeScreenRef.current = destination;
+      setActiveScreen(destination);
+    }, options);
+  }, [runWithTransition]);
+
+  useEffect(() => () => {
+    transitionRequestIdRef.current += 1;
+    clearTransitionTimers();
+  }, [clearTransitionTimers]);
 
   useEffect(() => {
     if (isMobile && mobileFullscreenGateOpen) {
@@ -445,8 +534,6 @@ export default function App() {
   const [muteSfx, setMuteSfx] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [menuBgmEnabled, setMenuBgmEnabled] = useState(true);
-  const [menuTransition, setMenuTransition] = useState<'enter' | 'return' | null>(null);
-  const menuTransitionTimersRef = useRef<number[]>([]);
 
   const isDungeonLocked = !devCheatsEnabled && (saveState.playerLevel || 1) < 10;
   const isWishLocked = !devCheatsEnabled && (saveState.playerLevel || 1) < 5;
@@ -454,15 +541,6 @@ export default function App() {
   const currentPlayerLevel = saveState.playerLevel || 1;
   const activeUiThemeId = normalizeUiTheme(saveState.activeUiTheme, currentPlayerLevel, devCheatsEnabled);
   const activeUiTheme = getUiTheme(activeUiThemeId);
-
-  useEffect(() => () => {
-    menuTransitionTimersRef.current.forEach(timerId => window.clearTimeout(timerId));
-  }, []);
-
-  const scheduleMenuTransitionStep = (callback: () => void, delay: number) => {
-    const timerId = window.setTimeout(callback, delay);
-    menuTransitionTimersRef.current.push(timerId);
-  };
 
   // Fullscreen handler
   const toggleFullscreen = () => {
@@ -1362,15 +1440,23 @@ export default function App() {
 
   const handleStartStoryBattle = (config: { stageId: string; isHardMode: boolean; isCharStory: boolean; choiceSelections: StoryChoiceSelections; charId?: string; act?: number }) => {
     setStoryBattleConfig(config);
-    AetheriaAudioEngine.setBgmContext('story-battle');
-    setStoryBattleActive(true);
+    runWithTransition('arena', () => {
+      AetheriaAudioEngine.setBgmContext('story-battle');
+      setStoryBattleActive(true);
+    });
+  };
+
+  const handleExitStoryBattle = () => {
+    runWithTransition('story', () => {
+      setStoryBattleActive(false);
+      AetheriaAudioEngine.setBgmContext(storyBattleConfig.isCharStory
+        ? 'character-stories-memories'
+        : 'story-map');
+    });
   };
 
   const handleStoryBattleEnd = (victory: boolean, stats: { stars: number; hp: Record<string, number>; ult: Record<string, number>; duration: number; deaths: number }) => {
-    setStoryBattleActive(false);
-    AetheriaAudioEngine.setBgmContext(storyBattleConfig.isCharStory
-      ? 'character-stories-memories'
-      : 'story-map');
+    handleExitStoryBattle();
     if (!victory) {
       showInGameAlert("Story Battle Defeated!", "Adjust your party elements, upgrade character levels, or forge better weapons to try again!", "error");
       return;
@@ -1889,7 +1975,6 @@ export default function App() {
 
   const completeStartSimulation = () => {
     setEnteredSimulationThisSession(true);
-    setActiveScreen('home');
 
     const todayStr = new Date().toDateString();
     const today = new Date();
@@ -1954,28 +2039,25 @@ export default function App() {
   };
 
   const handleStartSimulation = () => {
-    if (menuTransition) return;
     AetheriaAudioEngine.resume();
     AetheriaAudioEngine.playClick();
-    setMenuTransition('enter');
-    scheduleMenuTransitionStep(completeStartSimulation, 620);
-    scheduleMenuTransitionStep(() => setMenuTransition(null), 1550);
-    scheduleMenuTransitionStep(() => {
-      showInGameAlert(
-        `Welcome back, ${cloudAccount.profile?.username || 'Traveler'}.`,
-        undefined,
-        'success'
-      );
-    }, 1620);
+    navigateWithTransition('home', {
+      kind: 'title',
+      onCovered: completeStartSimulation,
+      onComplete: () => {
+        showInGameAlert(
+          `Welcome back, ${cloudAccount.profile?.username || 'Traveler'}.`,
+          undefined,
+          'success'
+        );
+      },
+    });
   };
 
   const handleReturnToMenu = () => {
-    if (menuTransition) return;
     AetheriaAudioEngine.playClick();
     setShowSettingsModal(false);
-    setMenuTransition('return');
-    scheduleMenuTransitionStep(() => setActiveScreen('menu'), 620);
-    scheduleMenuTransitionStep(() => setMenuTransition(null), 1550);
+    navigateWithTransition('menu', { kind: 'title' });
   };
 
   const handleNavigateToDungeon = () => {
@@ -1988,7 +2070,7 @@ export default function App() {
       );
       return;
     }
-    setActiveScreen('dungeon');
+    navigateWithTransition('dungeon');
   };
 
   const handleNavigateToWish = () => {
@@ -2001,7 +2083,7 @@ export default function App() {
       );
       return;
     }
-    setActiveScreen('wish');
+    navigateWithTransition('wish');
   };
 
   // Pity Counters updates per banner
@@ -2056,25 +2138,14 @@ export default function App() {
             ? 'CHECKING'
             : 'LOCAL ONLY';
 
-  const menuTransitionOverlay = menuTransition && (
-    <div key="aether-menu-transition" className="aether-menu-transition is-active" role="status" aria-live="polite">
-      <div className="aether-menu-transition__sigil" aria-hidden="true"><i /><b /></div>
-      <span>{menuTransition === 'enter' ? 'Dawning Core' : 'Aetheria Session'}</span>
-      <strong>
-        {menuTransition === 'enter' ? (
-          <><span>Synchronizing</span><span>World</span></>
-        ) : (
-          <><span>Returning To</span><span>Title</span></>
-        )}
-      </strong>
-      <div className="aether-menu-transition__bar" aria-hidden="true"><i /></div>
-    </div>
-  );
-
-  const withMenuTransition = (screen: React.ReactNode) => (
+  const withTransitionHost = (screen: React.ReactNode) => (
     <>
       {screen}
-      {menuTransitionOverlay}
+      <AetherCoreTransition
+        state={aetherTransition}
+        lowGraphics={isMobile}
+        reducedMotion={prefersReducedMotion}
+      />
     </>
   );
 
@@ -2188,7 +2259,7 @@ export default function App() {
 
   // ENHANCED IMMERSIVE MAIN MENU UI
   if (activeScreen === 'menu') {
-    return withMenuTransition(
+    return withTransitionHost(
       <div className="relative min-h-screen overflow-x-hidden text-slate-100">
         <MainMenu
           backgroundVideo={mainMenuVideo}
@@ -2440,7 +2511,7 @@ export default function App() {
     );
   }
 
-  return withMenuTransition(
+  return withTransitionHost(
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans relative antialiased leading-normal overflow-x-hidden">
       {/* Immersive Game World Backdrop Simulation gradients */}
       <div className={`absolute inset-0 bg-gradient-to-b ${activeUiTheme.backdropClass} pointer-events-none`} />
@@ -2602,7 +2673,7 @@ export default function App() {
           <div className={`flex md:flex-wrap overflow-x-auto md:overflow-x-visible whitespace-nowrap md:whitespace-normal scrollbar-custom-tabs backdrop-blur-md border p-2 rounded-xl w-full gap-1 ${activeUiTheme.panelClass}`}>
             <button
               onClick={() => {
-                setActiveScreen('home');
+                navigateWithTransition('home');
                 AetheriaAudioEngine.playClick();
               }}
               className={`p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 md:flex-initial cursor-pointer ${
@@ -2618,7 +2689,7 @@ export default function App() {
 
             <button
               onClick={() => {
-                setActiveScreen('story');
+                navigateWithTransition('story');
                 AetheriaAudioEngine.playClick();
               }}
               className={`p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 md:flex-initial cursor-pointer ${
@@ -2635,7 +2706,7 @@ export default function App() {
 
             <button
               onClick={() => {
-                setActiveScreen('arena');
+                navigateWithTransition('arena');
                 AetheriaAudioEngine.playClick();
               }}
               className={`p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 md:flex-initial cursor-pointer ${
@@ -2718,7 +2789,7 @@ export default function App() {
 
             <button
               onClick={() => {
-                setActiveScreen('inventory');
+                navigateWithTransition('inventory');
                 AetheriaAudioEngine.playClick();
               }}
               className={`p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 md:flex-initial cursor-pointer ${
@@ -2735,7 +2806,7 @@ export default function App() {
 
             <button
               onClick={() => {
-                setActiveScreen('quest');
+                navigateWithTransition('quest');
                 AetheriaAudioEngine.playClick();
               }}
               className={`p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 md:flex-initial cursor-pointer ${
@@ -2752,7 +2823,7 @@ export default function App() {
 
             <button
               onClick={() => {
-                setActiveScreen('party');
+                navigateWithTransition('party');
                 AetheriaAudioEngine.playClick();
               }}
               className={`p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 md:flex-initial cursor-pointer ${
@@ -2793,7 +2864,7 @@ export default function App() {
             ) : (
               <button
                 onClick={() => {
-                  setActiveScreen('shop');
+                  navigateWithTransition('shop');
                   AetheriaAudioEngine.playClick();
                 }}
                 className={`p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 md:flex-initial cursor-pointer ${
@@ -2810,7 +2881,7 @@ export default function App() {
             )}
             <button
               onClick={() => {
-                setActiveScreen('wiki');
+                navigateWithTransition('wiki');
                 AetheriaAudioEngine.playClick();
               }}
               className={`p-2 px-1.5 text-[10.5px] md:text-xs md:p-2.5 md:px-5 font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0 md:flex-initial cursor-pointer ${
@@ -2844,13 +2915,13 @@ export default function App() {
                   readyQuestCount={saveState.activeQuests.filter(quest => quest.completed).length}
                   isDungeonLocked={isDungeonLocked}
                   isWishLocked={isWishLocked}
-                  onStory={() => { setActiveScreen('story'); AetheriaAudioEngine.playClick(); }}
-                  onArena={() => { setActiveScreen('arena'); AetheriaAudioEngine.playClick(); }}
+                  onStory={() => { navigateWithTransition('story'); AetheriaAudioEngine.playClick(); }}
+                  onArena={() => { navigateWithTransition('arena'); AetheriaAudioEngine.playClick(); }}
                   onRogue={handleNavigateToDungeon}
-                  onParty={() => { setActiveScreen('party'); AetheriaAudioEngine.playClick(); }}
+                  onParty={() => { navigateWithTransition('party'); AetheriaAudioEngine.playClick(); }}
                   onWish={handleNavigateToWish}
-                  onForge={() => { setActiveScreen('inventory'); AetheriaAudioEngine.playClick(); }}
-                  onQuest={() => { setActiveScreen('quest'); AetheriaAudioEngine.playClick(); }}
+                  onForge={() => { navigateWithTransition('inventory'); AetheriaAudioEngine.playClick(); }}
+                  onQuest={() => { navigateWithTransition('quest'); AetheriaAudioEngine.playClick(); }}
                 />
               )}
               {activeScreen === 'shop' && (
@@ -2937,8 +3008,8 @@ export default function App() {
                         return prev;
                       });
                     }}
-                    onBackToMenu={() => setActiveScreen('home')}
-                    onExitToWiki={() => setActiveScreen('home')}
+                    onBackToMenu={() => navigateWithTransition('home')}
+                    onExitToWiki={() => navigateWithTransition('home')}
                     onAddItems={handleAddItems}
                     devCheatsEnabled={devCheatsEnabled}
                     playerLevel={saveState.playerLevel || 1}
@@ -2977,8 +3048,8 @@ export default function App() {
                     deepestRoom={saveState.stats.highScoreRogueRoom || 0}
                     fastestClearSecs={saveState.stats.fastestRogueClearSecs}
                     onCompleteRun={handleCompleteRogueRun}
-                    onBackToMenu={() => setActiveScreen('home')}
-                    onExitToWiki={() => setActiveScreen('home')}
+                    onBackToMenu={() => navigateWithTransition('home')}
+                    onExitToWiki={() => navigateWithTransition('home')}
                     onAddItems={handleAddItems}
                     devCheatsEnabled={devCheatsEnabled}
                     playerLevel={saveState.playerLevel || 1}
@@ -3022,12 +3093,12 @@ export default function App() {
                     onNavigateToWikiChar={(charId) => {
                       setWikiInitialTab('characters');
                       setWikiInitialCharId(charId);
-                      setActiveScreen('wiki');
+                      navigateWithTransition('wiki');
                     }}
                     onNavigateToWikiWeapon={(weapName) => {
                       setWikiInitialTab('weapons');
                       setWikiInitialWeaponName(weapName);
-                      setActiveScreen('wiki');
+                      navigateWithTransition('wiki');
                     }}
                   />
                 </motion.div>
@@ -3957,16 +4028,8 @@ export default function App() {
               characterEquippedWeapon={saveState.characterEquippedWeapon}
               inventoryWeapons={saveState.inventoryWeapons}
               characterPortraits={saveState.characterPortraits || {}}
-              onBackToMenu={() => {
-                setStoryBattleActive(false);
-                setActiveScreen('story');
-                AetheriaAudioEngine.setBgmContext(storyBattleConfig.isCharStory ? 'character-stories-memories' : 'story-map');
-              }}
-              onExitToWiki={() => {
-                setStoryBattleActive(false);
-                setActiveScreen('story');
-                AetheriaAudioEngine.setBgmContext(storyBattleConfig.isCharStory ? 'character-stories-memories' : 'story-map');
-              }}
+              onBackToMenu={handleExitStoryBattle}
+              onExitToWiki={handleExitStoryBattle}
               onAddItems={handleAddItems}
               devCheatsEnabled={devCheatsEnabled}
               playerLevel={saveState.playerLevel || 1}
