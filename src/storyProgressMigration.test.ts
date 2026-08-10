@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { createDefaultStoryProgress, normalizeStoryProgress } from './data/story/progress';
 
 assert.deepEqual(createDefaultStoryProgress().storyChoices, {});
+assert.deepEqual(createDefaultStoryProgress().fastestClearTimes, {});
 const migrated = normalizeStoryProgress({
   currentChapter: 4,
   currentStage: '4-3',
@@ -37,4 +38,14 @@ const preservedAlternate = normalizeStoryProgress({
   storyChoices: { 'chapter-4-route': 'secure-whisper-seal' },
 });
 assert.equal(preservedAlternate.storyChoices['chapter-4-route'], 'secure-whisper-seal');
+
+const timed = normalizeStoryProgress({
+  fastestClearTimes: {
+    '4-3': 73,
+    'char-aurelia-2': 54,
+    broken: -4,
+    infinite: Number.POSITIVE_INFINITY,
+  },
+} as never);
+assert.deepEqual(timed.fastestClearTimes, { '4-3': 73, 'char-aurelia-2': 54 });
 console.log('story progress migration ok');

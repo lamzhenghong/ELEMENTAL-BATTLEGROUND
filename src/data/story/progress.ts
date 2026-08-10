@@ -37,7 +37,16 @@ export const createDefaultStoryProgress = (): StoryProgress => ({
   hardModeUnlockedChapters: [],
   hardModeCompletedStages: [],
   storyChoices: {},
+  fastestClearTimes: {},
 });
+
+const normalizeFastestClearTimes = (times?: Record<string, number>): Record<string, number> => (
+  Object.fromEntries(
+    Object.entries(times || {}).filter(([, seconds]) => (
+      Number.isFinite(seconds) && Number.isInteger(seconds) && seconds > 0
+    )),
+  )
+);
 
 export const normalizeStoryProgress = (progress?: Partial<StoryProgress>): StoryProgress => {
   const normalized: StoryProgress = {
@@ -50,6 +59,7 @@ export const normalizeStoryProgress = (progress?: Partial<StoryProgress>): Story
     hardModeUnlockedChapters: [...(progress?.hardModeUnlockedChapters || [])],
     hardModeCompletedStages: [...(progress?.hardModeCompletedStages || [])],
     storyChoices: { ...(progress?.storyChoices || {}) },
+    fastestClearTimes: normalizeFastestClearTimes(progress?.fastestClearTimes),
   };
 
   const completedCharacterStages = Object.entries(normalized.completedCharacterStoryActs)

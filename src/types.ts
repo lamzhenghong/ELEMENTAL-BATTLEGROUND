@@ -145,6 +145,7 @@ export interface StoryProgress {
   hardModeUnlockedChapters: number[]; // chapters with hard mode unlocked
   hardModeCompletedStages: string[]; // completed hard stages
   storyChoices: Record<string, string>;
+  fastestClearTimes: Record<string, number>;
 }
 
 export interface SaveState {
@@ -195,6 +196,8 @@ export interface SaveState {
     totalMoraEarned?: number;
     totalGemsEarned?: number;
     highScoreRogueRoom?: number;
+    highScoreArtifactWave?: number;
+    fastestRogueClearSecs?: number;
     longestLoginStreak?: number;
     currentLoginStreak?: number;
   };

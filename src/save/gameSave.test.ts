@@ -100,6 +100,7 @@ test('normalizes legacy story progress without discarding completion', () => {
       hardModeUnlockedChapters: [],
       hardModeCompletedStages: [],
       storyChoices: {},
+      fastestClearTimes: {},
     },
   });
 
