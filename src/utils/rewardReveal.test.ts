@@ -38,6 +38,17 @@ assert.deepEqual(overflow.map((event) => [event.id, event.quantity, event.consti
 ]]);
 assert.ok(overflow.every((event) => Number.isFinite(event.quantity)));
 
+const overflowReplay = normalizeRewardEvents([
+  { id: 'max', kind: 'gems', quantity: Number.MAX_VALUE },
+  { id: 'overflow', kind: 'gems', quantity: Number.MAX_VALUE },
+  { id: 'overflow', kind: 'mora', quantity: 1 },
+]);
+assert.deepEqual(
+  overflowReplay.map((event) => [event.id, event.kind, event.quantity]),
+  [['max', 'gems', Number.MAX_VALUE]],
+);
+assert.ok(overflowReplay.every((event) => Number.isFinite(event.quantity)));
+
 const valid = normalizeRewardEvents([
   { id: 'weapon', kind: 'weapon', quantity: 1 },
   { id: 'artifact', kind: 'artifact', quantity: 1 },

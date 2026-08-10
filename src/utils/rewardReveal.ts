@@ -94,7 +94,10 @@ export const normalizeRewardEvents = (
     const existing = groups.get(event.kind);
     if (existing) {
       const quantity = existing.quantity + event.quantity;
-      if (!Number.isFinite(quantity)) continue;
+      if (!Number.isFinite(quantity)) {
+        constituentIds.forEach((id) => seenIds.add(id));
+        continue;
+      }
       groups.set(event.kind, {
         ...existing,
         quantity,
