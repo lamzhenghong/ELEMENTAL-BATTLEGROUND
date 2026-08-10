@@ -1324,6 +1324,15 @@ export default function App() {
     });
   };
 
+  const handleCompleteRogueRun = (durationSecs: number) => {
+    triggerSaveUpdate(prev => {
+      const improved = getImprovedClearTime(prev.stats.fastestRogueClearSecs, durationSecs);
+      return improved === undefined
+        ? prev
+        : { ...prev, stats: { ...prev.stats, fastestRogueClearSecs: improved } };
+    });
+  };
+
   // Check and increment quest progress states
   const checkQuestProgress = (state: SaveState, type: string, amount: number) => {
     const updatedQuests = state.activeQuests.map(q => {
@@ -2964,7 +2973,10 @@ export default function App() {
                     inventoryWeapons={saveState.inventoryWeapons}
                     characterPortraits={saveState.characterPortraits || {}}
                     onEarnRewards={(gems, mora, exp) => handleModifyCurrencies(gems, mora, exp)}
-                    onIncrementStat={(pk) => handleIncrementStat(pk)}
+                    onIncrementStat={(pk, val) => handleIncrementStat(pk, val)}
+                    deepestRoom={saveState.stats.highScoreRogueRoom || 0}
+                    fastestClearSecs={saveState.stats.fastestRogueClearSecs}
+                    onCompleteRun={handleCompleteRogueRun}
                     onBackToMenu={() => setActiveScreen('home')}
                     onExitToWiki={() => setActiveScreen('home')}
                     onAddItems={handleAddItems}

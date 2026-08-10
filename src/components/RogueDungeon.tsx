@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { PLAYABLE_CHARACTERS } from '../data/characters';
 import { ElementType, Weapon, CombatCharacter } from '../types';
 import { 
@@ -8,6 +8,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { AetheriaAudioEngine } from '../utils/audio';
 import CombatArena from './CombatArena';
+import { formatCombatDuration, getImprovedClearTime } from '../utils/combatSessionPresentation';
 import { LanguageType } from '../utils/i18n';
 import type { MobileControlLayout } from '../utils/mobileControlLayout';
 
@@ -20,6 +21,9 @@ interface RogueDungeonProps {
   characterPortraits: Record<string, number>;
   onEarnRewards: (gems: number, mora: number, exp: number) => void;
   onIncrementStat: (pk: any, val?: number) => void;
+  deepestRoom: number;
+  fastestClearSecs?: number;
+  onCompleteRun: (durationSecs: number) => void;
   onBackToMenu: () => void;
   onExitToWiki?: () => void;
   onAddItems?: (itemType: 'char_xp' | 'ascension', amount: number) => void;
@@ -53,6 +57,9 @@ export default function RogueDungeon({
   characterPortraits,
   onEarnRewards,
   onIncrementStat,
+  deepestRoom,
+  fastestClearSecs,
+  onCompleteRun,
   onBackToMenu,
   onExitToWiki,
   onAddItems,
@@ -96,6 +103,10 @@ export default function RogueDungeon({
   const [roomBuffChosen, setRoomBuffChosen] = useState<boolean>(() => getSavedValue('roomBuffChosen', false));
   const [runFinished, setRunFinished] = useState<'victory' | 'defeat' | null>(() => getSavedValue('runFinished', null));
   const [runPartyIds, setRunPartyIds] = useState<string[]>(() => getSavedValue('runPartyIds', []));
+  const [runStartedAt, setRunStartedAt] = useState<number>(() => getSavedValue('runStartedAt', 0));
+  const [completedRunDurationSecs, setCompletedRunDurationSecs] = useState<number | null>(null);
+  const [completedRunIsNewRecord, setCompletedRunIsNewRecord] = useState(false);
+  const hasCompletedRunRef = useRef(false);
   
   const [combatActive, setCombatActive] = useState<boolean>(false);
   const [showAbandonConfirm, setShowAbandonConfirm] = useState<boolean>(false);
@@ -120,7 +131,8 @@ export default function RogueDungeon({
         roomCompleted,
         runFinished,
         runPartyIds,
-        roomBuffChosen
+        roomBuffChosen,
+        runStartedAt
       };
       localStorage.setItem('aetheria_ruins_save_v1', JSON.stringify(saveData));
     } else {
@@ -137,7 +149,8 @@ export default function RogueDungeon({
     roomCompleted,
     runFinished,
     runPartyIds,
-    roomBuffChosen
+    roomBuffChosen,
+    runStartedAt
   ]);
 
   // Report room progress to stats on mount/load
@@ -195,6 +208,10 @@ export default function RogueDungeon({
     setRoomCompleted(false);
     setRoomBuffChosen(false);
     setRunFinished(null);
+    setRunStartedAt(Date.now());
+    setCompletedRunDurationSecs(null);
+    setCompletedRunIsNewRecord(false);
+    hasCompletedRunRef.current = false;
     setCombatActive(false);
     onIncrementStat('rogueRoom', 1);
     
@@ -287,7 +304,15 @@ export default function RogueDungeon({
       onAddItems?.('ascension', catalystAmount);
       
       // If it was the final room (Boss), trigger victory!
-      if (dungeonMap[currentRoomIdx] === 'boss') {
+      if (currentRoomIdx === 9 && dungeonMap[currentRoomIdx] === 'boss') {
+        if (!hasCompletedRunRef.current) {
+          hasCompletedRunRef.current = true;
+          const durationSecs = Math.max(1, Math.floor((Date.now() - runStartedAt) / 1000));
+          const improvedClearTime = getImprovedClearTime(fastestClearSecs, durationSecs);
+          setCompletedRunDurationSecs(durationSecs);
+          setCompletedRunIsNewRecord(improvedClearTime !== undefined);
+          onCompleteRun(durationSecs);
+        }
         setRunFinished('victory');
         onEarnRewards(500, 20000, 150); // Massive gems/mora!
         onIncrementStat('bossesBeaten');
@@ -322,6 +347,10 @@ export default function RogueDungeon({
 
   if (runFinished) {
     const isWin = runFinished === 'victory';
+    const improvedClearTime = completedRunDurationSecs === null
+      ? undefined
+      : getImprovedClearTime(fastestClearSecs, completedRunDurationSecs);
+    const bestClearSecs = improvedClearTime ?? fastestClearSecs ?? completedRunDurationSecs;
     return (
       <div className="bg-[#0b0f19]/85 border border-white/10 rounded-xl p-8 max-w-lg mx-auto text-center space-y-6 shadow-[0_10px_40px_rgba(0,0,0,0.65)] backdrop-blur-md">
         <div className={`w-20 h-20 rounded-full flex items-center justify-center border-2 mx-auto ${
@@ -348,6 +377,23 @@ export default function RogueDungeon({
               <span className="text-amber-400 font-extrabold flex items-center gap-1">💎 +500 GEMS</span>
               <span className="text-yellow-500 font-extrabold flex items-center gap-1">🪙 +20,000 MORA</span>
             </div>
+            {completedRunDurationSecs !== null && (
+              <div className="grid grid-cols-2 gap-2 text-left text-[10px]">
+                <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/10 p-2">
+                  <span className="block text-[8px] uppercase text-slate-400">CLEAR TIME</span>
+                  <span className="font-black text-cyan-300">{formatCombatDuration(completedRunDurationSecs)}</span>
+                </div>
+                <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-2">
+                  <span className="block text-[8px] uppercase text-slate-400">BEST TIME</span>
+                  <span className="font-black text-amber-300">{formatCombatDuration(bestClearSecs ?? completedRunDurationSecs)}</span>
+                </div>
+                {completedRunIsNewRecord && (
+                  <div className="col-span-2 rounded-lg border border-emerald-400/30 bg-emerald-500/10 p-2 text-center font-black uppercase text-emerald-300">
+                    NEW RECORD
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ) : (
           <p className="text-xs text-slate-355 italic max-w-sm mx-auto leading-relaxed uppercase">
@@ -393,6 +439,7 @@ export default function RogueDungeon({
           dungeonRoomType={currentRoomType === 'elite' ? 'elite' : currentRoomType === 'boss' ? 'boss' : 'battle'}
           dungeonRoomIdx={currentRoomIdx}
           onDungeonBattleEnd={handleDungeonBattleEnd}
+          saveState={{ stats: { highScoreRogueRoom: deepestRoom, fastestRogueClearSecs: fastestClearSecs } }}
           onExitToWiki={onExitToWiki}
           activeDamageSkin={activeDamageSkin}
           devCheatsEnabled={devCheatsEnabled}
@@ -716,6 +763,7 @@ export default function RogueDungeon({
                     onClick={() => {
                       AetheriaAudioEngine.playClick();
                       setShowAbandonConfirm(false);
+                      setRunStartedAt(0);
                       setRunActive(false);
                       onBackToMenu();
                     }}
