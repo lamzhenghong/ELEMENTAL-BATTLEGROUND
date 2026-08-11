@@ -323,6 +323,7 @@ export default function App() {
     () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
   );
   const transitionRequestIdRef = useRef(0);
+  const pendingLoginRewardsModalRef = useRef(false);
   const transitionTimersRef = useRef<number[]>([]);
   const [mobileFullscreenGateOpen, setMobileFullscreenGateOpen] = useState<boolean>(isMobile);
   const [mobileFullscreenGateMessage, setMobileFullscreenGateMessage] = useState<string>('');
@@ -2296,6 +2297,8 @@ export default function App() {
     const todayStr = new Date().toDateString();
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    pendingLoginRewardsModalRef.current = saveState.lastLoginDateStr !== todayStr
+      && (saveState.loginRewardClaimedDays || []).length < 7;
 
     triggerSaveUpdate(prev => {
       let currentUnlocked = prev.unlockedDaysCount || 1;
@@ -2334,13 +2337,6 @@ export default function App() {
         longestStreak = Math.max(longestStreak, 1);
       }
 
-      // 3. Determine if we should show the modal (only once per calendar day)
-      const isNewDay = prev.lastLoginDateStr !== todayStr;
-      const claimedCount = (prev.loginRewardClaimedDays || []).length;
-      if (isNewDay && claimedCount < 7) {
-        setTimeout(() => setShowLoginRewardsModal(true), 150);
-      }
-
       return {
         ...prev,
         unlockedDaysCount: currentUnlocked,
@@ -2362,6 +2358,10 @@ export default function App() {
       kind: 'title',
       onCovered: completeStartSimulation,
       onComplete: () => {
+        if (pendingLoginRewardsModalRef.current) {
+          pendingLoginRewardsModalRef.current = false;
+          setShowLoginRewardsModal(true);
+        }
         showInGameAlert(
           `Welcome back, ${cloudAccount.profile?.username || 'Traveler'}.`,
           undefined,

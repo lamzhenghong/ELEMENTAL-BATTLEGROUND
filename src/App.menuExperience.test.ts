@@ -36,6 +36,13 @@ assert.equal(
 assert.doesNotMatch(source, /const \[menuTransition,/);
 assert.match(source, /Welcome back,/);
 assert.match(source, /handleReturnToMenu/);
+assert.match(source, /const pendingLoginRewardsModalRef = useRef\(false\)/);
+assert.match(
+  source,
+  /onComplete: \(\) => \{[\s\S]*?pendingLoginRewardsModalRef\.current[\s\S]*?setShowLoginRewardsModal\(true\)/,
+  'the daily login modal must wait until the title transition has fully completed',
+);
+assert.doesNotMatch(source, /setTimeout\(\(\) => setShowLoginRewardsModal\(true\), 150\)/);
 assert.doesNotMatch(source, /Returned to main menu/i);
 assert.doesNotMatch(source, /Auto-Save Frequency/);
 

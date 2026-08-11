@@ -66,6 +66,16 @@ assert.match(source, /ForgeOperationResult/);
 assert.match(source, /result\.success/);
 assert.match(source, /setForgeOperation/);
 assert.match(source, /data-forge-layout=/);
+assert.match(
+  source,
+  /className="space-y-6 md:contents"/,
+  'the weapon selector wrapper must release the forge stage into the parent grid on desktop',
+);
+assert.match(
+  source,
+  /className="forge-presentation-layout md:col-span-2[^"]*" data-forge-layout="weapon"/,
+  'the weapon forge presentation must span the full details grid instead of collapsing inside one column',
+);
 assert.match(source, /getForgeAnimationProfile/);
 assert.match(source, /clearTimeout/);
 assert.match(appSource, /const handleUpgradeWeapon = \(weaponId: string\): ForgeOperationResult/);

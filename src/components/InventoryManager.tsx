@@ -1449,7 +1449,7 @@ export default function InventoryManager({
               </div>
 
               {/* Weapon Equipment Selection and Active Weapon Forging */}
-              <div className="space-y-6">
+              <div className="space-y-6 md:contents">
                 <div className="bg-black/35 border border-white/10 rounded-xl p-5">
                   <h4 className="text-sm font-black text-pink-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                     <Shield className="w-5 h-5 text-pink-400" />
@@ -1529,7 +1529,7 @@ export default function InventoryManager({
 
                 {/* ACTIVE WEAPON ENHANCER AND PASSIVE TAB (Moved to the right side!) */}
                 {activeEquippedWeapon && activeWeaponVisual && (
-                  <div className="forge-presentation-layout relative overflow-hidden rounded-xl border border-indigo-500/25 bg-black/45" data-forge-layout="weapon">
+                  <div className="forge-presentation-layout md:col-span-2 relative overflow-hidden rounded-xl border border-indigo-500/25 bg-black/45" data-forge-layout="weapon">
                     <div className="absolute top-0 right-0 p-3 opacity-10 pointer-events-none">
                       <Hammer className="w-16 h-16 text-[#a855f7]" />
                     </div>
