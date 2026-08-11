@@ -61,6 +61,7 @@ import {
   normalizeRewardEvents,
   type RewardRevealEvent,
 } from './utils/rewardReveal';
+import type { ForgeOperationResult, ForgeVisualItem } from './utils/forgePresentation';
 import { useCloudAccount } from './cloud/useCloudAccount';
 import { createInitialSaveState, formatPlayTime, normalizeLoadedSaveState } from './save/gameSave';
 import { GAME_VERSION } from './config/gameVersion';
@@ -1249,30 +1250,46 @@ export default function App() {
     deferRewardReveal([createRewardRevealEvent('weapon', 1)], 'summon-results');
   };
 
-  const handleUpgradeWeapon = (weaponId: string) => {
-    triggerSaveUpdate(prev => {
-      const weapon = prev.inventoryWeapons.find(w => w.id === weaponId);
-      if (!weapon) return prev;
-      
-      const upgradeCost = weapon.level * 200;
-      if (prev.mora < upgradeCost) {
-        showInGameAlert(
-          "Gold deficient! Mora is required to complete Forge activities.",
-          devCheatsEnabled
-            ? "Jump into the 'Combat Arena' tab to defeat ordinary slimes / world bosses, claim finished achievements in the 'Quest Log', or use the developer panel +100k cheats."
-            : "Jump into the 'Combat Arena' tab to defeat ordinary slimes / world bosses, or claim finished achievements in the 'Quest Log'.",
-          "error"
-        );
-        return prev;
-      }
+  const handleUpgradeWeapon = (weaponId: string): ForgeOperationResult => {
+    const weapon = saveState.inventoryWeapons.find(candidate => candidate.id === weaponId);
+    if (!weapon) return { success: false };
 
-      // Weapon max level cap strictly 50
-      if (weapon.level >= 50) {
-        showInGameAlert(
-          "Weapon has reached the absolute level cap of 50.",
-          "Spend Mora to reinforce other party weapons and match element attributes to double character damage outputs!",
-          "error"
-        );
+    const upgradeCost = weapon.level * 200;
+    if (saveState.mora < upgradeCost) {
+      showInGameAlert(
+        "Gold deficient! Mora is required to complete Forge activities.",
+        devCheatsEnabled
+          ? "Jump into the 'Combat Arena' tab to defeat ordinary slimes / world bosses, claim finished achievements in the 'Quest Log', or use the developer panel +100k cheats."
+          : "Jump into the 'Combat Arena' tab to defeat ordinary slimes / world bosses, or claim finished achievements in the 'Quest Log'.",
+        "error"
+      );
+      return { success: false };
+    }
+
+    if (weapon.level >= 50) {
+      showInGameAlert(
+        "Weapon has reached the absolute level cap of 50.",
+        "Spend Mora to reinforce other party weapons and match element attributes to double character damage outputs!",
+        "error"
+      );
+      return { success: false };
+    }
+
+    const previousLevel = weapon.level;
+    const nextLevel = previousLevel + 1;
+    const visualItem: ForgeVisualItem = {
+      kind: 'weapon',
+      id: weapon.id,
+      name: weapon.name,
+      rarity: weapon.rarity,
+      level: nextLevel,
+      primaryStat: `Base ATK ${weapon.baseAtk + 2} | ${weapon.statBonus}`,
+      weaponType: weapon.weaponType,
+    };
+
+    triggerSaveUpdate(prev => {
+      const currentWeapon = prev.inventoryWeapons.find(candidate => candidate.id === weaponId);
+      if (!currentWeapon || currentWeapon.level !== previousLevel || currentWeapon.level >= 50 || prev.mora < upgradeCost) {
         return prev;
       }
 
@@ -1297,16 +1314,26 @@ export default function App() {
 
       // Check weapon high level progress
       updatedState = checkQuestProgress(updatedState, 'level_weapon_high', maxLevel);
-
-      showInGameAlert(
-        "Ascension upgrade successful!",
-        `Weapon upgraded to Level ${weapon.level + 1}. Base ATK has increased by +2!`,
-        "success"
-      );
-      AetheriaAudioEngine.playSlash();
-
       return updatedState;
     });
+
+    showInGameAlert(
+      "Ascension upgrade successful!",
+      `Weapon upgraded to Level ${nextLevel}. Base ATK has increased by +2!`,
+      "success"
+    );
+    AetheriaAudioEngine.playSlash();
+
+    return {
+      success: true,
+      event: {
+        operation: 'upgrade',
+        item: visualItem,
+        previousLevel,
+        nextLevel,
+        materialCount: Math.min(6, Math.max(1, Math.ceil(upgradeCost / 2000))),
+      },
+    };
   };
 
   const handleEquipArtifact = (charId: string, slot: ArtifactSlot, artifactId: string | null) => {
@@ -1432,74 +1459,114 @@ export default function App() {
     enqueueRewardReveal([createRewardRevealEvent('artifact', newArtifacts.length)]);
   };
 
-  const handleFuseArtifacts = (consumeArtifactIds: string[], upgradedArtifact: Artifact, costMora: number, costGems: number) => {
-    triggerSaveUpdate(prev => {
-      const artifacts = prev.inventoryArtifacts || [];
-      const consumeIdSet = new Set(consumeArtifactIds);
-      const consumedArtifacts = artifacts.filter(art => consumeIdSet.has(art.id));
-      const baseArtifact = consumedArtifacts[0];
-      const fusionRule = baseArtifact ? getArtifactFusionRule(baseArtifact.rarity) : null;
+  const handleFuseArtifacts = (
+    consumeArtifactIds: string[],
+    upgradedArtifact: Artifact,
+    costMora: number,
+    costGems: number,
+  ): ForgeOperationResult => {
+    const artifacts = saveState.inventoryArtifacts || [];
+    const consumeIdSet = new Set(consumeArtifactIds);
+    const consumedArtifacts = artifacts.filter(artifact => consumeIdSet.has(artifact.id));
+    const baseArtifact = consumedArtifacts[0];
+    const fusionRule = baseArtifact ? getArtifactFusionRule(baseArtifact.rarity) : null;
 
-      if (!baseArtifact || consumedArtifacts.length !== 3 || !fusionRule) {
-        showInGameAlert(
-          "Artifact Fusion Failed!",
-          "Select three matching blue or purple artifacts from the same exact set piece before fusing.",
-          "error"
-        );
-        return prev;
-      }
-
-      const samePart = consumedArtifacts.every(art => isSameArtifactPart(art, baseArtifact));
-      const blockedArtifact = consumedArtifacts.some(art => art.isLocked || art.equippedTo);
-      if (!samePart || blockedArtifact) {
-        showInGameAlert(
-          "Artifact Fusion Blocked!",
-          "Only unlocked, unequipped artifacts with the exact same name, set, slot, and tier can be fused.",
-          "error"
-        );
-        return prev;
-      }
-
-      if (
-        upgradedArtifact.name !== baseArtifact.name ||
-        upgradedArtifact.set !== baseArtifact.set ||
-        upgradedArtifact.slot !== baseArtifact.slot ||
-        upgradedArtifact.rarity !== fusionRule.resultRarity
-      ) {
-        showInGameAlert(
-          "Artifact Fusion Matrix Mismatch!",
-          "The fused artifact must keep the same artifact part and upgrade only the rarity tier.",
-          "error"
-        );
-        return prev;
-      }
-
-      if (prev.mora < costMora || prev.aetherGems < costGems) {
-        showInGameAlert(
-          "Insufficient Fusion Currency!",
-          `This fusion requires ${costMora.toLocaleString()} Mora and ${costGems.toLocaleString()} Gems.`,
-          "error"
-        );
-        return prev;
-      }
-
+    if (consumeIdSet.size !== 3 || !baseArtifact || consumedArtifacts.length !== 3 || !fusionRule) {
       showInGameAlert(
-        "Artifact Fusion Complete!",
-        `${fusionRule.inputLabel} ${baseArtifact.name} fused into ${fusionRule.outputLabel}.`,
-        "success"
+        "Artifact Fusion Failed!",
+        "Select three matching blue or purple artifacts from the same exact set piece before fusing.",
+        "error"
       );
-      AetheriaAudioEngine.playWaveClear();
+      return { success: false };
+    }
+
+    const samePart = consumedArtifacts.every(artifact => isSameArtifactPart(artifact, baseArtifact));
+    const blockedArtifact = consumedArtifacts.some(artifact => artifact.isLocked || artifact.equippedTo);
+    if (!samePart || blockedArtifact) {
+      showInGameAlert(
+        "Artifact Fusion Blocked!",
+        "Only unlocked, unequipped artifacts with the exact same name, set, slot, and tier can be fused.",
+        "error"
+      );
+      return { success: false };
+    }
+
+    const resultMismatch =
+      upgradedArtifact.name !== baseArtifact.name
+      || upgradedArtifact.set !== baseArtifact.set
+      || upgradedArtifact.slot !== baseArtifact.slot
+      || upgradedArtifact.rarity !== fusionRule.resultRarity
+      || artifacts.some(artifact => artifact.id === upgradedArtifact.id)
+      || costMora !== fusionRule.moraCost
+      || costGems !== fusionRule.gemCost;
+    if (resultMismatch) {
+      showInGameAlert(
+        "Artifact Fusion Matrix Mismatch!",
+        "The fused artifact must keep the same artifact part and upgrade only the rarity tier.",
+        "error"
+      );
+      return { success: false };
+    }
+
+    if (saveState.mora < costMora || saveState.aetherGems < costGems) {
+      showInGameAlert(
+        "Insufficient Fusion Currency!",
+        `This fusion requires ${costMora.toLocaleString()} Mora and ${costGems.toLocaleString()} Gems.`,
+        "error"
+      );
+      return { success: false };
+    }
+
+    const toVisualItem = (artifact: Artifact): ForgeVisualItem => ({
+      kind: 'artifact',
+      id: artifact.id,
+      name: artifact.name,
+      rarity: artifact.rarity,
+      level: 1,
+      primaryStat: `${artifact.set} ${artifact.slot}`,
+      slot: artifact.slot,
+    });
+
+    triggerSaveUpdate(prev => {
+      const currentArtifacts = prev.inventoryArtifacts || [];
+      const currentConsumed = currentArtifacts.filter(artifact => consumeIdSet.has(artifact.id));
+      const currentBase = currentConsumed[0];
+      const currentRule = currentBase ? getArtifactFusionRule(currentBase.rarity) : null;
+      const stillValid = currentConsumed.length === 3
+        && Boolean(currentRule)
+        && currentConsumed.every(artifact => isSameArtifactPart(artifact, currentBase))
+        && currentConsumed.every(artifact => !artifact.isLocked && !artifact.equippedTo)
+        && !currentArtifacts.some(artifact => artifact.id === upgradedArtifact.id)
+        && prev.mora >= costMora
+        && prev.aetherGems >= costGems;
+      if (!stillValid) return prev;
 
       return {
         ...prev,
         mora: prev.mora - costMora,
         aetherGems: prev.aetherGems - costGems,
         inventoryArtifacts: [
-          ...artifacts.filter(art => !consumeIdSet.has(art.id)),
-          upgradedArtifact
-        ]
+          ...currentArtifacts.filter(artifact => !consumeIdSet.has(artifact.id)),
+          upgradedArtifact,
+        ],
       };
     });
+
+    showInGameAlert(
+      "Artifact Fusion Complete!",
+      `${fusionRule.inputLabel} ${baseArtifact.name} fused into ${fusionRule.outputLabel}.`,
+      "success"
+    );
+    AetheriaAudioEngine.playWaveClear();
+
+    return {
+      success: true,
+      event: {
+        operation: 'fusion',
+        item: toVisualItem(upgradedArtifact),
+        sourceItems: consumedArtifacts.map(toVisualItem) as [ForgeVisualItem, ForgeVisualItem, ForgeVisualItem],
+      },
+    };
   };
 
 
@@ -3402,6 +3469,7 @@ export default function App() {
                     onDeleteArtifact={handleDeleteArtifact}
                     onAwardArtifacts={handleAwardArtifacts}
                     onFuseArtifacts={handleFuseArtifacts}
+                    lowGraphics={isMobile}
                   />
                 </motion.div>
               )}

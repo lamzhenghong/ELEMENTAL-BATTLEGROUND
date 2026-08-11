@@ -586,6 +586,80 @@ canvas {
   pointer-events: auto;
 }
 
+/* Forge focus presentation stays unframed and stacks before actions on compact layouts. */
+.forge-presentation-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.forge-focus-shell,
+.forge-action-shell {
+  min-width: 0;
+}
+
+.forge-focus-shell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 5 / 2;
+  max-height: 22rem;
+  overflow: hidden;
+}
+
+.forge-focus-shell > [data-forge-focus-stage] {
+  min-height: 0;
+  height: 100%;
+}
+
+.forge-action-shell {
+  position: relative;
+  z-index: 1;
+  padding: 1rem;
+}
+
+@media (min-width: 1280px) {
+  .forge-presentation-layout {
+    grid-template-columns: minmax(20rem, 0.9fr) minmax(0, 1.1fr);
+    gap: 1.25rem;
+  }
+
+  .forge-presentation-layout[data-forge-layout="artifact"] {
+    grid-template-columns: minmax(22rem, 0.85fr) minmax(0, 1.15fr);
+  }
+}
+
+@media (max-height: 480px) and (orientation: landscape) {
+  .forge-presentation-layout {
+    gap: 0.75rem;
+  }
+
+  .forge-focus-shell {
+    max-height: 11rem;
+  }
+
+  .forge-focus-shell > [data-forge-focus-stage] {
+    min-height: 9rem;
+    gap: 0.75rem;
+    padding-block: 0.5rem;
+  }
+
+  .forge-action-shell {
+    padding: 0.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-forge-focus-stage] [data-forge-material-node],
+  [data-forge-focus-stage] [data-forge-fusion-source] {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
 .aether-transition[data-kind="title"] {
   --aether-transition-color: #fbbf24 !important;
 }

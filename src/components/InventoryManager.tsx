@@ -26,6 +26,13 @@ import {
   getUpgradedWeaponStats
 } from '../utils/characterBuildStats';
 import CharacterRoleBadge from './CharacterRoleBadge';
+import ForgeFocusStage from './ForgeFocusStage';
+import {
+  getForgeAnimationProfile,
+  type ForgeOperationEvent,
+  type ForgeOperationResult,
+  type ForgeVisualItem,
+} from '../utils/forgePresentation';
 
 export { getUpgradedWeaponStats };
 
@@ -60,14 +67,15 @@ interface InventoryManagerProps {
   onLockArtifact?: (artId: string, lockState: boolean) => void;
   onDeleteArtifact?: (artId: string) => void;
   onAwardArtifacts?: (artifacts: Artifact[]) => void;
-  onFuseArtifacts?: (consumeArtifactIds: string[], upgradedArtifact: Artifact, costMora: number, costGems: number) => void;
+  onFuseArtifacts?: (consumeArtifactIds: string[], upgradedArtifact: Artifact, costMora: number, costGems: number) => ForgeOperationResult;
   onModifyCurrencies: (gemsDiff: number, moraDiff: number) => void;
-  onUpgradeWeapon?: (weaponUid: string) => void;
+  onUpgradeWeapon?: (weaponUid: string) => ForgeOperationResult;
   onShowAlert: (msg: string, solution?: string, type?: 'success' | 'error' | 'info') => void;
   onAddItems?: (itemType: 'char_xp' | 'ascension', amount: number) => void;
   characterPortraits?: Record<string, number>;
   devCheatsEnabled?: boolean;
   language?: LanguageType;
+  lowGraphics?: boolean;
 }
 
 export default function InventoryManager({
@@ -93,11 +101,14 @@ export default function InventoryManager({
   onAddItems,
   characterPortraits = {},
   devCheatsEnabled = true,
-  language = 'en'
+  language = 'en',
+  lowGraphics = false,
 }: InventoryManagerProps) {
   const [selectedCharId, setSelectedCharId] = useState<string>(ownedCharacterIds[0] || 'aurelia');
   const [activeTab, setActiveTab] = useState<'weapons' | 'items' | 'characters' | 'artifacts'>('characters');
   const [salvageConfirmArtifactId, setSalvageConfirmArtifactId] = useState<string | null>(null);
+  const [forgeOperation, setForgeOperation] = useState<ForgeOperationEvent | undefined>();
+  const [forgeOperationVersion, setForgeOperationVersion] = useState(0);
 
   const tabContainerRef = useRef<HTMLDivElement>(null);
 
@@ -253,6 +264,43 @@ export default function InventoryManager({
     finalCooldownReduction: finalCdReduction,
     upgradedWeaponStats: wStats
   } = buildStats;
+
+  const activeWeaponVisual: ForgeVisualItem | null = activeEquippedWeapon ? {
+    kind: 'weapon',
+    id: activeEquippedWeapon.id,
+    name: activeEquippedWeapon.name,
+    rarity: activeEquippedWeapon.rarity,
+    level: activeEquippedWeapon.level,
+    primaryStat: `Base ATK ${activeEquippedWeapon.baseAtk} | ${wStats?.calcStatBonus || activeEquippedWeapon.statBonus}`,
+    weaponType: activeEquippedWeapon.weaponType,
+  } : null;
+
+  useEffect(() => {
+    if (!forgeOperation) return undefined;
+    const duration = getForgeAnimationProfile(forgeOperation.operation).durationMs;
+    const timer = window.setTimeout(() => setForgeOperation(undefined), duration + 180);
+    return () => window.clearTimeout(timer);
+  }, [forgeOperation]);
+
+  useEffect(() => {
+    setForgeOperation(current => {
+      if (!current) return current;
+      if (activeTab === 'artifacts') {
+        return !selectedArtifactId || current.item.id === selectedArtifactId ? current : undefined;
+      }
+      if (activeTab === 'characters') {
+        return activeEquippedWeapon?.id === current.item.id ? current : undefined;
+      }
+      return undefined;
+    });
+  }, [activeEquippedWeapon?.id, activeTab, selectedArtifactId]);
+
+  const presentForgeResult = (result: ForgeOperationResult | undefined) => {
+    if (!result || !result.success) return false;
+    setForgeOperation(result.event);
+    setForgeOperationVersion(version => version + 1);
+    return true;
+  };
 
   const handleAutoEquip = () => {
     if (!onEquipArtifact) return;
@@ -1074,10 +1122,27 @@ export default function InventoryManager({
                 });
                 const canFuseArtifact = fusionAvailability.canFuse;
                 const fusionBlockReason = fusionAvailability.blockReason;
+                const activeArtifactVisual: ForgeVisualItem = {
+                  kind: 'artifact',
+                  id: activeArt.id,
+                  name: activeArt.name,
+                  rarity: activeArt.rarity,
+                  level: 1,
+                  primaryStat: mainStat.display,
+                  slot: activeArt.slot,
+                };
 
                 return (
-                  <div className="space-y-4 flex-1 flex flex-col">
-                    <div className="space-y-4">
+                  <div className="forge-presentation-layout flex-1" data-forge-layout="artifact">
+                    <div className="forge-focus-shell" key={`artifact-${activeArt.id}-${forgeOperationVersion}`}>
+                      <ForgeFocusStage
+                        item={activeArtifactVisual}
+                        operation={forgeOperation?.item.kind === 'artifact' && forgeOperation.item.id === activeArt.id ? forgeOperation : undefined}
+                        lowGraphics={lowGraphics}
+                      />
+                    </div>
+                    <div className="forge-action-shell space-y-4">
+                      <div className="space-y-4">
                       {/* Header: Artifact detail profile */}
                       <div className="flex items-center gap-5 border-b border-white/15 pb-4">
                         <div className={`w-16 h-16 rounded-xl flex items-center justify-center text-3xl font-black shadow-[0_0_20px_rgba(0,0,0,0.6)] ring-2 ring-white/10 ${
@@ -1273,13 +1338,15 @@ export default function InventoryManager({
                                 onShowAlert("Artifact Fusion Not Ready!", fusionBlockReason, "error");
                                 return;
                               }
-                              onFuseArtifacts?.(
+                              const result = onFuseArtifacts?.(
                                 fusionRequest.consumeArtifactIds,
                                 fusionRequest.upgradedArtifact,
                                 fusionRequest.costMora,
                                 fusionRequest.costGems
                               );
-                              setSelectedArtifactId(fusionRequest.upgradedArtifact.id);
+                              if (presentForgeResult(result)) {
+                                setSelectedArtifactId(fusionRequest.upgradedArtifact.id);
+                              }
                             }}
                             className={`w-full font-black text-xs uppercase tracking-widest px-6 py-3 rounded-lg flex items-center justify-center gap-2 transition-all active:scale-95 border ${
                               canFuseArtifact
@@ -1296,6 +1363,7 @@ export default function InventoryManager({
                           </p>
                         </section>
                       )}
+                      </div>
                     </div>
                   </div>
                 );
@@ -1460,12 +1528,21 @@ export default function InventoryManager({
                 </div>
 
                 {/* ACTIVE WEAPON ENHANCER AND PASSIVE TAB (Moved to the right side!) */}
-                {activeEquippedWeapon && (
-                  <div className="bg-gradient-to-br from-indigo-950/30 to-black/55 border border-indigo-500/25 rounded-xl p-5 flex flex-col justify-between relative overflow-hidden space-y-4">
+                {activeEquippedWeapon && activeWeaponVisual && (
+                  <div className="forge-presentation-layout relative overflow-hidden rounded-xl border border-indigo-500/25 bg-black/45" data-forge-layout="weapon">
                     <div className="absolute top-0 right-0 p-3 opacity-10 pointer-events-none">
                       <Hammer className="w-16 h-16 text-[#a855f7]" />
                     </div>
 
+                    <div className="forge-focus-shell" key={`weapon-${activeEquippedWeapon.id}-${forgeOperationVersion}`}>
+                      <ForgeFocusStage
+                        item={activeWeaponVisual}
+                        operation={forgeOperation?.item.kind === 'weapon' && forgeOperation.item.id === activeEquippedWeapon.id ? forgeOperation : undefined}
+                        lowGraphics={lowGraphics}
+                      />
+                    </div>
+
+                    <div className="forge-action-shell space-y-4">
                     <div>
                       <span className="text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-black px-2.5 py-1 rounded font-mono uppercase tracking-wider">Weapon</span>
                       <h5 className="text-[14px] font-black text-slate-200 mt-2 uppercase font-display truncate">{activeEquippedWeapon.name}</h5>
@@ -1523,7 +1600,7 @@ export default function InventoryManager({
                     <button
                       type="button"
                       disabled={activeEquippedWeapon.level >= 50}
-                      onClick={() => onUpgradeWeapon && onUpgradeWeapon(activeEquippedWeapon.id)}
+                      onClick={() => presentForgeResult(onUpgradeWeapon?.(activeEquippedWeapon.id))}
                       className={`mt-2 ${
                         activeEquippedWeapon.level >= 50
                           ? 'bg-slate-800 text-slate-500 border-slate-700 shadow-none cursor-not-allowed border-slate-700 shadow-none'
@@ -1533,6 +1610,7 @@ export default function InventoryManager({
                       <span>Upgrade</span>
                       <span className="text-[10px] opacity-75">{activeEquippedWeapon.level >= 50 ? 'Maxed' : `Lv. ${activeEquippedWeapon.level + 1}`}</span>
                     </button>
+                    </div>
                   </div>
                 )}
               </div>

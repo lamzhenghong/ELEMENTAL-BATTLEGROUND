@@ -6,6 +6,8 @@ const source = readFileSync(
   fileURLToPath(new URL('./components/InventoryManager.tsx', import.meta.url)),
   'utf8',
 );
+const appSource = readFileSync(fileURLToPath(new URL('./App.tsx', import.meta.url)), 'utf8');
+const cssSource = readFileSync(fileURLToPath(new URL('./index.css', import.meta.url)), 'utf8');
 
 const extractOpeningTag = (buttonBlock: string) => {
   let braceDepth = 0;
@@ -59,6 +61,21 @@ assert.match(source, /onUpgradeWeapon/);
 assert.match(source, /onLevelUpCharacter/);
 assert.match(source, /onFuseArtifacts/);
 assert.match(source, /createArtifactFusionRequest/);
+assert.match(source, /<ForgeFocusStage/);
+assert.match(source, /ForgeOperationResult/);
+assert.match(source, /result\.success/);
+assert.match(source, /setForgeOperation/);
+assert.match(source, /data-forge-layout=/);
+assert.match(source, /getForgeAnimationProfile/);
+assert.match(source, /clearTimeout/);
+assert.match(appSource, /const handleUpgradeWeapon = \(weaponId: string\): ForgeOperationResult/);
+assert.match(appSource, /const handleFuseArtifacts = \([\s\S]*?\): ForgeOperationResult =>/);
+assert.match(appSource, /return \{\s*success: true,[\s\S]*?operation: 'upgrade'/);
+assert.match(appSource, /return \{\s*success: true,[\s\S]*?operation: 'fusion'/);
+assert.match(appSource, /lowGraphics=\{isMobile\}/);
+assert.match(cssSource, /\.forge-presentation-layout/);
+assert.match(cssSource, /@media \(min-width: 1280px\)/);
+assert.match(cssSource, /@media \(max-height: 480px\) and \(orientation: landscape\)/);
 assert.match(
   source,
   /onFuseArtifacts\?\.\(\s*fusionRequest\.consumeArtifactIds,\s*fusionRequest\.upgradedArtifact,\s*fusionRequest\.costMora,\s*fusionRequest\.costGems\s*\)/,
