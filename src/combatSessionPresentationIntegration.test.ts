@@ -8,6 +8,20 @@ const app = readFileSync(new URL('./App.tsx', import.meta.url), 'utf8');
 const storyStage = readFileSync(new URL('./components/StoryStage.tsx', import.meta.url), 'utf8');
 
 assert.match(arena, /getCombatSessionPresentation/);
+assert.match(arena, /mode: 'story-campaign', stageId: storyStageId, bestClearSecs: storyBestClearSecs, isHardMode/);
+assert.doesNotMatch(
+  arena,
+  /\{\/\* Highscore indicator badges \*\/\}\s*\{!isMobile &&/,
+  'mode-aware records must remain visible on mobile',
+);
+assert.match(arena, /data-testid="story-combat-action-rows"/);
+assert.match(arena, /data-testid="story-burst-special-row"/);
+assert.match(
+  arena,
+  /data-testid="story-burst-special-row"[\s\S]*?triggerUltimate\(\)[\s\S]*?renderSpecialUltimateButton\('desktop-story'\)/,
+  'Story Burst and Special Ultimate must share a second row with Special Ultimate after Burst',
+);
+assert.match(arena, /renderSpecialUltimateButton\('mobile'\)/, 'mobile Special Ultimate placement must remain available');
 assert.match(arena, /combatState\.isArtifactGrindMode\s*\?\s*'artifact-grind'\s*:\s*'endless-arena'/);
 assert.equal(arena.match(/onUpdateWaveRecord\?\.\(/g)?.length, 1, 'one synchronized wave-record path');
 assert.match(arena, /loopStateRef\.current\.currentWave = waveNum/);

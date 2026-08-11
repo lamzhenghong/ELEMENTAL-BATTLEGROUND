@@ -1,7 +1,7 @@
 export type CombatSessionContext =
   | { mode: 'endless-arena'; wave: number; bestWave: number }
   | { mode: 'artifact-grind'; wave: number; bestWave: number }
-  | { mode: 'story-campaign'; stageId: string; bestClearSecs?: number }
+  | { mode: 'story-campaign'; stageId: string; bestClearSecs?: number; isHardMode?: boolean }
   | {
       mode: 'character-story';
       stageId: string;
@@ -103,10 +103,11 @@ export const getCombatSessionPresentation = (
     }
     case 'story-campaign': {
       const stage = parseCampaignStage(context.stageId);
+      const campaignLabel = context.isHardMode ? 'HARD STORY CAMPAIGN' : 'STORY CAMPAIGN';
       return {
-        eyebrow: 'STORY CAMPAIGN',
+        eyebrow: campaignLabel,
         progressLabel: stage,
-        deploymentLabel: `STORY CAMPAIGN - ${stage}`,
+        deploymentLabel: `${campaignLabel} - ${stage}`,
         pauseLabel: stage,
         resultLabel: `STAGE ${context.stageId.toUpperCase()}`,
         recordLabel: 'FASTEST CLEAR',

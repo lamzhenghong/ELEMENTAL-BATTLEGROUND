@@ -16,7 +16,7 @@ export type ForgeSilhouetteId =
 export interface ForgeSilhouette {
   id: ForgeSilhouetteId;
   label: string;
-  icon: 'sword' | 'axe' | 'bow' | 'wand' | 'polearm' | 'shield' | 'hand' | 'legs' | 'boots';
+  icon: 'sword' | 'axe' | 'bow' | 'wand' | 'polearm' | 'helmet' | 'hands' | 'legs' | 'boots';
 }
 
 export type ForgeVisualItem =
@@ -78,8 +78,8 @@ const WEAPON_SILHOUETTES: Record<WeaponType, ForgeSilhouette> = {
 };
 
 const ARTIFACT_SILHOUETTES: Record<ArtifactSlot, ForgeSilhouette> = {
-  helmet: { id: 'helmet', label: 'Helmet', icon: 'shield' },
-  hands: { id: 'hands', label: 'Hands', icon: 'hand' },
+  helmet: { id: 'helmet', label: 'Helmet', icon: 'helmet' },
+  hands: { id: 'hands', label: 'Gauntlets', icon: 'hands' },
   leg: { id: 'legs', label: 'Leg Armor', icon: 'legs' },
   shoe: { id: 'boots', label: 'Boots', icon: 'boots' },
 };

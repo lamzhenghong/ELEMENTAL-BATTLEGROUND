@@ -2,10 +2,6 @@ import { useEffect, useState, type CSSProperties } from 'react';
 import {
   Axe,
   BowArrow,
-  Footprints,
-  Hand,
-  HardHat,
-  PersonStanding,
   Sword,
   WandSparkles,
 } from 'lucide-react';
@@ -19,6 +15,7 @@ import {
   type ForgeSilhouette,
   type ForgeVisualItem,
 } from '../utils/forgePresentation';
+import ArtifactSlotIcon from './artifacts/ArtifactSlotIcon';
 
 interface ForgeFocusStageProps {
   item: ForgeVisualItem;
@@ -33,10 +30,6 @@ const iconBySilhouette = {
   bow: BowArrow,
   wand: WandSparkles,
   polearm: null,
-  shield: HardHat,
-  hand: Hand,
-  legs: PersonStanding,
-  boots: Footprints,
 };
 
 function useReducedMotionPreference() {
@@ -62,6 +55,16 @@ function getItemSilhouette(item: ForgeVisualItem): ForgeSilhouette {
 }
 
 function ForgeSilhouetteMark({ item, compact = false }: { item: ForgeVisualItem; compact?: boolean }) {
+  if (item.kind === 'artifact') {
+    return (
+      <ArtifactSlotIcon
+        slot={item.slot}
+        className={compact ? 'h-5 w-5' : 'h-16 w-16 sm:h-20 sm:w-20'}
+        strokeWidth={compact ? 1.8 : 1.35}
+      />
+    );
+  }
+
   const silhouette = getItemSilhouette(item);
   const Icon = iconBySilhouette[silhouette.icon];
 

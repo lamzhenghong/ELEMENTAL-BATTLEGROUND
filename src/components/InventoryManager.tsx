@@ -29,6 +29,7 @@ import CharacterRoleBadge from './CharacterRoleBadge';
 import ForgeFocusStage from './ForgeFocusStage';
 import WeaponForgePanel from './WeaponForgePanel';
 import ArtifactSetProgress from './artifacts/ArtifactSetProgress';
+import ArtifactSlotIcon from './artifacts/ArtifactSlotIcon';
 import {
   getArtifactSetProgress,
   getPrimaryIncompleteSet,
@@ -71,6 +72,7 @@ interface InventoryManagerProps {
   onLevelUpCharacter: (id: string, costMora: number, costItems: number) => void;
   onEquipWeapon: (charId: string, weaponUid: string) => void;
   onEquipArtifact?: (charId: string, slot: ArtifactSlot, artifactId: string | null) => void;
+  onUnequipAllArtifacts?: (charId: string) => void;
   onLockArtifact?: (artId: string, lockState: boolean) => void;
   onDeleteArtifact?: (artId: string) => void;
   onAwardArtifacts?: (artifacts: Artifact[]) => void;
@@ -98,6 +100,7 @@ export default function InventoryManager({
   onLevelUpCharacter,
   onEquipWeapon,
   onEquipArtifact,
+  onUnequipAllArtifacts,
   onLockArtifact,
   onDeleteArtifact,
   onAwardArtifacts,
@@ -388,6 +391,13 @@ export default function InventoryManager({
         "info"
       );
     }
+  };
+
+  const handleUnequipAllArtifacts = () => {
+    if (!onUnequipAllArtifacts || equippedArts.length === 0) return;
+    onUnequipAllArtifacts(selectedChar.id);
+    setActiveEquipSlot(null);
+    setArtifactEquipSearch('');
   };
 
   // Quick sandbox grant
@@ -1041,7 +1051,7 @@ export default function InventoryManager({
                             art.rarity === 4 ? 'bg-gradient-to-tr from-purple-600 to-purple-400 text-white' :
                             'bg-gradient-to-tr from-blue-600 to-blue-400 text-white'
                           }`}>
-                            {art.slot.substring(0, 3).toUpperCase()}
+                            <ArtifactSlotIcon slot={art.slot} className="h-5 w-5" strokeWidth={1.9} />
                           </div>
 
                           <div className="min-w-0 flex-1">
@@ -1208,20 +1218,21 @@ export default function InventoryManager({
                         lowGraphics={lowGraphics}
                       />
                     </div>
-                    <div className="forge-action-shell space-y-4">
-                      <div className="space-y-4">
+                    <div className="forge-action-shell artifact-detail-panel space-y-3" data-artifact-detail-panel>
+                      <div className="space-y-3">
                       {/* Header: Artifact detail profile */}
-                      <div className="flex min-w-0 flex-col items-start gap-3 border-b border-white/15 pb-4 sm:flex-row sm:items-center sm:gap-4">
-                        <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl text-2xl font-black shadow-[0_0_20px_rgba(0,0,0,0.6)] ring-2 ring-white/10 ${
+                      <div className="artifact-detail-header flex min-w-0 items-center gap-3 border-b border-white/10 pb-3">
+                        <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-lg shadow-[0_0_18px_rgba(0,0,0,0.55)] ring-1 ring-white/15 ${
                           activeArt.rarity === 5 ? 'bg-gradient-to-tr from-amber-600 to-amber-300 text-slate-955 font-black' :
                           activeArt.rarity === 4 ? 'bg-gradient-to-tr from-purple-600 to-purple-400 text-white' :
                           'bg-gradient-to-tr from-blue-600 to-blue-400 text-white'
                         }`}>
-                          {activeArt.slot.substring(0, 3).toUpperCase()}
+                          <ArtifactSlotIcon slot={activeArt.slot} className="h-7 w-7" strokeWidth={1.9} />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <h3 className="break-words text-base font-black uppercase leading-tight tracking-wider text-slate-100 sm:text-lg">{activeArt.name}</h3>
-                          <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Artifact Profile</span>
+                          <h3 className="mt-0.5 break-words text-sm font-black uppercase leading-tight tracking-wide text-slate-100 sm:text-base">{activeArt.name}</h3>
+                          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-slate-400">
                             <span className={`font-extrabold px-2.5 py-0.5 border rounded ${
                               activeArt.rarity === 5 ? 'text-amber-400 bg-amber-400/10 border-amber-400/20' :
                               activeArt.rarity === 4 ? 'text-purple-400 bg-purple-400/10 border-purple-400/20' :
@@ -1235,24 +1246,23 @@ export default function InventoryManager({
                       </div>
 
                       {/* Stats card */}
-                      <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="grid min-w-0 grid-cols-1 gap-2.5 sm:grid-cols-2">
                         {/* Main Stat Card */}
-                        <div className="p-3 bg-black/45 border border-white/10 rounded-lg relative overflow-hidden space-y-2">
-                          <div className="absolute top-0 bottom-0 left-0 w-1.5 bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.7)]" />
+                        <div className="relative min-w-0 overflow-hidden rounded-lg border border-white/10 bg-black/45 p-3 pl-4">
+                          <div className="absolute inset-y-0 left-0 w-1 bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.7)]" />
                           <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-mono">Main Stat</span>
-                          <div className="mt-1 flex flex-wrap items-end justify-between gap-2">
-                            <span className="text-xs font-extrabold uppercase text-slate-200">{mainStat.name}</span>
-                            <span className="break-words font-mono text-lg font-black text-amber-400">{mainStat.display}</span>
+                          <div className="mt-2 flex min-w-0 items-end justify-between gap-2">
+                            <span className="min-w-0 truncate text-[11px] font-extrabold uppercase text-slate-200">{mainStat.name}</span>
+                            <span className="shrink-0 whitespace-nowrap font-mono text-base font-black text-amber-400">{mainStat.display}</span>
                           </div>
                         </div>
 
                         {/* Equipment Status Card */}
-                        <div className="relative min-w-0 overflow-hidden rounded-lg border border-white/10 bg-black/45 p-3" data-artifact-status>
-                          <div className="absolute top-0 bottom-0 left-0 w-1.5 bg-indigo-500 shadow-[0_0_12px_rgba(99,102,241,0.7)]" />
-                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-mono">Equipped</span>
-                          <div className="mt-1 min-w-0 pl-0.5">
-                            <span className="block text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Status</span>
-                            <span className={`mt-1 block break-words text-xs font-black uppercase leading-4 ${equippedCharName ? 'text-indigo-300' : 'text-slate-500'}`}>
+                        <div className="relative min-w-0 overflow-hidden rounded-lg border border-white/10 bg-black/45 p-3 pl-4" data-artifact-status>
+                          <div className="absolute inset-y-0 left-0 w-1 bg-indigo-500 shadow-[0_0_12px_rgba(99,102,241,0.7)]" />
+                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-mono">Equipment</span>
+                          <div className="mt-2 min-w-0">
+                            <span className={`block break-words text-[11px] font-black uppercase leading-4 ${equippedCharName ? 'text-indigo-300' : 'text-slate-400'}`}>
                               {equippedCharName ? `Equipped by ${equippedCharName}` : 'In Inventory'}
                             </span>
                           </div>
@@ -1260,13 +1270,13 @@ export default function InventoryManager({
                       </div>
 
                       {/* Set bonuses details */}
-                      <div className="bg-black/35 border border-white/10 p-4 rounded-xl space-y-3">
+                      <div className="rounded-lg border border-white/10 bg-black/30 p-3 space-y-2.5">
                         <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
                           <Layers className="w-4 h-4 text-amber-400" />
                           <span>Set Bonus</span>
                           <span className="text-slate-500">{setInfo.name}</span>
                         </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                           <div className="bg-white/5 border border-white/10 p-3 rounded-lg">
                             <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block font-mono">2-Piece Effect</span>
                             <span className="text-xs text-slate-250 font-bold block mt-1">{setInfo.desc2pc}</span>
@@ -1327,8 +1337,8 @@ export default function InventoryManager({
                     </div>
 
                     {/* Artifact Fusion */}
-                    <div className="bg-black/35 border border-amber-400/15 p-4 rounded-xl space-y-3">
-                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                    <div className="rounded-lg border border-amber-400/15 bg-black/30 p-3.5 space-y-2.5">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                           <h4 className="text-xs font-black text-amber-300 uppercase tracking-widest flex items-center gap-1.5">
                             <Sparkles className="w-4 h-4" />
@@ -1363,7 +1373,7 @@ export default function InventoryManager({
                       {showArtifactFusion && (
                         <section id="artifact-fusion-panel" aria-label="Artifact Fusion Details" className="space-y-3 border-t border-amber-400/15 pt-3">
                           <p className="text-[10px] text-slate-450 font-mono uppercase">Same exact artifact name, set, slot, and tier only.</p>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                             <div className="bg-white/5 border border-white/10 rounded-lg p-2">
                               <span className="block text-[8px] text-slate-500 font-black uppercase tracking-wider">Matching Copies</span>
                               <span className={`block text-sm font-black font-mono ${fusionArtifacts.length >= 3 ? 'text-emerald-300' : 'text-rose-300'}`}>
@@ -1700,6 +1710,16 @@ export default function InventoryManager({
                     <span>Auto-Equip</span>
                     <span className="text-[8px] opacity-70 font-mono normal-case capitalize hidden sm:inline">({selectedChar.role})</span>
                   </button>
+                  <button
+                    type="button"
+                    onClick={handleUnequipAllArtifacts}
+                    disabled={equippedArts.length === 0 || !onUnequipAllArtifacts}
+                    title={`Unequip every artifact from ${selectedChar.name}`}
+                    className="flex shrink-0 items-center gap-1.5 rounded-lg border border-rose-400/25 bg-rose-950/35 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-rose-200 transition-all hover:border-rose-300/45 hover:bg-rose-950/55 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35"
+                  >
+                    <Unlock className="h-3.5 w-3.5" />
+                    <span>Unequip All Artifacts</span>
+                  </button>
                   {/* Active Set Bonuses Display */}
                   {equippedArts.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 justify-end">
@@ -1752,7 +1772,7 @@ export default function InventoryManager({
                               'bg-gradient-to-tr from-blue-600 to-blue-400 text-white'
                             ) : 'bg-white/5 text-slate-500 border border-white/5'
                           }`}>
-                            {slot.substring(0, 3).toUpperCase()}
+                            <ArtifactSlotIcon slot={slot} className="h-5 w-5" strokeWidth={1.9} />
                           </div>
                           <div>
                             <span className="text-[8px] font-black uppercase text-amber-500 font-mono tracking-wider">

@@ -619,6 +619,18 @@ canvas {
   padding: 1rem;
 }
 
+.forge-action-shell.artifact-detail-panel {
+  align-self: stretch;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  border-radius: 0.75rem;
+  background: rgb(2 6 23 / 0.38);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.025);
+}
+
+.artifact-detail-header {
+  min-height: 4rem;
+}
+
 .forge-detail-container {
   container-type: inline-size;
 }
@@ -630,7 +642,18 @@ canvas {
   }
 
   .forge-presentation-layout[data-forge-layout="artifact"] {
-    grid-template-columns: minmax(14.5rem, 0.75fr) minmax(18rem, 1.25fr);
+    grid-template-columns: minmax(15rem, 0.72fr) minmax(20rem, 1.28fr);
+    gap: 1.25rem;
+  }
+}
+
+@container (max-width: 33.99rem) {
+  .forge-presentation-layout[data-forge-layout="artifact"] .forge-focus-shell {
+    min-height: 11rem;
+  }
+
+  .forge-action-shell.artifact-detail-panel {
+    padding: 0.875rem;
   }
 }
 

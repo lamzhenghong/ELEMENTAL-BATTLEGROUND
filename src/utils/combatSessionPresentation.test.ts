@@ -28,6 +28,19 @@ assert.deepEqual(
   },
 );
 
+assert.deepEqual(
+  getCombatSessionPresentation({ mode: 'story-campaign', stageId: '4-3', bestClearSecs: 73, isHardMode: true }),
+  {
+    eyebrow: 'HARD STORY CAMPAIGN',
+    progressLabel: 'CHAPTER 4 - STAGE 3',
+    deploymentLabel: 'HARD STORY CAMPAIGN - CHAPTER 4 - STAGE 3',
+    pauseLabel: 'CHAPTER 4 - STAGE 3',
+    resultLabel: 'STAGE 4-3',
+    recordLabel: 'FASTEST CLEAR',
+    recordValue: '01:13',
+  },
+);
+
 const character = getCombatSessionPresentation({
   mode: 'character-story',
   stageId: 'char-aurelia-2',

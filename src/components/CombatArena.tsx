@@ -972,7 +972,7 @@ export default function CombatArena({
           act: storyAct || 1,
           bestClearSecs: storyBestClearSecs,
         }
-      : { mode: 'story-campaign', stageId: storyStageId, bestClearSecs: storyBestClearSecs }
+      : { mode: 'story-campaign', stageId: storyStageId, bestClearSecs: storyBestClearSecs, isHardMode }
     : dungeonMode
       ? {
           mode: 'rogue-ruins',
@@ -5787,11 +5787,14 @@ export default function CombatArena({
         {/* Live Records and settings trigger */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Highscore indicator badges */}
-          {!isMobile && (
-            <div className="bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono text-[9px] font-black uppercase rounded py-1 px-2.5 flex items-center gap-1">
+          <div
+            data-testid="combat-record-badge"
+            className={`bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono font-black uppercase rounded flex items-center gap-1 whitespace-nowrap ${
+              isMobile ? 'text-[7px] py-1 px-1.5' : 'text-[9px] py-1 px-2.5'
+            }`}
+          >
               <Trophy className="w-2.5 h-2.5" /> {sessionPresentation.recordLabel}: {sessionPresentation.recordValue}
-            </div>
-          )}
+          </div>
 
           <div className="flex gap-2">
             {/* System Audio buttons */}
@@ -6817,7 +6820,13 @@ export default function CombatArena({
           </div>
 
           {/* Action Combat Trigger Controls buttons */}
-          <div className="flex min-w-0 flex-wrap gap-3.5 justify-center">
+          <div
+            className={storyMode
+              ? 'flex min-w-0 flex-col items-end gap-3.5'
+              : 'flex min-w-0 flex-wrap justify-center gap-3.5'}
+            data-testid="story-combat-action-rows"
+          >
+            <div className={storyMode ? 'flex min-w-0 flex-wrap justify-end gap-3.5' : 'contents'}>
             <button
               onClick={() => triggerBasicAttack()}
               className="bg-black/55 hover:bg-black/80 border border-white/15 text-slate-100 p-4 rounded-xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all w-36 h-24 cursor-pointer hover:border-white/40 shadow-lg"
@@ -6870,8 +6879,12 @@ export default function CombatArena({
                 {activeSkillCooldown > 0 ? `${activeSkillCooldown.toFixed(1)}s` : 'SKILL [E]'}
               </span>
             </button>
+            </div>
 
-            <div className="flex items-center justify-center gap-3.5">
+            <div
+              className={`flex items-center gap-3.5 ${storyMode ? 'justify-end' : 'justify-center'}`}
+              data-testid="story-burst-special-row"
+            >
               <button
                 onClick={() => triggerUltimate()}
                 className="bg-amber-400 hover:bg-amber-350 text-slate-950 p-4 rounded-xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all w-36 h-24 cursor-pointer font-black shadow-[0_0_20px_rgba(251,191,36,0.45)] border border-amber-300/40"

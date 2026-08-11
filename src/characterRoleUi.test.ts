@@ -11,6 +11,10 @@ assert.match(badgeSource, /getRoleLabel/);
 assert.match(badgeSource, /DPS/);
 assert.match(badgeSource, /Support/);
 assert.match(badgeSource, /Tank/);
+assert.match(badgeSource, /aria-label=\{`\$\{label\} role`\}/);
+assert.match(badgeSource, /data-role-icon-only="true"/);
+assert.doesNotMatch(badgeSource, />\s*\{label\}\s*<\/span>/, 'role names must not render beside the icon');
+assert.doesNotMatch(badgeSource, /<Icon[^>]*\/>\s*\{label\}/, 'role badges must remain icon-only');
 
 const appSource = read('App.tsx');
 assert.match(appSource, /CharacterRoleBadge/);

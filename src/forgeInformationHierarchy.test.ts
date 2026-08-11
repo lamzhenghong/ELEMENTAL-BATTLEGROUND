@@ -12,6 +12,10 @@ const weaponPanelSource = readFileSync(
   fileURLToPath(new URL('./components/WeaponForgePanel.tsx', import.meta.url)),
   'utf8',
 );
+const artifactSlotIconSource = readFileSync(
+  fileURLToPath(new URL('./components/artifacts/ArtifactSlotIcon.tsx', import.meta.url)),
+  'utf8',
+);
 const presentationSource = `${source}\n${weaponPanelSource}`;
 
 const extractOpeningTag = (buttonBlock: string) => {
@@ -115,6 +119,17 @@ assert.match(cssSource, /@media \(max-height: 480px\) and \(orientation: landsca
 assert.match(cssSource, /@media \(max-height: 480px\) and \(orientation: landscape\)[\s\S]*?\.forge-presentation-layout\[data-forge-layout="artifact"\][\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\)/);
 assert.match(source, /data-artifact-status/);
 assert.match(source, /data-artifact-actions/);
+assert.match(source, /onUnequipAllArtifacts\?: \(charId: string\) => void/);
+assert.match(source, /onClick=\{handleUnequipAllArtifacts\}/);
+assert.match(appSource, /const handleUnequipAllArtifacts = \(charId: string\) =>/);
+assert.match(appSource, /unequipAllArtifactsForCharacter/);
+assert.match(appSource, /onUnequipAllArtifacts=\{handleUnequipAllArtifacts\}/);
+assert.match(source, /<ArtifactSlotIcon slot=\{activeArt\.slot\}/);
+assert.match(source, /<ArtifactSlotIcon slot=\{slot\}/);
+for (const slot of ['helmet', 'hands', 'leg', 'shoe']) {
+  assert.match(artifactSlotIconSource, new RegExp(`['\"]${slot}['\"]`), `slot icon must support ${slot}`);
+}
+assert.doesNotMatch(artifactSlotIconSource, /PersonStanding/, 'leg artifacts must not use a full-body symbol');
 assert.match(source, /className="grid grid-cols-1 gap-3 border-t border-white\/10 pt-4 sm:grid-cols-2" data-artifact-actions/);
 assert.match(source, /className="relative min-w-0[^"]*" data-artifact-status/);
 assert.match(

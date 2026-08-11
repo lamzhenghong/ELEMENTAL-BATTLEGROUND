@@ -31,13 +31,13 @@ export default function CharacterRoleBadge({ role, compact = false, className = 
   return (
     <span
       aria-label={`${label} role`}
-      title={ROLE_BADGE_DESCRIPTION}
+      title={`${label} role. ${ROLE_BADGE_DESCRIPTION}`}
+      data-role-icon-only="true"
       className={`inline-flex shrink-0 items-center rounded-md border font-black uppercase tracking-wider ${ROLE_STYLES[role]} ${
-        compact ? 'gap-1 px-1.5 py-0.5 text-[7px]' : 'gap-1.5 px-2 py-1 text-[9px]'
+        compact ? 'p-1' : 'p-1.5'
       } ${className}`}
     >
-      <Icon className={compact ? 'h-2.5 w-2.5' : 'h-3 w-3'} />
-      {label}
+      <Icon className={compact ? 'h-3 w-3' : 'h-4 w-4'} />
     </span>
   );
 }

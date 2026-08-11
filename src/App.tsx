@@ -34,6 +34,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { AetheriaAudioEngine } from './utils/audio';
 import { getArtifactFusionRule, isSameArtifactPart } from './utils/artifactFusion';
+import { unequipAllArtifactsForCharacter } from './utils/artifactEquipment';
 import { UI_THEME_UNLOCK_LEVEL, getUiTheme, isUiThemeUnlocked, normalizeUiTheme } from './utils/uiThemes';
 import { getStandardFiveStarCharacters } from './utils/limitedBanners';
 import { SPECIAL_ULTIMATE_UNLOCK_LEVEL } from './utils/specialUltimates';
@@ -1405,6 +1406,34 @@ export default function App() {
         characterEquippedArtifacts: currentEquipped
       };
     });
+  };
+
+  const handleUnequipAllArtifacts = (charId: string) => {
+    const equippedCount = Object.keys(saveState.characterEquippedArtifacts?.[charId] || {}).length;
+    if (equippedCount === 0) {
+      showInGameAlert('No Artifacts Equipped', 'This character has no equipped artifacts to remove.', 'info');
+      return;
+    }
+
+    triggerSaveUpdate(prev => {
+      const result = unequipAllArtifactsForCharacter(
+        prev.inventoryArtifacts || [],
+        prev.characterEquippedArtifacts || {},
+        charId,
+      );
+      return {
+        ...prev,
+        inventoryArtifacts: result.inventoryArtifacts,
+        characterEquippedArtifacts: result.characterEquippedArtifacts,
+      };
+    });
+
+    showInGameAlert(
+      'All Artifacts Unequipped!',
+      `Removed ${equippedCount} artifact${equippedCount === 1 ? '' : 's'} from this character.`,
+      'success',
+    );
+    AetheriaAudioEngine.playClick();
   };
 
   const handleLockArtifact = (artId: string, lockState: boolean) => {
@@ -3478,6 +3507,7 @@ export default function App() {
                     inventoryArtifacts={saveState.inventoryArtifacts || []}
                     characterEquippedArtifacts={saveState.characterEquippedArtifacts || {}}
                     onEquipArtifact={handleEquipArtifact}
+                    onUnequipAllArtifacts={handleUnequipAllArtifacts}
                     onLockArtifact={handleLockArtifact}
                     onDeleteArtifact={handleDeleteArtifact}
                     onAwardArtifacts={handleAwardArtifacts}
