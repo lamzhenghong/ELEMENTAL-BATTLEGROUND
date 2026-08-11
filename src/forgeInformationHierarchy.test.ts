@@ -106,8 +106,12 @@ assert.match(appSource, /return \{\s*success: true,[\s\S]*?operation: 'upgrade'/
 assert.match(appSource, /return \{\s*success: true,[\s\S]*?operation: 'fusion'/);
 assert.match(appSource, /lowGraphics=\{isMobile\}/);
 assert.match(cssSource, /\.forge-presentation-layout/);
-assert.match(cssSource, /@media \(min-width: 1280px\)/);
+assert.match(cssSource, /@media \(min-width: 1024px\)/);
 assert.match(cssSource, /@media \(max-height: 480px\) and \(orientation: landscape\)/);
+assert.match(source, /data-artifact-status/);
+assert.match(source, /data-artifact-actions/);
+assert.match(source, /className="grid grid-cols-1 gap-3 border-t border-white\/10 pt-4 sm:grid-cols-2" data-artifact-actions/);
+assert.match(source, /className="relative min-w-0[^"]*" data-artifact-status/);
 assert.match(
   source,
   /onFuseArtifacts\?\.\(\s*fusionRequest\.consumeArtifactIds,\s*fusionRequest\.upgradedArtifact,\s*fusionRequest\.costMora,\s*fusionRequest\.costGems\s*\)/,

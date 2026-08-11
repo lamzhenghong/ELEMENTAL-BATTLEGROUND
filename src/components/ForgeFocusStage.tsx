@@ -122,7 +122,7 @@ export function ForgeFocusStage({
 
   return (
     <section
-      className="relative grid min-h-60 w-full grid-cols-[minmax(0,1fr)_minmax(9rem,0.9fr)] items-center gap-4 overflow-hidden py-4 sm:min-h-72 sm:gap-7 sm:py-6"
+      className="relative grid min-h-56 w-full grid-cols-1 content-center items-center gap-2 overflow-hidden px-3 py-4 sm:min-h-64 sm:px-5 sm:py-5"
       data-forge-focus-stage
       data-forge-operation={operation?.operation ?? 'idle'}
       data-low-graphics={lowGraphics ? 'true' : 'false'}
@@ -132,16 +132,16 @@ export function ForgeFocusStage({
     >
       <span className="sr-only" aria-live="polite">{operationLabel}</span>
 
-      <div className="relative flex min-h-48 items-center justify-center sm:min-h-56" aria-hidden="true">
+      <div className="relative flex min-h-36 items-center justify-center sm:min-h-44" aria-hidden="true">
         <div
-          className="absolute h-36 w-36 rounded-full border-2 sm:h-44 sm:w-44"
+          className="absolute h-32 w-32 rounded-full border-2 sm:h-40 sm:w-40"
           style={{
             borderColor: rarityColor,
             boxShadow: lowGraphics ? undefined : `0 0 24px ${rarityColor}44`,
           }}
         />
         <div
-          className="absolute h-24 w-44 border-b border-white/20 sm:h-28 sm:w-52"
+          className="absolute h-20 w-40 border-b border-white/20 sm:h-24 sm:w-48"
           style={{ borderColor: rarityColor }}
         />
 
@@ -192,20 +192,23 @@ export function ForgeFocusStage({
         )}
 
         <div
-          className="relative flex h-24 w-24 items-center justify-center rounded-full border border-white/35 bg-slate-950/70 sm:h-28 sm:w-28"
+          className="relative flex h-20 w-20 items-center justify-center rounded-full border border-white/35 bg-slate-950/70 sm:h-24 sm:w-24"
           style={{ color: rarityColor, boxShadow: reducedMotion ? `0 0 18px ${rarityColor}55` : undefined }}
         >
           <ForgeSilhouetteMark item={item} />
         </div>
       </div>
 
-      <div className="min-w-0 space-y-2">
+      <div className="min-w-0 max-w-full space-y-1 text-center" data-forge-focus-copy>
         <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: rarityColor }}>
           {getItemSilhouette(item).label}
         </p>
-        <h3 className="truncate text-base font-black text-slate-100 sm:text-lg" title={item.name}>{item.name}</h3>
-        <p className="text-xs font-bold text-slate-300">LV. {Math.max(0, Math.floor(item.level))}</p>
-        <p className="text-xs leading-5 text-slate-400">{item.primaryStat}</p>
+        <h3 className="break-words text-sm font-black leading-tight text-slate-100 sm:text-base" title={item.name}>{item.name}</h3>
+        <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+          <span>LV. {Math.max(0, Math.floor(item.level))}</span>
+          <span aria-hidden="true">/</span>
+          <span className="break-words">{item.primaryStat}</span>
+        </div>
         {operation?.operation === 'upgrade' && (
           <p className="text-[10px] font-black uppercase tracking-widest text-slate-200">Level {operation.previousLevel} to {operation.nextLevel}</p>
         )}

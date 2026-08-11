@@ -8,6 +8,9 @@ import type { WeaponType } from '../types';
 const source = readFileSync(new URL('./ForgeFocusStage.tsx', import.meta.url), 'utf8');
 
 assert.match(source, /data-forge-focus-stage/);
+assert.match(source, /grid-cols-1/);
+assert.match(source, /data-forge-focus-copy/);
+assert.doesNotMatch(source, /grid-cols-\[minmax\(0,1fr\)_minmax\(9rem,0\.9fr\)\]/);
 assert.match(source, /data-forge-operation/);
 assert.match(source, /lowGraphics/);
 assert.match(source, /reducedMotion/);

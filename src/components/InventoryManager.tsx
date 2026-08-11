@@ -634,7 +634,7 @@ export default function InventoryManager({
                     onClick={() => setArmamentSearchQuery('')}
                     className="absolute right-1 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 hover:text-white"
                   >
-                    ×
+                    X
                   </button>
                 )}
               </div>
@@ -1183,8 +1183,8 @@ export default function InventoryManager({
                     <div className="forge-action-shell space-y-4">
                       <div className="space-y-4">
                       {/* Header: Artifact detail profile */}
-                      <div className="flex items-center gap-5 border-b border-white/15 pb-4">
-                        <div className={`w-16 h-16 rounded-xl flex items-center justify-center text-3xl font-black shadow-[0_0_20px_rgba(0,0,0,0.6)] ring-2 ring-white/10 ${
+                      <div className="flex min-w-0 flex-col items-start gap-3 border-b border-white/15 pb-4 sm:flex-row sm:items-center sm:gap-4">
+                        <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl text-2xl font-black shadow-[0_0_20px_rgba(0,0,0,0.6)] ring-2 ring-white/10 ${
                           activeArt.rarity === 5 ? 'bg-gradient-to-tr from-amber-600 to-amber-300 text-slate-955 font-black' :
                           activeArt.rarity === 4 ? 'bg-gradient-to-tr from-purple-600 to-purple-400 text-white' :
                           'bg-gradient-to-tr from-blue-600 to-blue-400 text-white'
@@ -1192,8 +1192,8 @@ export default function InventoryManager({
                           {activeArt.slot.substring(0, 3).toUpperCase()}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <h3 className="text-lg font-black text-slate-100 uppercase tracking-widest font-display truncate">{activeArt.name}</h3>
-                          <div className="text-xs text-slate-300 flex flex-wrap items-center gap-3 mt-1.5 uppercase font-[#95a5a6] font-mono">
+                          <h3 className="break-words text-base font-black uppercase leading-tight tracking-wider text-slate-100 sm:text-lg">{activeArt.name}</h3>
+                          <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                             <span className={`font-extrabold px-2.5 py-0.5 border rounded ${
                               activeArt.rarity === 5 ? 'text-amber-400 bg-amber-400/10 border-amber-400/20' :
                               activeArt.rarity === 4 ? 'text-purple-400 bg-purple-400/10 border-purple-400/20' :
@@ -1201,31 +1201,30 @@ export default function InventoryManager({
                             }`}>
                               {activeArt.rarity === 5 ? 'Gold (Legendary)' : activeArt.rarity === 4 ? 'Purple (Rare)' : 'Blue (Common)'}
                             </span>
-                            <span>•</span>
                             <span className="text-slate-400 font-bold uppercase tracking-wider">{activeArt.slot} slot</span>
                           </div>
                         </div>
                       </div>
 
                       {/* Stats card */}
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
                         {/* Main Stat Card */}
                         <div className="p-3 bg-black/45 border border-white/10 rounded-lg relative overflow-hidden space-y-2">
                           <div className="absolute top-0 bottom-0 left-0 w-1.5 bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.7)]" />
                           <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-mono">Main Stat</span>
-                          <div className="flex justify-between items-end mt-1">
-                            <span className="text-xs font-extrabold text-slate-205 uppercase font-mono">{mainStat.name}</span>
-                            <span className="font-mono text-lg font-black text-amber-400">{mainStat.display}</span>
+                          <div className="mt-1 flex flex-wrap items-end justify-between gap-2">
+                            <span className="text-xs font-extrabold uppercase text-slate-200">{mainStat.name}</span>
+                            <span className="break-words font-mono text-lg font-black text-amber-400">{mainStat.display}</span>
                           </div>
                         </div>
 
                         {/* Equipment Status Card */}
-                        <div className="p-3 bg-black/45 border border-white/10 rounded-lg relative overflow-hidden space-y-2">
+                        <div className="relative min-w-0 overflow-hidden rounded-lg border border-white/10 bg-black/45 p-3" data-artifact-status>
                           <div className="absolute top-0 bottom-0 left-0 w-1.5 bg-indigo-500 shadow-[0_0_12px_rgba(99,102,241,0.7)]" />
                           <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest font-mono">Equipped</span>
-                          <div className="flex justify-between items-end mt-1">
-                            <span className="text-xs font-extrabold text-slate-205 uppercase font-mono">Status</span>
-                            <span className={`font-mono text-sm font-black uppercase ${equippedCharName ? 'text-indigo-400' : 'text-slate-500'}`}>
+                          <div className="mt-1 min-w-0 pl-0.5">
+                            <span className="block text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Status</span>
+                            <span className={`mt-1 block break-words text-xs font-black uppercase leading-4 ${equippedCharName ? 'text-indigo-300' : 'text-slate-500'}`}>
                               {equippedCharName ? `Equipped by ${equippedCharName}` : 'In Inventory'}
                             </span>
                           </div>
@@ -1253,14 +1252,14 @@ export default function InventoryManager({
                     </div>
 
                     {/* Actions (Lock/Unlock and Delete/Salvage) */}
-                    <div className="flex flex-col md:flex-row gap-4 border-t border-white/10 pt-4">
+                    <div className="grid grid-cols-1 gap-3 border-t border-white/10 pt-4 sm:grid-cols-2" data-artifact-actions>
                       {/* Lock Button */}
                       <button
                         onClick={() => {
                           onLockArtifact && onLockArtifact(activeArt.id, !activeArt.isLocked);
                           AetheriaAudioEngine.playClick();
                         }}
-                        className="flex-1 bg-black/45 hover:bg-black/75 text-slate-200 border border-white/10 font-black text-xs uppercase tracking-widest px-6 py-3 rounded-lg flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer"
+                        className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg border border-white/10 bg-black/45 px-3 py-3 text-center text-xs font-black uppercase tracking-wider text-slate-200 transition-all hover:bg-black/75 active:scale-[0.98] cursor-pointer"
                       >
                         {activeArt.isLocked ? (
                           <>
@@ -1288,7 +1287,7 @@ export default function InventoryManager({
                           }
                           setSalvageConfirmArtifactId(activeArt.id);
                         }}
-                        className={`flex-1 font-black text-xs uppercase tracking-widest px-6 py-3 rounded-lg flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer border ${
+                        className={`inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg border px-3 py-3 text-center text-xs font-black uppercase tracking-wider transition-all active:scale-[0.98] cursor-pointer ${
                           activeArt.isLocked
                             ? 'bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed'
                             : 'bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border-rose-500/30'
