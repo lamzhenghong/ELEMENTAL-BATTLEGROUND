@@ -8,6 +8,11 @@ const source = readFileSync(
 );
 const appSource = readFileSync(fileURLToPath(new URL('./App.tsx', import.meta.url)), 'utf8');
 const cssSource = readFileSync(fileURLToPath(new URL('./index.css', import.meta.url)), 'utf8');
+const weaponPanelSource = readFileSync(
+  fileURLToPath(new URL('./components/WeaponForgePanel.tsx', import.meta.url)),
+  'utf8',
+);
+const presentationSource = `${source}\n${weaponPanelSource}`;
 
 const extractOpeningTag = (buttonBlock: string) => {
   let braceDepth = 0;
@@ -42,9 +47,12 @@ const getButton = (description: string, predicate: (openingTag: string) => boole
   return button;
 };
 
-for (const conciseLabel of ['Forge', 'Stats', 'Weapon', 'Passive', 'Upgrade', 'Ascend', 'Set Bonus', 'Equipped', 'Stat Breakdown', 'Artifact Fusion']) {
-  assert.match(source, new RegExp(`>\\s*${conciseLabel}\\s*<`), `Forge must expose ${conciseLabel}`);
+for (const conciseLabel of ['Forge', 'Weapon', 'Passive', 'Ascend', 'Set Bonus', 'Equipped', 'Stat Breakdown', 'Artifact Fusion']) {
+  assert.match(presentationSource, new RegExp(`>\\s*${conciseLabel}\\s*<`), `Forge must expose ${conciseLabel}`);
 }
+assert.match(weaponPanelSource, /Base ATK/);
+assert.match(weaponPanelSource, /Bonus Stat/);
+assert.match(weaponPanelSource, /Upgrade to Lv\./);
 
 for (const removedCopy of ['Ledger signature status', 'MATRIX ONLINE', 'Active combat parameters', 'Ascend Attunement Sphere', 'Attachment Registry', 'Set Bonus Matrix']) {
   assert.doesNotMatch(source, new RegExp(removedCopy, 'i'), `Forge must remove ${removedCopy}`);
@@ -58,6 +66,20 @@ assert.match(source, /id="artifact-fusion-panel"/);
 assert.match(source, /showArtifactFusion && \(/);
 assert.match(source, /Salvage \/ Delete/);
 assert.match(source, /onUpgradeWeapon/);
+assert.match(source, /import WeaponForgePanel from '\.\/WeaponForgePanel'/);
+assert.match(source, /const \[selectedWeaponId, setSelectedWeaponId\] = useState<string \| null>/);
+assert.match(source, /const \[armamentSearchQuery, setArmamentSearchQuery\] = useState\(''\)/);
+assert.match(source, /placeholder="Search all armaments\.\.\."/);
+assert.match(source, /onClick=\{\(\) => setSelectedWeaponId\(w\.id\)\}/);
+assert.match(source, /data-armament-selected=\{isSelected \? 'true' : undefined\}/);
+assert.match(source, /activeTab === 'weapons' \? \(/);
+assert.match(source, /weapon=\{selectedArmamentWeapon\}/);
+assert.match(
+  source,
+  /onUpgrade=\{\(weaponId\) => presentForgeResult\(onUpgradeWeapon\?\.\(weaponId\)\)\}/,
+  'Armaments must use the existing transaction-safe weapon upgrade callback',
+);
+assert.match(source, /weapon=\{activeEquippedWeapon\}/);
 assert.match(source, /onLevelUpCharacter/);
 assert.match(source, /onFuseArtifacts/);
 assert.match(source, /createArtifactFusionRequest/);
@@ -72,9 +94,9 @@ assert.match(
   'the weapon selector wrapper must release the forge stage into the parent grid on desktop',
 );
 assert.match(
-  source,
-  /className="forge-presentation-layout md:col-span-2[^"]*" data-forge-layout="weapon"/,
-  'the weapon forge presentation must span the full details grid instead of collapsing inside one column',
+  weaponPanelSource,
+  /className="forge-presentation-layout forge-weapon-panel[^"]*"[\s\S]*?data-forge-layout="weapon"/,
+  'the shared weapon forge presentation must own a stable responsive layout',
 );
 assert.match(source, /getForgeAnimationProfile/);
 assert.match(source, /clearTimeout/);
@@ -112,7 +134,7 @@ assert.doesNotMatch(heroHeader, /ATTUNEMENT|PROFESSIONAL/, 'Selected hero metada
 
 assert.match(source, />\s*Weapon\s*</, 'Forge must use the compact Weapon heading');
 assert.doesNotMatch(source, /Equip Armaments Slot/, 'Forge must remove the verbose weapon heading');
-assert.match(source, /Refinement:\s*S\{Math\.floor/, 'Forge must use the compact Refinement label');
+assert.match(weaponPanelSource, /Refinement S\{refinement\}/, 'Forge must use the compact Refinement label');
 assert.doesNotMatch(source, /Refinement Stage/, 'Forge must remove the verbose refinement label');
 
 const fusionDetailsButton = getButton(

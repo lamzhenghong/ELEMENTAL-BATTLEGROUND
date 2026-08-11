@@ -7,7 +7,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { PLAYABLE_CHARACTERS } from '../data/characters';
 import { PlayableCharacter, Weapon, InventoryItem, ElementType, Artifact, ArtifactSlot, ArtifactSet } from '../types';
-import { Shield, Sparkles, Coins, Hammer, Star, StarOff, ArrowUpCircle, BookOpen, Smile, User, Flame, Droplet, Snowflake, Zap, Wind, Leaf, Search, Layers, Lock, Unlock, Trash2, Heart, Clock, Sword } from 'lucide-react';
+import { Shield, Sparkles, Coins, Star, StarOff, ArrowUpCircle, BookOpen, Smile, User, Flame, Droplet, Snowflake, Zap, Wind, Leaf, Search, Layers, Lock, Unlock, Trash2, Heart, Clock, Sword } from 'lucide-react';
 import { AetheriaAudioEngine } from '../utils/audio';
 import { LanguageType, t } from '../utils/i18n';
 import { ARTIFACT_SETS, ARTIFACT_NAMES, getArtifactMainStat } from '../data/artifacts';
@@ -27,6 +27,7 @@ import {
 } from '../utils/characterBuildStats';
 import CharacterRoleBadge from './CharacterRoleBadge';
 import ForgeFocusStage from './ForgeFocusStage';
+import WeaponForgePanel from './WeaponForgePanel';
 import {
   getForgeAnimationProfile,
   type ForgeOperationEvent,
@@ -140,6 +141,8 @@ export default function InventoryManager({
   const [artLockFilter, setArtLockFilter] = useState<'all' | 'locked' | 'unlocked'>('all');
   const [artSearchQuery, setArtSearchQuery] = useState('');
   const [selectedArtifactId, setSelectedArtifactId] = useState<string | null>(null);
+  const [selectedWeaponId, setSelectedWeaponId] = useState<string | null>(() => inventoryWeapons[0]?.id || null);
+  const [armamentSearchQuery, setArmamentSearchQuery] = useState('');
 
   const activeForgeFilterCount = (() => {
     switch (activeTab) {
@@ -228,6 +231,24 @@ export default function InventoryManager({
     (weaponSearchQuery.trim() === '' || w.name.toLowerCase().includes(weaponSearchQuery.toLowerCase()))
   );
 
+  const visibleArmaments = inventoryWeapons.filter(weapon => {
+    const matchesRarity = rarityFilter === 'all' || weapon.rarity === rarityFilter;
+    const query = armamentSearchQuery.trim().toLowerCase();
+    const matchesSearch = query === ''
+      || weapon.name.toLowerCase().includes(query)
+      || weapon.weaponType.toLowerCase().includes(query);
+    return matchesRarity && matchesSearch;
+  }).sort((a, b) => {
+    if (a.level !== b.level) return b.level - a.level;
+    if (a.rarity !== b.rarity) return b.rarity - a.rarity;
+    return inventoryWeapons.findIndex(item => item.id === a.id)
+      - inventoryWeapons.findIndex(item => item.id === b.id);
+  });
+  const selectedArmamentWeapon = inventoryWeapons.find(weapon => weapon.id === selectedWeaponId)
+    || visibleArmaments[0]
+    || inventoryWeapons[0]
+    || null;
+
   const equippedWeaponId = characterEquippedWeapon[selectedChar.id];
   const activeEquippedWeapon = inventoryWeapons.find(w => w.id === equippedWeaponId);
   const pLvl = characterPortraits?.[selectedChar.id] || 0;
@@ -262,18 +283,12 @@ export default function InventoryManager({
     finalCritRate,
     finalCritDmg,
     finalCooldownReduction: finalCdReduction,
-    upgradedWeaponStats: wStats
   } = buildStats;
 
-  const activeWeaponVisual: ForgeVisualItem | null = activeEquippedWeapon ? {
-    kind: 'weapon',
-    id: activeEquippedWeapon.id,
-    name: activeEquippedWeapon.name,
-    rarity: activeEquippedWeapon.rarity,
-    level: activeEquippedWeapon.level,
-    primaryStat: `Base ATK ${activeEquippedWeapon.baseAtk} | ${wStats?.calcStatBonus || activeEquippedWeapon.statBonus}`,
-    weaponType: activeEquippedWeapon.weaponType,
-  } : null;
+  useEffect(() => {
+    if (selectedWeaponId && inventoryWeapons.some(weapon => weapon.id === selectedWeaponId)) return;
+    setSelectedWeaponId(inventoryWeapons[0]?.id || null);
+  }, [inventoryWeapons, selectedWeaponId]);
 
   useEffect(() => {
     if (!forgeOperation) return undefined;
@@ -291,9 +306,12 @@ export default function InventoryManager({
       if (activeTab === 'characters') {
         return activeEquippedWeapon?.id === current.item.id ? current : undefined;
       }
+      if (activeTab === 'weapons') {
+        return selectedArmamentWeapon?.id === current.item.id ? current : undefined;
+      }
       return undefined;
     });
-  }, [activeEquippedWeapon?.id, activeTab, selectedArtifactId]);
+  }, [activeEquippedWeapon?.id, activeTab, selectedArtifactId, selectedArmamentWeapon?.id]);
 
   const presentForgeResult = (result: ForgeOperationResult | undefined) => {
     if (!result || !result.success) return false;
@@ -599,6 +617,29 @@ export default function InventoryManager({
               </div>
             )}
 
+            {activeTab === 'weapons' && (
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={armamentSearchQuery}
+                  onChange={(event) => setArmamentSearchQuery(event.target.value)}
+                  placeholder="Search all armaments..."
+                  className="w-full rounded-lg border border-white/10 bg-slate-900/60 py-2 pl-9 pr-10 text-[10px] font-bold uppercase tracking-wide text-slate-200 placeholder-slate-500 transition-all hover:border-white/20 focus:border-indigo-400 focus:outline-none"
+                />
+                {armamentSearchQuery && (
+                  <button
+                    type="button"
+                    aria-label="Clear armament search"
+                    onClick={() => setArmamentSearchQuery('')}
+                    className="absolute right-1 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 hover:text-white"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            )}
+
                 {showInventoryFilters && (
                   <div id="forge-filter-panel" className="space-y-3">
                 {activeTab === 'artifacts' && (
@@ -823,53 +864,51 @@ export default function InventoryManager({
 
             {activeTab === 'weapons' && (
               <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
-                {(() => {
-                  const visibleWeapons = inventoryWeapons.filter(w => {
-                    return rarityFilter === 'all' || w.rarity === rarityFilter;
-                  }).sort((a, b) => {
-                    const levelA = a.level || 1;
-                    const levelB = b.level || 1;
-                    if (levelA !== levelB) {
-                      return levelB - levelA; // High level first
-                    }
-                    if (a.rarity !== b.rarity) {
-                      return b.rarity - a.rarity; // High rarity first
-                    }
-                    // Maintain stable order
-                    const idxA = inventoryWeapons.findIndex(item => item.id === a.id);
-                    const idxB = inventoryWeapons.findIndex(item => item.id === b.id);
-                    return idxA - idxB;
-                  });
+                {visibleArmaments.length === 0 ? (
+                  <div className="py-16 text-center font-mono text-sm uppercase text-slate-500">
+                    {inventoryWeapons.length === 0 ? 'No forged weapons available.' : 'No armaments match these filters.'}
+                  </div>
+                ) : visibleArmaments.map((w) => {
+                  const isSelected = selectedArmamentWeapon?.id === w.id;
+                  const ownerEntry = Object.entries(characterEquippedWeapon).find(([, weaponId]) => weaponId === w.id);
+                  const ownerName = ownerEntry
+                    ? PLAYABLE_CHARACTERS.find(character => character.id === ownerEntry[0])?.name
+                    : null;
 
-                  if (visibleWeapons.length === 0) {
-                    return (
-                      <div className="text-center py-16 text-slate-500 text-sm italic font-mono uppercase">
-                        {inventoryWeapons.length === 0 
-                          ? 'No forged weapons in armory ledger.' 
-                          : `No ${rarityFilter}★ weapons found.`}
-                      </div>
-                    );
-                  }
-
-                  return visibleWeapons.map((w, idx) => (
-                    <div key={idx} className="p-4 bg-black/20 border border-white/5 rounded-xl flex justify-between items-center text-sm hover:bg-black/35 transition-all">
-                      <div>
-                        <span className="font-extrabold text-slate-200 uppercase text-sm tracking-tight block font-display">
-                          {w.name}
-                        </span>
-                        <div className="flex items-center gap-2 text-xs text-slate-400 font-mono uppercase mt-1">
-                          <div className="flex gap-0.5 select-none">
-                            {Array.from({ length: w.rarity }).map((_, i) => (
-                              <Star key={i} className="w-2.5 h-2.5 text-amber-400 fill-amber-400 shrink-0" />
-                            ))}
+                  return (
+                    <button
+                      key={w.id}
+                      type="button"
+                      onClick={() => setSelectedWeaponId(w.id)}
+                      data-armament-selected={isSelected ? 'true' : undefined}
+                      className={`w-full min-w-0 rounded-xl border p-3 text-left transition-all ${
+                        isSelected
+                          ? 'border-indigo-400/70 bg-indigo-500/10 shadow-[0_0_18px_rgba(99,102,241,0.12)]'
+                          : 'border-white/5 bg-black/20 hover:border-white/15 hover:bg-black/35'
+                      }`}
+                    >
+                      <div className="flex min-w-0 items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <span className="block truncate text-xs font-black uppercase text-slate-100" title={w.name}>{w.name}</span>
+                          <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                            <span className="inline-flex shrink-0 gap-0.5 text-amber-400">
+                              {Array.from({ length: w.rarity }).map((_, index) => (
+                                <Star key={index} className="h-2.5 w-2.5 fill-current" />
+                              ))}
+                            </span>
+                            <span>{w.weaponType}</span>
+                            {ownerName && <span className="truncate text-cyan-300">Used by {ownerName}</span>}
                           </div>
-                          <span>• {w.weaponType} • ATK BASE: {w.baseAtk}</span>
                         </div>
+                        <span className={`shrink-0 rounded border px-2 py-1 font-mono text-[9px] font-black uppercase ${
+                          isSelected
+                            ? 'border-indigo-400/30 bg-indigo-400/15 text-indigo-200'
+                            : 'border-white/10 bg-black/30 text-amber-300'
+                        }`}>Lv. {w.level}</span>
                       </div>
-                      <span className="text-[10px] font-black font-mono text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded uppercase border border-amber-400/20 shrink-0">LV.{w.level}/50</span>
-                    </div>
-                  ));
-                })()}
+                    </button>
+                  );
+                })}
               </div>
             )}
 
@@ -1369,6 +1408,24 @@ export default function InventoryManager({
                 );
               })()}
             </div>
+          ) : activeTab === 'weapons' ? (
+            selectedArmamentWeapon ? (
+              <div className="flex flex-1 flex-col justify-start">
+                <WeaponForgePanel
+                  weapon={selectedArmamentWeapon}
+                  operation={forgeOperation?.item.kind === 'weapon' && forgeOperation.item.id === selectedArmamentWeapon.id ? forgeOperation : undefined}
+                  operationVersion={forgeOperationVersion}
+                  lowGraphics={lowGraphics}
+                  onUpgrade={(weaponId) => presentForgeResult(onUpgradeWeapon?.(weaponId))}
+                />
+              </div>
+            ) : (
+              <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
+                <Shield className="h-12 w-12 text-slate-600" />
+                <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">No Armaments Available</h3>
+                <p className="max-w-sm text-xs leading-5 text-slate-500">Weapons acquired from summons and rewards will appear here for inspection and upgrades.</p>
+              </div>
+            )
           ) : (
             <div className="space-y-6">
             
@@ -1527,90 +1584,15 @@ export default function InventoryManager({
                   </div>
                 </div>
 
-                {/* ACTIVE WEAPON ENHANCER AND PASSIVE TAB (Moved to the right side!) */}
-                {activeEquippedWeapon && activeWeaponVisual && (
-                  <div className="forge-presentation-layout md:col-span-2 relative overflow-hidden rounded-xl border border-indigo-500/25 bg-black/45" data-forge-layout="weapon">
-                    <div className="absolute top-0 right-0 p-3 opacity-10 pointer-events-none">
-                      <Hammer className="w-16 h-16 text-[#a855f7]" />
-                    </div>
-
-                    <div className="forge-focus-shell" key={`weapon-${activeEquippedWeapon.id}-${forgeOperationVersion}`}>
-                      <ForgeFocusStage
-                        item={activeWeaponVisual}
-                        operation={forgeOperation?.item.kind === 'weapon' && forgeOperation.item.id === activeEquippedWeapon.id ? forgeOperation : undefined}
-                        lowGraphics={lowGraphics}
-                      />
-                    </div>
-
-                    <div className="forge-action-shell space-y-4">
-                    <div>
-                      <span className="text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-black px-2.5 py-1 rounded font-mono uppercase tracking-wider">Weapon</span>
-                      <h5 className="text-[14px] font-black text-slate-200 mt-2 uppercase font-display truncate">{activeEquippedWeapon.name}</h5>
-                      
-                      {/* STAT ATTRIBUTE SUB-TYPE */}
-                      <div className="mt-2.5 py-2 px-3 bg-black/40 border border-white/5 rounded-lg flex items-center justify-between">
-                        <span className="text-xs text-slate-400 font-bold uppercase font-mono">Stats</span>
-                        <span className="font-black text-emerald-400 font-mono text-xs uppercase tracking-tight">
-                          {wStats ? wStats.calcStatBonus : 'Crit Rate +10.0%'}
-                        </span>
-                      </div>
-                      <span className="text-[10px] text-slate-500 font-mono block mt-1 tracking-wider lowercase text-right">
-                        * upgraded {Math.floor(Math.min(activeEquippedWeapon.level, 49) / 5)} times (+15% sub-bonus per 5 levels)
-                      </span>
-
-                      {activeEquippedWeapon.level >= 50 ? (
-                        <p className="text-xs text-emerald-400 font-mono uppercase mt-2.5 font-black">
-                          Lv. {activeEquippedWeapon.level} maxed
-                        </p>
-                      ) : (
-                        <p className="text-xs text-slate-350 font-mono uppercase mt-2.5">
-                          Lv. {activeEquippedWeapon.level} {'->'} <span className="text-emerald-400 font-black">Lv. {activeEquippedWeapon.level + 1}</span>
-                        </p>
-                      )}
-                      {activeEquippedWeapon.level >= 50 ? (
-                        <p className="text-xs text-emerald-400 font-mono uppercase mt-1 font-black">
-                          Max level reached
-                        </p>
-                      ) : (
-                        <p className="text-xs text-amber-400 font-black font-mono mt-1 uppercase tracking-wide">
-                          {(activeEquippedWeapon.level * 200).toLocaleString()} Mora
-                        </p>
-                      )}
-                    </div>
-
-                    {/* ACTIVE FORGED FEATURE (PASSIVE) INNER CARD */}
-                    <div className="p-3.5 bg-gradient-to-br from-indigo-950/40 to-[#0c0d1b] border border-indigo-500/20 rounded-lg shadow-inner">
-                      <span className="text-[11px] font-black uppercase text-indigo-300 tracking-wider flex items-center gap-1.5 pb-1 border-b border-indigo-500/15 mb-2">
-                        <Hammer className="w-3.5 h-3.5 text-indigo-400" />
-                        Passive
-                      </span>
-                      <p className="text-xs text-slate-200 leading-relaxed italic font-sans">
-                        "{wStats ? wStats.calcFeatureDesc : 'Unlocks dynamic strike speed with automatic level up boosts inside active arena trials.'}"
-                      </p>
-                      <div className="flex justify-between items-center mt-3 pt-2 border-t border-white/5">
-                        <span className="text-[10px] text-[#fbbf24] font-mono uppercase font-black tracking-widest">
-                          Refinement: S{Math.floor(Math.min(activeEquippedWeapon.level, 49) / 5) + 1}
-                        </span>
-                        <span className="text-[10px] text-emerald-400 font-mono uppercase font-bold text-right">
-                          Passive Potency: +{Math.floor(Math.min(activeEquippedWeapon.level, 49) / 5) * 8}%
-                        </span>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      disabled={activeEquippedWeapon.level >= 50}
-                      onClick={() => presentForgeResult(onUpgradeWeapon?.(activeEquippedWeapon.id))}
-                      className={`mt-2 ${
-                        activeEquippedWeapon.level >= 50
-                          ? 'bg-slate-800 text-slate-500 border-slate-700 shadow-none cursor-not-allowed border-slate-700 shadow-none'
-                          : 'bg-indigo-650 hover:bg-indigo-550 text-white shadow-md border-indigo-500/20'
-                      } font-black text-xs uppercase tracking-widest py-3 rounded-lg active:scale-95 transition-all text-center cursor-pointer border flex items-center justify-center gap-2`}
-                    >
-                      <span>Upgrade</span>
-                      <span className="text-[10px] opacity-75">{activeEquippedWeapon.level >= 50 ? 'Maxed' : `Lv. ${activeEquippedWeapon.level + 1}`}</span>
-                    </button>
-                    </div>
+                {activeEquippedWeapon && (
+                  <div className="md:col-span-2">
+                    <WeaponForgePanel
+                      weapon={activeEquippedWeapon}
+                      operation={forgeOperation?.item.kind === 'weapon' && forgeOperation.item.id === activeEquippedWeapon.id ? forgeOperation : undefined}
+                      operationVersion={forgeOperationVersion}
+                      lowGraphics={lowGraphics}
+                      onUpgrade={(weaponId) => presentForgeResult(onUpgradeWeapon?.(weaponId))}
+                    />
                   </div>
                 )}
               </div>
