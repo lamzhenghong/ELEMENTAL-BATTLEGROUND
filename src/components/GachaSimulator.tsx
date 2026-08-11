@@ -48,6 +48,7 @@ interface GachaSimulatorProps {
   language?: LanguageType;
   onNavigateToWikiChar?: (charId: string) => void;
   onNavigateToWikiWeapon?: (weaponName: string) => void;
+  onRewardSourceReady?: (sourceAnchor: string) => void;
 }
 
 export default function GachaSimulator({
@@ -69,7 +70,8 @@ export default function GachaSimulator({
   devCheatsEnabled = true,
   language = 'en',
   onNavigateToWikiChar,
-  onNavigateToWikiWeapon
+  onNavigateToWikiWeapon,
+  onRewardSourceReady,
 }: GachaSimulatorProps) {
   const [selectedBannerIdx, setSelectedBannerIdx] = useState(0);
   const [pulling, setPulling] = useState(false);
@@ -99,6 +101,11 @@ export default function GachaSimulator({
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (animationPhase !== 'showcase' || currentPullResults.length === 0) return;
+    onRewardSourceReady?.('summon-results');
+  }, [animationPhase, currentPullResults.length, onRewardSourceReady]);
 
   const activeLimitedBanner = getLimitedCharacterBannerForTime(Date.now(), devFeaturedOffset);
 

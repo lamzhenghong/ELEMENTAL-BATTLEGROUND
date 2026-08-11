@@ -9,6 +9,18 @@ const shopSource = readFileSync(new URL('./components/GemsShop.tsx', import.meta
 const gachaSource = readFileSync(new URL('./components/GachaSimulator.tsx', import.meta.url), 'utf8');
 const css = readFileSync(new URL('./index.css', import.meta.url), 'utf8');
 
+const sourceSection = (source: string, start: string, end: string) => {
+  const startIndex = source.indexOf(start);
+  const endIndex = source.indexOf(end, startIndex + start.length);
+  assert.ok(startIndex >= 0 && endIndex > startIndex, `missing source section: ${start}`);
+  return source.slice(startIndex, endIndex);
+};
+
+const singleQuestHandler = sourceSection(app, 'const claimQuestReward', '// Claim all completed quests');
+const claimAllHandler = sourceSection(app, 'const claimAllQuestRewards', 'const handleClaimLoginReward');
+const loginHandler = sourceSection(app, 'const handleClaimLoginReward', 'const completeStartSimulation');
+const shopUpdater = sourceSection(shopSource.replace(/\r\n/g, '\n'), 'onUpdateSaveState(prev =>', '  };\n\n  return (');
+
 assert.match(layer, /createPortal/);
 assert.match(layer, /pointer-events-none/);
 assert.match(layer, /data-reward-reveal/);
@@ -36,6 +48,27 @@ assert.match(app, /appendRewardEvents/);
 assert.match(app, /normalizeRewardEvents/);
 assert.match(app, /const enqueueRewardReveal = useCallback/);
 assert.match(app, /setRewardRevealQueue\(current => current\.filter\(event => event\.id !== id\)\)/);
+assert.match(app, /pendingRewardTransactionsRef/);
+assert.match(app, /rewardTransactionLocksRef/);
+assert.match(app, /transaction\.status = 'accepted'/);
+assert.match(app, /transaction\.status = 'rejected'/);
+assert.match(app, /flushAcceptedRewardTransactions/);
+assert.match(app, /useEffect\(\(\) => \{[\s\S]*?flushAcceptedRewardTransactions\(saveState\)/);
+assert.match(app, /prev\.activeQuests\.find\(quest =>[\s\S]*?quest\.id === questId[\s\S]*?quest\.completed/);
+assert.match(app, /prev\.activeQuests\.filter\(quest => quest\.completed\)/);
+assert.match(app, /completedQuestCountBefore: prev\.completedQuestIds\.length/);
+assert.doesNotMatch(singleQuestHandler, /!prev\.completedQuestIds\.includes/);
+assert.doesNotMatch(claimAllHandler, /!prev\.completedQuestIds\.includes/);
+assert.doesNotMatch(app, /enqueueRewardReveal\(loginRewardEvents/);
+assert.doesNotMatch(singleQuestHandler, /saveState\./);
+assert.doesNotMatch(claimAllHandler, /saveState\./);
+assert.doesNotMatch(singleQuestHandler, /enqueueRewardReveal|showInGameAlert|AetheriaAudioEngine/);
+assert.doesNotMatch(claimAllHandler, /enqueueRewardReveal|showInGameAlert|AetheriaAudioEngine/);
+assert.match(loginHandler, /currentClaimed\.includes\(day\)/);
+assert.match(loginHandler, /day !== currentClaimed\.length \+ 1/);
+assert.match(loginHandler, /day > \(prev\.unlockedDaysCount \|\| 1\)/);
+assert.match(loginHandler, /transaction\.commit = \{ type: 'login', day \}/);
+assert.doesNotMatch(loginHandler, /enqueueRewardReveal|showInGameAlert|AetheriaAudioEngine/);
 assert.match(app, /gemsDiff > 0/);
 assert.match(app, /moraDiff > 0/);
 assert.match(app, /story-\$\{stageId\}/);
@@ -44,15 +77,26 @@ assert.match(app, /quest-\$\{quest\.id\}/);
 assert.match(app, /quest-claim-all/);
 assert.match(app, /login-\$\{day\}/);
 assert.match(app, /onRewardReveal=\{enqueueRewardReveal\}/);
+assert.match(app, /deferredRewardRevealsRef/);
+assert.match(app, /deferRewardReveal\(\[createRewardRevealEvent\('weapon', 1\)\], 'summon-results'\)/);
+assert.match(app, /onRewardSourceReady=\{flushDeferredRewardReveals\}/);
 
 assert.match(questSource, /data-reward-source=\{`quest-\$\{q\.id\}`\}/);
 assert.match(questSource, /data-reward-source="quest-claim-all"/);
 assert.match(loginSource, /data-reward-source=\{`login-\$\{day\}`\}/);
 assert.match(shopSource, /onRewardReveal\?/);
 assert.match(shopSource, /purchasedShopItemIds[\s\S]*?includes\(item\.id\)\) return/);
+assert.match(shopSource, /pendingPurchasesRef/);
+assert.match(shopSource, /inventoryArtifacts[\s\S]*?some\(artifact => artifact\.id === pending\.artifactId\)/);
+assert.match(shopSource, /useEffect\(\(\) => \{[\s\S]*?onRewardReveal\?\./);
+assert.match(shopUpdater, /purchased\.includes\(item\.id\)\) return prev/);
+assert.match(shopUpdater, /prev\.aetherGems < item\.price/);
+assert.doesNotMatch(shopUpdater, /onRewardReveal|onShowAlert/);
 assert.match(shopSource, /data-reward-source=\{`shop-\$\{item\.id\}`\}/);
 assert.match(gachaSource, /data-reward-source="summon-results"/);
 assert.match(gachaSource, /animationPhase === 'showcase'[\s\S]{0,500}data-reward-source="summon-results"/);
+assert.match(gachaSource, /onRewardSourceReady\?/);
+assert.match(gachaSource, /animationPhase !== 'showcase'[\s\S]*?onRewardSourceReady\?\.\('summon-results'\)/);
 assert.doesNotMatch(gachaSource, /onRewardReveal/);
 
 assert.match(css, /\[data-reward-pulse="true"\]/);

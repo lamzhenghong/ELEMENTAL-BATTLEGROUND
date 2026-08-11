@@ -141,6 +141,32 @@ const requestMobileLandscape = async () => {
   }
 };
 
+type RewardTransactionStatus = 'pending' | 'accepted' | 'rejected';
+
+type RewardTransactionCommit =
+  | { type: 'quest'; questIds: string[]; completedQuestCountBefore: number }
+  | { type: 'login'; day: number };
+
+interface RewardTransactionNotification {
+  message: string;
+  solution?: string;
+  type: 'success' | 'error' | 'info';
+  delayMs?: number;
+}
+
+interface PendingRewardTransaction {
+  id: string;
+  lockKey: string;
+  source: string;
+  status: RewardTransactionStatus;
+  rewards: Array<Pick<RewardRevealEvent, 'kind' | 'quantity'>>;
+  commit?: RewardTransactionCommit;
+  notifications: RewardTransactionNotification[];
+  audio?: 'wave-clear' | 'ultimate';
+  selectedCharacterId?: string;
+  loginWeapon?: Weapon;
+}
+
 export default function App() {
   const [saveState, setSaveState] = useState<SaveState>(createInitialSaveState());
   const [localSaveReady, setLocalSaveReady] = useState(false);
@@ -239,6 +265,10 @@ export default function App() {
   const [aetherTransition, dispatchAetherTransition] = useReducer(reduceAetherTransition, 'menu', createIdleTransition);
   const [rewardRevealQueue, setRewardRevealQueue] = useState<RewardRevealEvent[]>([]);
   const rewardRevealSequenceRef = useRef(0);
+  const rewardTransactionSequenceRef = useRef(0);
+  const pendingRewardTransactionsRef = useRef<Map<string, PendingRewardTransaction>>(new Map());
+  const rewardTransactionLocksRef = useRef<Set<string>>(new Set());
+  const deferredRewardRevealsRef = useRef<Map<string, RewardRevealEvent[]>>(new Map());
   const createRewardRevealEvent = useCallback((
     kind: RewardRevealEvent['kind'],
     quantity: number,
@@ -262,6 +292,32 @@ export default function App() {
   const completeRewardReveal = useCallback((id: string) => {
     setRewardRevealQueue(current => current.filter(event => event.id !== id));
   }, []);
+  const beginRewardTransaction = useCallback((lockKey: string, source: string) => {
+    if (rewardTransactionLocksRef.current.has(lockKey)) return null;
+
+    rewardTransactionLocksRef.current.add(lockKey);
+    const transaction: PendingRewardTransaction = {
+      id: `reward-transaction-${Date.now()}-${++rewardTransactionSequenceRef.current}`,
+      lockKey,
+      source,
+      status: 'pending',
+      rewards: [],
+      notifications: [],
+    };
+    pendingRewardTransactionsRef.current.set(transaction.id, transaction);
+    return transaction;
+  }, []);
+  const deferRewardReveal = useCallback((events: readonly RewardRevealEvent[], sourceAnchor: string) => {
+    const deferred = deferredRewardRevealsRef.current.get(sourceAnchor) || [];
+    deferredRewardRevealsRef.current.set(sourceAnchor, [...deferred, ...events]);
+  }, []);
+  const flushDeferredRewardReveals = useCallback((sourceAnchor: string) => {
+    const deferred = deferredRewardRevealsRef.current.get(sourceAnchor);
+    if (!deferred || deferred.length === 0) return;
+
+    deferredRewardRevealsRef.current.delete(sourceAnchor);
+    enqueueRewardReveal(deferred, sourceAnchor);
+  }, [enqueueRewardReveal]);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(
     () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
   );
@@ -601,13 +657,57 @@ export default function App() {
     type: 'success' | 'error' | 'info';
   } | null>(null);
 
-  const showInGameAlert = (message: string, actionSolution?: string, type: 'success' | 'error' | 'info' = 'info') => {
+  const showInGameAlert = useCallback((message: string, actionSolution?: string, type: 'success' | 'error' | 'info' = 'info') => {
     setCustomNotification({ message, actionSolution, type });
     // Auto clear after 4 seconds
     setTimeout(() => {
       setCustomNotification(null);
     }, 5000);
-  };
+  }, []);
+
+  const flushAcceptedRewardTransactions = useCallback((committedSaveState: SaveState) => {
+    const completedTransactions: PendingRewardTransaction[] = [];
+
+    pendingRewardTransactionsRef.current.forEach(transaction => {
+      if (transaction.status === 'pending') return;
+
+      const commitAccepted = transaction.status === 'accepted' && transaction.commit
+        ? transaction.commit.type === 'quest'
+          ? committedSaveState.completedQuestIds.length
+              >= transaction.commit.completedQuestCountBefore + transaction.commit.questIds.length
+            && transaction.commit.questIds.every(questId => committedSaveState.completedQuestIds.includes(questId))
+          : (committedSaveState.loginRewardClaimedDays || []).includes(transaction.commit.day)
+        : transaction.status === 'rejected';
+      if (!commitAccepted) return;
+
+      pendingRewardTransactionsRef.current.delete(transaction.id);
+      rewardTransactionLocksRef.current.delete(transaction.lockKey);
+      completedTransactions.push(transaction);
+    });
+
+    completedTransactions.forEach(transaction => {
+      if (transaction.status === 'accepted') {
+        enqueueRewardReveal(
+          transaction.rewards.map(reward => createRewardRevealEvent(reward.kind, reward.quantity)),
+          transaction.source,
+        );
+      }
+      transaction.notifications.forEach(notification => {
+        const notify = () => showInGameAlert(notification.message, notification.solution, notification.type);
+        if (notification.delayMs) {
+          window.setTimeout(notify, notification.delayMs);
+        } else {
+          notify();
+        }
+      });
+      if (transaction.audio === 'wave-clear') AetheriaAudioEngine.playWaveClear();
+      if (transaction.audio === 'ultimate') AetheriaAudioEngine.playUltimate();
+    });
+  }, [createRewardRevealEvent, enqueueRewardReveal, showInGameAlert]);
+
+  useEffect(() => {
+    flushAcceptedRewardTransactions(saveState);
+  }, [flushAcceptedRewardTransactions, saveState]);
 
   // FPS meter & Latency ticker
   useEffect(() => {
@@ -1146,7 +1246,7 @@ export default function App() {
       ...prev,
       inventoryWeapons: [...prev.inventoryWeapons, weapon]
     }));
-    enqueueRewardReveal([createRewardRevealEvent('weapon', 1)], 'summon-results');
+    deferRewardReveal([createRewardRevealEvent('weapon', 1)], 'summon-results');
   };
 
   const handleUpgradeWeapon = (weaponId: string) => {
@@ -1694,21 +1794,20 @@ export default function App() {
 
   // Claim specific finished Quest rewards
   const claimQuestReward = (questId: string) => {
-    const quest = saveState.activeQuests.find(q => q.id === questId);
-    if (!quest || !quest.completed) return;
-    const duplicateCharacterMora = quest.rewardCharacterId
-      && saveState.unlockedCharacterIds.includes(quest.rewardCharacterId)
-      ? 2000
-      : 0;
-    const questRewardEvents: RewardRevealEvent[] = [
-      createRewardRevealEvent('gems', quest.rewardTokens),
-      createRewardRevealEvent('mora', quest.rewardMora + duplicateCharacterMora),
-    ];
-    if (quest.rewardWeaponName) {
-      questRewardEvents.push(createRewardRevealEvent('weapon', 1));
-    }
+    const transaction = beginRewardTransaction(`quest:${questId}`, `quest-${questId}`);
+    if (!transaction) return;
 
     triggerSaveUpdate(prev => {
+      const quest = prev.activeQuests.find(quest =>
+        quest.id === questId
+        && quest.completed
+      );
+      if (!quest) {
+        transaction.status = 'rejected';
+        return prev;
+      }
+      transaction.source = `quest-${quest.id}`;
+
       let nextGems = prev.aetherGems + quest.rewardTokens;
       let nextMora = prev.mora + quest.rewardMora;
       
@@ -1801,34 +1900,48 @@ export default function App() {
       };
 
       nextState = checkQuestProgress(nextState, 'own_chars', nextState.unlockedCharacterIds.length);
+      transaction.status = 'accepted';
+      transaction.commit = {
+        type: 'quest',
+        questIds: [questId],
+        completedQuestCountBefore: prev.completedQuestIds.length,
+      };
+      transaction.rewards = [
+        { kind: 'gems', quantity: quest.rewardTokens },
+        { kind: 'mora', quantity: nextMora - prev.mora },
+      ];
+      if (quest.rewardWeaponName) transaction.rewards.push({ kind: 'weapon', quantity: 1 });
+      const witBonusMessage = witBonus > 0 ? ` and +${witBonus} Hero's Wit` : '';
+      transaction.notifications = [{
+        message: 'Claimed Quest Reward Successfully!',
+        solution: `Received +${quest.rewardTokens} Aether Gems and +${quest.rewardMora.toLocaleString()} Mora${witBonusMessage}. Spend them right away in wishes loop!`,
+        type: 'success',
+      }];
+      transaction.audio = 'wave-clear';
       return nextState;
     });
-
-    enqueueRewardReveal(questRewardEvents, `quest-${quest.id}`);
-
-    const quest2 = saveState.activeQuests.find(q => q.id === questId);
-    const witBonus2 = quest2 && ['kill_enemy','kill_boss','parry','reaction'].includes(quest2.type) ? 3 : 0;
-    showInGameAlert(
-      "Claimed Quest Reward Successfully!",
-      `Received +${quest.rewardTokens} Aether Gems and +${quest.rewardMora.toLocaleString()} Mora${ witBonus2 > 0 ? ` and +${witBonus2} Hero's Wit` : '' }. Spend them right away in wishes loop!`,
-      "success"
-    );
-    AetheriaAudioEngine.playWaveClear();
   };
 
   // Claim all completed quests at once
   const claimAllQuestRewards = () => {
-    const completedQuests = saveState.activeQuests.filter(q => q.completed);
-    if (completedQuests.length === 0) {
-      showInGameAlert("No Completed Quests", "Resolve active objectives in Combat Arena or Summon tabs first!", "info");
-      return;
-    }
-
-    const totalTokens = completedQuests.reduce((sum, q) => sum + q.rewardTokens, 0);
-    const totalMora = completedQuests.reduce((sum, q) => sum + q.rewardMora, 0);
-    const completedIds = completedQuests.map(q => q.id);
+    const transaction = beginRewardTransaction('quest:claim-all', 'quest-claim-all');
+    if (!transaction) return;
 
     triggerSaveUpdate(prev => {
+      const completedQuests = prev.activeQuests.filter(quest => quest.completed);
+      if (completedQuests.length === 0) {
+        transaction.status = 'rejected';
+        transaction.notifications = [{
+          message: 'No Completed Quests',
+          solution: 'Resolve active objectives in Combat Arena or Summon tabs first!',
+          type: 'info',
+        }];
+        return prev;
+      }
+
+      const totalTokens = completedQuests.reduce((sum, quest) => sum + quest.rewardTokens, 0);
+      const totalMora = completedQuests.reduce((sum, quest) => sum + quest.rewardMora, 0);
+      const completedIds = completedQuests.map(quest => quest.id);
       const filteredQuests = prev.activeQuests.filter(q => !completedIds.includes(q.id));
       let replenished = filteredQuests;
       
@@ -1846,57 +1959,66 @@ export default function App() {
       replenished = replenishQuestsGroup(replenished, 'weekly');
       replenished = replenishQuestsGroup(replenished, 'normal');
 
-      return {
+      const nextState = {
         ...prev,
         aetherGems: prev.aetherGems + totalTokens,
         mora: prev.mora + totalMora,
         activeQuests: replenished,
         completedQuestIds: [...prev.completedQuestIds, ...completedIds]
       };
+      transaction.status = 'accepted';
+      transaction.commit = {
+        type: 'quest',
+        questIds: completedIds,
+        completedQuestCountBefore: prev.completedQuestIds.length,
+      };
+      transaction.rewards = [
+        { kind: 'gems', quantity: totalTokens },
+        { kind: 'mora', quantity: totalMora },
+      ];
+      transaction.notifications = [{
+        message: 'Claimed All Quest Rewards!',
+        solution: `Received +${totalTokens} Aether Gems and +${totalMora.toLocaleString()} Mora. All completed quests successfully cataloged!`,
+        type: 'success',
+      }];
+      transaction.audio = 'ultimate';
+      return nextState;
     });
-
-    enqueueRewardReveal([
-      createRewardRevealEvent('gems', totalTokens),
-      createRewardRevealEvent('mora', totalMora),
-    ], 'quest-claim-all');
-
-    showInGameAlert(
-      "Claimed All Quest Rewards!",
-      `Received +${totalTokens} Aether Gems and +${totalMora.toLocaleString()} Mora. All completed quests successfully cataloged!`,
-      "success"
-    );
-    AetheriaAudioEngine.playUltimate();
   };
 
   const handleClaimLoginReward = (day: number) => {
-    // Prevent double claiming
-    if ((saveState.loginRewardClaimedDays || []).includes(day)) {
-      showInGameAlert("Reward already claimed!", "Keep checking in or claim subsequent days sequential rewards.", "error");
-      return;
-    }
-    
-    // Day can only be sequential (claimedDays.length + 1)
-    if (day !== (saveState.loginRewardClaimedDays || []).length + 1) {
-      showInGameAlert("Incorrect day sequence!", "You must claim rewards in order.", "error");
-      return;
-    }
-
-    // Check if the day is unlocked by the 24h login cooldown
-    if (day > (saveState.unlockedDaysCount || 1)) {
-      showInGameAlert("Day is locked!", "Wait for the 24-hour timer to expire to unlock this day's reward.", "error");
-      return;
-    }
-
-    const loginRewardEvents: RewardRevealEvent[] = [];
-    if (day === 2) loginRewardEvents.push(createRewardRevealEvent('weapon', 1));
-    if (day === 3) loginRewardEvents.push(createRewardRevealEvent('gems', 3000));
-    if (day === 4) loginRewardEvents.push(createRewardRevealEvent('mora', 20000));
-    if (day === 5) loginRewardEvents.push(createRewardRevealEvent('mora', 50000));
-    if (day === 6) loginRewardEvents.push(createRewardRevealEvent('gems', 5000));
+    const transaction = beginRewardTransaction(`login:${day}`, `login-${day}`);
+    if (!transaction) return;
 
     triggerSaveUpdate(prev => {
       const currentClaimed = prev.loginRewardClaimedDays || [];
-      if (currentClaimed.includes(day)) return prev;
+      if (currentClaimed.includes(day)) {
+        transaction.status = 'rejected';
+        transaction.notifications = [{
+          message: 'Reward already claimed!',
+          solution: 'Keep checking in or claim subsequent days sequential rewards.',
+          type: 'error',
+        }];
+        return prev;
+      }
+      if (day !== currentClaimed.length + 1) {
+        transaction.status = 'rejected';
+        transaction.notifications = [{
+          message: 'Incorrect day sequence!',
+          solution: 'You must claim rewards in order.',
+          type: 'error',
+        }];
+        return prev;
+      }
+      if (day > (prev.unlockedDaysCount || 1)) {
+        transaction.status = 'rejected';
+        transaction.notifications = [{
+          message: 'Day is locked!',
+          solution: "Wait for the 24-hour timer to expire to unlock this day's reward.",
+          type: 'error',
+        }];
+        return prev;
+      }
 
       let gemsReward = 0;
       let moraReward = 0;
@@ -1906,9 +2028,11 @@ export default function App() {
         // Day 1: 4-star hero
         const fourStarHeroes = PLAYABLE_CHARACTERS.filter(c => c.rarity === 4);
         const unowned = fourStarHeroes.filter(c => !prev.unlockedCharacterIds.includes(c.id));
-        const chosen = unowned.length > 0 
-          ? unowned[Math.floor(Math.random() * unowned.length)] 
-          : fourStarHeroes[Math.floor(Math.random() * fourStarHeroes.length)];
+        const chosen = PLAYABLE_CHARACTERS.find(character => character.id === transaction.selectedCharacterId)
+          || (unowned.length > 0
+            ? unowned[Math.floor(Math.random() * unowned.length)]
+            : fourStarHeroes[Math.floor(Math.random() * fourStarHeroes.length)]);
+        transaction.selectedCharacterId = chosen.id;
         
         rewardMsg = `Unlocked 4-Star Character: ${chosen.name}!`;
         
@@ -1924,16 +2048,6 @@ export default function App() {
         const currentPortraits = prev.characterPortraits || {};
         const currentLvl = currentPortraits[chosen.id] || 0;
         const nextLvl = isOwned ? Math.min(6, currentLvl + 1) : 0;
-
-        if (isOwned) {
-          setTimeout(() => {
-            showInGameAlert(
-              `✨ LOGIN REWARD DUPLICATE: ${chosen.name.toUpperCase()} PORTRAIT UPGRADED!`,
-              `${chosen.name}'s Portrait Level is now P${nextLvl}! (Stats boosted in combat)`,
-              "success"
-            );
-          }, 100);
-        }
 
         const newUnlockedIds = isOwned 
           ? prev.unlockedCharacterIds 
@@ -1953,27 +2067,42 @@ export default function App() {
         };
 
         const withProg = checkQuestProgress(updated, 'own_chars', updated.unlockedCharacterIds.length);
-        setTimeout(() => {
-          showInGameAlert(rewardMsg, "View your newly unlocked character in the Character Roster!", "success");
-        }, 300);
+        transaction.status = 'accepted';
+        transaction.commit = { type: 'login', day };
+        transaction.notifications = [
+          ...(isOwned ? [{
+            message: `✨ LOGIN REWARD DUPLICATE: ${chosen.name.toUpperCase()} PORTRAIT UPGRADED!`,
+            solution: `${chosen.name}'s Portrait Level is now P${nextLvl}! (Stats boosted in combat)`,
+            type: 'success' as const,
+            delayMs: 100,
+          }] : []),
+          {
+            message: rewardMsg,
+            solution: 'View your newly unlocked character in the Character Roster!',
+            type: 'success',
+            delayMs: 300,
+          },
+        ];
         return withProg;
 
       } else if (day === 2) {
         // Day 2: 4-star weapon
-        const fourStarWeapons = WEAPONS_DATABASE.filter(w => w.rarity === 4);
-        const chosen = fourStarWeapons[Math.floor(Math.random() * fourStarWeapons.length)];
-        
-        const newWeapon = {
-          id: 'w_login_' + Date.now() + '_' + Math.floor(Math.random() * 100000),
-          name: chosen.name,
-          rarity: chosen.rarity as 3 | 4 | 5,
-          weaponType: chosen.weaponType,
-          baseAtk: chosen.baseAtk,
-          statBonus: chosen.statBonus,
-          level: 1
-        };
+        if (!transaction.loginWeapon) {
+          const fourStarWeapons = WEAPONS_DATABASE.filter(w => w.rarity === 4);
+          const chosen = fourStarWeapons[Math.floor(Math.random() * fourStarWeapons.length)];
+          transaction.loginWeapon = {
+            id: 'w_login_' + Date.now() + '_' + Math.floor(Math.random() * 100000),
+            name: chosen.name,
+            rarity: chosen.rarity as 3 | 4 | 5,
+            weaponType: chosen.weaponType,
+            baseAtk: chosen.baseAtk,
+            statBonus: chosen.statBonus,
+            level: 1
+          };
+        }
+        const newWeapon = transaction.loginWeapon;
 
-        rewardMsg = `Acquired 4-Star Weapon: ${chosen.name}!`;
+        rewardMsg = `Acquired 4-Star Weapon: ${newWeapon.name}!`;
 
         const updated = {
           ...prev,
@@ -1981,9 +2110,15 @@ export default function App() {
           loginRewardClaimedDays: [...currentClaimed, day]
         };
 
-        setTimeout(() => {
-          showInGameAlert(rewardMsg, "Equip it in your Hero Forge menu!", "success");
-        }, 300);
+        transaction.status = 'accepted';
+        transaction.commit = { type: 'login', day };
+        transaction.rewards = [{ kind: 'weapon', quantity: 1 }];
+        transaction.notifications = [{
+          message: rewardMsg,
+          solution: 'Equip it in your Hero Forge menu!',
+          type: 'success',
+          delayMs: 300,
+        }];
         return updated;
 
       } else if (day === 3) {
@@ -2002,9 +2137,11 @@ export default function App() {
         // Day 7: random non-limited 5-star hero
         const fiveStarHeroes = getStandardFiveStarCharacters(PLAYABLE_CHARACTERS);
         const unowned = fiveStarHeroes.filter(c => !prev.unlockedCharacterIds.includes(c.id));
-        const chosen = unowned.length > 0 
-          ? unowned[Math.floor(Math.random() * unowned.length)] 
-          : fiveStarHeroes[Math.floor(Math.random() * fiveStarHeroes.length)];
+        const chosen = PLAYABLE_CHARACTERS.find(character => character.id === transaction.selectedCharacterId)
+          || (unowned.length > 0
+            ? unowned[Math.floor(Math.random() * unowned.length)]
+            : fiveStarHeroes[Math.floor(Math.random() * fiveStarHeroes.length)]);
+        transaction.selectedCharacterId = chosen.id;
 
         rewardMsg = `Unlocked LEGENDARY 5-Star Character: ${chosen.name}!`;
 
@@ -2020,16 +2157,6 @@ export default function App() {
         const currentPortraits = prev.characterPortraits || {};
         const currentLvl = currentPortraits[chosen.id] || 0;
         const nextLvl = isOwned ? Math.min(6, currentLvl + 1) : 0;
-
-        if (isOwned) {
-          setTimeout(() => {
-            showInGameAlert(
-              `✨ LOGIN REWARD DUPLICATE: ${chosen.name.toUpperCase()} PORTRAIT UPGRADED!`,
-              `${chosen.name}'s Portrait Level is now P${nextLvl}! (Stats boosted in combat)`,
-              "success"
-            );
-          }, 100);
-        }
 
         const newUnlockedIds = isOwned 
           ? prev.unlockedCharacterIds 
@@ -2049,9 +2176,22 @@ export default function App() {
         };
 
         const withProg = checkQuestProgress(updated, 'own_chars', updated.unlockedCharacterIds.length);
-        setTimeout(() => {
-          showInGameAlert(rewardMsg, "A god has descended to empower your line-up! Check your character screen.", "success");
-        }, 300);
+        transaction.status = 'accepted';
+        transaction.commit = { type: 'login', day };
+        transaction.notifications = [
+          ...(isOwned ? [{
+            message: `✨ LOGIN REWARD DUPLICATE: ${chosen.name.toUpperCase()} PORTRAIT UPGRADED!`,
+            solution: `${chosen.name}'s Portrait Level is now P${nextLvl}! (Stats boosted in combat)`,
+            type: 'success' as const,
+            delayMs: 100,
+          }] : []),
+          {
+            message: rewardMsg,
+            solution: 'A god has descended to empower your line-up! Check your character screen.',
+            type: 'success',
+            delayMs: 300,
+          },
+        ];
         return withProg;
       }
 
@@ -2062,9 +2202,18 @@ export default function App() {
         loginRewardClaimedDays: [...currentClaimed, day]
       };
 
-      setTimeout(() => {
-        showInGameAlert(rewardMsg, "Your currencies have been updated successfully.", "success");
-      }, 300);
+      transaction.status = 'accepted';
+      transaction.commit = { type: 'login', day };
+      transaction.rewards = [
+        ...(gemsReward > 0 ? [{ kind: 'gems' as const, quantity: gemsReward }] : []),
+        ...(moraReward > 0 ? [{ kind: 'mora' as const, quantity: moraReward }] : []),
+      ];
+      transaction.notifications = [{
+        message: rewardMsg,
+        solution: 'Your currencies have been updated successfully.',
+        type: 'success',
+        delayMs: 300,
+      }];
 
       if (moraReward > 0) {
         return checkQuestProgress(updated, 'mora_hoard', updated.mora);
@@ -2072,7 +2221,6 @@ export default function App() {
       return updated;
     });
 
-    enqueueRewardReveal(loginRewardEvents, `login-${day}`);
   };
 
   const completeStartSimulation = () => {
@@ -3196,6 +3344,7 @@ export default function App() {
                     ownedCharacterIds={saveState.unlockedCharacterIds || []}
                     onUnlockCharacter={(id) => handleUnlockCharacter(id)}
                     onAddWeapon={(w) => handleAddWeapon(w)}
+                    onRewardSourceReady={flushDeferredRewardReveals}
                     inventoryWeapons={saveState.inventoryWeapons || []}
                     characterPortraits={saveState.characterPortraits || {}}
                     bannerPity5Star={saveState.bannerPity5Star || {}}

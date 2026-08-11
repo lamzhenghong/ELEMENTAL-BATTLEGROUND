@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Coins, ShoppingBag, Clock, Shield, Sparkles,
   Snowflake, Sparkle, BookOpen, Layers, CheckCircle2 
@@ -60,8 +60,19 @@ interface GemsShopProps {
   onRewardReveal?: (events: readonly RewardRevealEvent[], sourceAnchor?: string) => void;
 }
 
+interface PendingPurchase {
+  itemId: string;
+  itemName: string;
+  price: number;
+  sourceAnchor: string;
+  baselineSaveState: SaveState;
+  artifact?: Artifact;
+  artifactId?: string;
+}
+
 export default function GemsShop({ saveState, onUpdateSaveState, onShowAlert, onRewardReveal }: GemsShopProps) {
   const [timeLeft, setTimeLeft] = useState<string>('59:59');
+  const pendingPurchasesRef = useRef<Map<string, PendingPurchase>>(new Map());
   
   // Current hour index
   const currentHourBlock = Math.floor(Date.now() / (1000 * 60 * 60));
@@ -80,6 +91,27 @@ export default function GemsShop({ saveState, onUpdateSaveState, onShowAlert, on
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    pendingPurchasesRef.current.forEach(pending => {
+      if (saveState === pending.baselineSaveState) return;
+
+      const purchaseCommitted = (saveState.purchasedShopItemIds || []).includes(pending.itemId);
+      const artifactCommitted = !pending.artifactId
+        || (saveState.inventoryArtifacts || []).some(artifact => artifact.id === pending.artifactId);
+      pendingPurchasesRef.current.delete(pending.itemId);
+      if (!purchaseCommitted || !artifactCommitted) return;
+
+      onShowAlert(`Successfully purchased ${pending.itemName}!`, `Spent ${pending.price} Aether Gems.`, 'success');
+      if (pending.artifactId) {
+        onRewardReveal?.([{
+          id: `shop-reward-${currentHourBlock}-${pending.itemId}`,
+          kind: 'artifact',
+          quantity: 1,
+        }], pending.sourceAnchor);
+      }
+    });
+  }, [currentHourBlock, onRewardReveal, onShowAlert, saveState]);
 
   // Generate deterministic items for the current hour
   const shopItems = useMemo(() => {
@@ -245,6 +277,7 @@ export default function GemsShop({ saveState, onUpdateSaveState, onShowAlert, on
   // Handle Purchasing an Item
   const handlePurchase = (item: ShopItem) => {
     if ((saveState.purchasedShopItemIds || []).includes(item.id)) return;
+    if (pendingPurchasesRef.current.has(item.id)) return;
 
     const unlockedSkins = saveState.unlockedDamageSkins || ['Default'];
     if (item.type === 'skin' && item.skinId && unlockedSkins.includes(item.skinId)) {
@@ -260,12 +293,36 @@ export default function GemsShop({ saveState, onUpdateSaveState, onShowAlert, on
     // Play purchase audio
     AetheriaAudioEngine.playClick();
 
+    const artifact = item.type === 'artifact' && item.artifactSet && item.artifactSlot && item.artifactRarity
+      ? {
+        id: `shop_art_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        name: item.name,
+        slot: item.artifactSlot,
+        set: item.artifactSet,
+        rarity: item.artifactRarity,
+        isLocked: false,
+      } satisfies Artifact
+      : undefined;
+    const pending: PendingPurchase = {
+      itemId: item.id,
+      itemName: item.name,
+      price: item.price,
+      sourceAnchor: `shop-${item.id}`,
+      baselineSaveState: saveState,
+      artifact,
+      artifactId: artifact?.id,
+    };
+    pendingPurchasesRef.current.set(item.id, pending);
+
     onUpdateSaveState(prev => {
-      const currentGems = prev.aetherGems - item.price;
       const purchased = [...(prev.purchasedShopItemIds || [])];
       
       // Prevent double buying in the same hour
       if (purchased.includes(item.id)) return prev;
+      if (prev.aetherGems < item.price) return prev;
+      if (item.type === 'skin' && item.skinId && (prev.unlockedDamageSkins || ['Default']).includes(item.skinId)) return prev;
+
+      const currentGems = prev.aetherGems - item.price;
       purchased.push(item.id);
 
       let updatedArtifacts = prev.inventoryArtifacts ? [...prev.inventoryArtifacts] : [];
@@ -281,24 +338,13 @@ export default function GemsShop({ saveState, onUpdateSaveState, onShowAlert, on
           return invItem;
         });
       } else if (item.type === 'artifact' && item.artifactSet && item.artifactSlot && item.artifactRarity) {
-        // Create new artifact
-        const newArt: Artifact = {
-          id: `shop_art_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-          name: item.name,
-          slot: item.artifactSlot,
-          set: item.artifactSet,
-          rarity: item.artifactRarity,
-          isLocked: false
-        };
-        updatedArtifacts.push(newArt);
+        if (pending.artifact) updatedArtifacts.push(pending.artifact);
       } else if (item.type === 'skin' && item.skinId) {
         // Unlock damage skin
         if (!updatedSkins.includes(item.skinId)) {
           updatedSkins.push(item.skinId);
         }
       }
-
-      onShowAlert(`Successfully purchased ${item.name}!`, `Spent ${item.price} Aether Gems.`, 'success');
 
       return {
         ...prev,
@@ -309,14 +355,6 @@ export default function GemsShop({ saveState, onUpdateSaveState, onShowAlert, on
         purchasedShopItemIds: purchased
       };
     });
-
-    if (item.type === 'artifact') {
-      onRewardReveal?.([{
-        id: `shop-reward-${currentHourBlock}-${item.id}`,
-        kind: 'artifact',
-        quantity: 1,
-      }], `shop-${item.id}`);
-    }
   };
 
   return (

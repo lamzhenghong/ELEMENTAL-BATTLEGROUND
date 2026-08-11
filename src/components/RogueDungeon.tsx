@@ -123,6 +123,9 @@ export default function RogueDungeon({
   const [completedRunDurationSecs, setCompletedRunDurationSecs] = useState<number | null>(() => getSavedValue('completedRunDurationSecs', null));
   const [completedRunIsNewRecord, setCompletedRunIsNewRecord] = useState<boolean>(() => getSavedValue('completedRunIsNewRecord', false));
   const hasCompletedRunRef = useRef(false);
+  const runTokenRef = useRef(0);
+  const completedRoomTokenRef = useRef<string | null>(null);
+  const activeRoomTokenRef = useRef(`${runTokenRef.current}:${currentRoomIdx}`);
   
   const [combatActive, setCombatActive] = useState<boolean>(false);
   const [showAbandonConfirm, setShowAbandonConfirm] = useState<boolean>(false);
@@ -232,6 +235,9 @@ export default function RogueDungeon({
     setCompletedRunDurationSecs(null);
     setCompletedRunIsNewRecord(false);
     hasCompletedRunRef.current = false;
+    runTokenRef.current += 1;
+    activeRoomTokenRef.current = `${runTokenRef.current}:0`;
+    completedRoomTokenRef.current = null;
     setCombatActive(false);
     onIncrementStat('rogueRoom', 1);
     
@@ -249,6 +255,11 @@ export default function RogueDungeon({
     map: ('battle' | 'elite' | 'rest' | 'boss')[],
     hps: Record<string, number>
   ) => {
+    const roomToken = `${runTokenRef.current}:${idx}`;
+    if (activeRoomTokenRef.current !== roomToken) {
+      activeRoomTokenRef.current = roomToken;
+      completedRoomTokenRef.current = null;
+    }
     const rType = map[idx];
     setRoomCompleted(false);
     
@@ -300,6 +311,9 @@ export default function RogueDungeon({
 
   // Handle combat end callback
   const handleDungeonBattleEnd = (victory: boolean, remainingHps: Record<string, number>, remainingUlts?: Record<string, number>) => {
+    const roomToken = `${runTokenRef.current}:${currentRoomIdx}`;
+    if (completedRoomTokenRef.current === roomToken) return;
+    completedRoomTokenRef.current = roomToken;
     setCombatActive(false);
     if (victory) {
       setPartyHp(remainingHps);
