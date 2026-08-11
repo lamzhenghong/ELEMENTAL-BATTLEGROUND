@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { PLAYABLE_CHARACTERS } from '../data/characters';
 import { PlayableCharacter, Weapon, InventoryItem, ElementType, Artifact, ArtifactSlot, ArtifactSet } from '../types';
@@ -28,6 +28,12 @@ import {
 import CharacterRoleBadge from './CharacterRoleBadge';
 import ForgeFocusStage from './ForgeFocusStage';
 import WeaponForgePanel from './WeaponForgePanel';
+import ArtifactSetProgress from './artifacts/ArtifactSetProgress';
+import {
+  getArtifactSetProgress,
+  getPrimaryIncompleteSet,
+  type ArtifactSetVisualTier,
+} from '../utils/artifactSetVisuals';
 import {
   getForgeAnimationProfile,
   type ForgeOperationEvent,
@@ -110,6 +116,9 @@ export default function InventoryManager({
   const [salvageConfirmArtifactId, setSalvageConfirmArtifactId] = useState<string | null>(null);
   const [forgeOperation, setForgeOperation] = useState<ForgeOperationEvent | undefined>();
   const [forgeOperationVersion, setForgeOperationVersion] = useState(0);
+  const [artifactResonanceActivation, setArtifactResonanceActivation] = useState<2 | 4 | null>(null);
+  const artifactResonanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previousArtifactTierRef = useRef<Record<string, ArtifactSetVisualTier>>({});
 
   const [rarityFilter, setRarityFilter] = useState<'all' | 5 | 4 | 3>('all');
   const [elementFilter, setElementFilter] = useState<'all' | ElementType>('all');
@@ -242,6 +251,14 @@ export default function InventoryManager({
   const equippedArts = Object.entries(equippedArtifactIds)
     .map(([slot, artId]) => inventoryArtifacts.find(a => a.id === artId))
     .filter((a): a is Artifact => !!a);
+  const artifactSetProgress = getArtifactSetProgress(equippedArts);
+  const suggestedArtifactSet = getPrimaryIncompleteSet(artifactSetProgress);
+  const artifactSetTierSignature = artifactSetProgress.map(progress => `${progress.set}:${progress.tier}`).join('|');
+  const artifactResonanceAnnouncement = artifactResonanceActivation === 4
+    ? '4-Piece Resonance Active'
+    : artifactResonanceActivation === 2
+      ? '2-Piece Resonance Active'
+      : '';
 
   const buildStats = calculateCharacterBuildStats({
     character: selectedChar,
@@ -273,6 +290,36 @@ export default function InventoryManager({
     if (selectedWeaponId && inventoryWeapons.some(weapon => weapon.id === selectedWeaponId)) return;
     setSelectedWeaponId(inventoryWeapons[0]?.id || null);
   }, [inventoryWeapons, selectedWeaponId]);
+
+  useEffect(() => {
+    let activatedTier: 2 | 4 | null = null;
+    artifactSetProgress.forEach(progress => {
+      const key = `${selectedChar.id}:${progress.set}`;
+      const previousTier = previousArtifactTierRef.current[key];
+      previousArtifactTierRef.current[key] = progress.tier;
+      if (
+        previousTier !== undefined
+        && (progress.tier === 2 || progress.tier === 4)
+        && progress.tier > previousTier
+        && progress.tier > (activatedTier || 0)
+      ) {
+        activatedTier = progress.tier;
+      }
+    });
+    if (!activatedTier) return;
+
+    setArtifactResonanceActivation(activatedTier);
+    AetheriaAudioEngine.playArtifactResonance(activatedTier);
+    if (artifactResonanceTimerRef.current) clearTimeout(artifactResonanceTimerRef.current);
+    artifactResonanceTimerRef.current = setTimeout(() => {
+      setArtifactResonanceActivation(null);
+      artifactResonanceTimerRef.current = null;
+    }, 850);
+  }, [artifactSetTierSignature, selectedChar.id]);
+
+  useEffect(() => () => {
+    if (artifactResonanceTimerRef.current) clearTimeout(artifactResonanceTimerRef.current);
+  }, []);
 
   useEffect(() => {
     if (!forgeOperation) return undefined;
@@ -1674,6 +1721,15 @@ export default function InventoryManager({
               <p className="text-xs text-slate-400 lowercase font-mono">
                 equip 4 artifacts (helmet, hands, leg, shoe) to receive HP, Damage, CRIT, and CD reductions.
               </p>
+
+              <div aria-live="polite">
+                <span className="sr-only">{artifactResonanceAnnouncement}</span>
+                <ArtifactSetProgress
+                  progress={artifactSetProgress}
+                  suggestedSet={suggestedArtifactSet}
+                  activationTier={artifactResonanceActivation}
+                />
+              </div>
 
               {/* Slots Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

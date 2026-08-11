@@ -32,6 +32,7 @@ interface InGameSettingsModalProps {
   bgmVolume: number;
   sfxVolume: number;
   screenShakeEnabled: boolean;
+  hapticsEnabled: boolean;
   disableGameplayCutscenes: boolean;
   combatSpeed: number;
   fpsLimit: '60' | 'none';
@@ -47,6 +48,7 @@ interface InGameSettingsModalProps {
   onToggleDevCheats: () => void;
   onSelectUiTheme: (themeId: UiThemeId) => void;
   onToggleScreenShake: () => void;
+  onToggleHaptics: () => void;
   onToggleGameplayCutscenes: () => void;
   onCombatSpeedChange: (speed: number) => void;
   onFpsLimitChange: (limit: '60' | 'none') => void;
@@ -66,6 +68,7 @@ export default function InGameSettingsModal({
   bgmVolume,
   sfxVolume,
   screenShakeEnabled,
+  hapticsEnabled,
   disableGameplayCutscenes,
   combatSpeed,
   fpsLimit,
@@ -81,6 +84,7 @@ export default function InGameSettingsModal({
   onToggleDevCheats,
   onSelectUiTheme,
   onToggleScreenShake,
+  onToggleHaptics,
   onToggleGameplayCutscenes,
   onCombatSpeedChange,
   onFpsLimitChange,
@@ -275,6 +279,22 @@ export default function InGameSettingsModal({
                     }`}
                   >
                     {screenShakeEnabled ? 'ENABLED' : 'DISABLED'}
+                  </button>
+                </div>
+
+                <div className="flex justify-between items-center border-b border-white/5 pb-3">
+                  <div>
+                    <span className="text-[11px] text-slate-300 uppercase font-bold block">Combat Haptics</span>
+                    <span className="text-[9px] text-slate-500">Mobile vibration and supported controller rumble.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={onToggleHaptics}
+                    className={`p-1.5 px-3 rounded text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                      hapticsEnabled ? activeUiTheme.settingsButtonClass : 'bg-slate-800 text-slate-500 border border-white/5'
+                    }`}
+                  >
+                    {hapticsEnabled ? 'ENABLED' : 'DISABLED'}
                   </button>
                 </div>
 

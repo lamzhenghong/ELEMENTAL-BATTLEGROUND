@@ -509,6 +509,63 @@ class AudioEngine {
     playTone(495, 0.28);
   }
 
+  public playFinalHit(element: string = 'neutral') {
+    this.resume();
+    if (!this.ctx || this.isMuted || !this.sfxGain) return;
+
+    const frequencies: Record<string, number> = {
+      Pyro: 165,
+      Hydro: 196,
+      Electro: 220,
+      Cryo: 247,
+      Dendro: 174,
+      Anemo: 208,
+      Geo: 147,
+      neutral: 185,
+    };
+    const now = this.ctx.currentTime;
+    const base = frequencies[element] ?? frequencies.neutral;
+    const impact = this.ctx.createOscillator();
+    const accent = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    impact.type = 'triangle';
+    accent.type = 'sine';
+    impact.frequency.setValueAtTime(base * 1.8, now);
+    impact.frequency.exponentialRampToValueAtTime(base * 0.72, now + 0.13);
+    accent.frequency.setValueAtTime(base * 3, now);
+    gain.gain.setValueAtTime(0.2, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.17);
+    impact.connect(gain);
+    accent.connect(gain);
+    gain.connect(this.sfxGain);
+    impact.start(now);
+    accent.start(now);
+    impact.stop(now + 0.18);
+    accent.stop(now + 0.11);
+  }
+
+  public playArtifactResonance(tier: 2 | 4) {
+    this.resume();
+    if (!this.ctx || this.isMuted || !this.sfxGain) return;
+
+    const now = this.ctx.currentTime;
+    const notes = tier === 4 ? [392, 523.25, 659.25] : [392, 523.25];
+    notes.forEach((frequency, index) => {
+      const oscillator = this.ctx!.createOscillator();
+      const gain = this.ctx!.createGain();
+      const start = now + index * 0.055;
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(frequency, start);
+      gain.gain.setValueAtTime(0.001, start);
+      gain.gain.linearRampToValueAtTime(tier === 4 ? 0.13 : 0.09, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.22);
+      oscillator.connect(gain);
+      gain.connect(this.sfxGain!);
+      oscillator.start(start);
+      oscillator.stop(start + 0.24);
+    });
+  }
+
   public playWaveClear() {
     this.resume();
     if (!this.ctx || this.isMuted) return;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { PLAYABLE_CHARACTERS } from '../data/characters';
-import { ElementType, Weapon, CombatCharacter } from '../types';
+import { Artifact, ElementType, Weapon, CombatCharacter } from '../types';
 import { 
   Trophy, ShieldAlert, Sparkles, Heart, Zap, Play, ArrowRight, Shield, Award,
   Flame, Droplets, Wind, Orbit, RefreshCw
@@ -27,6 +27,8 @@ interface RogueDungeonProps {
   characterLevels: Record<string, number>;
   characterEquippedWeapon: Record<string, string>;
   inventoryWeapons: Weapon[];
+  inventoryArtifacts?: Artifact[];
+  characterEquippedArtifacts?: Record<string, Record<string, string>>;
   characterPortraits: Record<string, number>;
   onEarnRewards: (gems: number, mora: number, exp: number) => void;
   onIncrementStat: (pk: any, val?: number) => void;
@@ -39,6 +41,7 @@ interface RogueDungeonProps {
   devCheatsEnabled?: boolean;
   playerLevel?: number;
   screenShakeEnabled?: boolean;
+  hapticsEnabled?: boolean;
   combatSpeed?: number;
   fpsLimit?: '60' | 'none';
   language?: LanguageType;
@@ -63,6 +66,8 @@ export default function RogueDungeon({
   characterLevels,
   characterEquippedWeapon,
   inventoryWeapons,
+  inventoryArtifacts = [],
+  characterEquippedArtifacts = {},
   characterPortraits,
   onEarnRewards,
   onIncrementStat,
@@ -75,6 +80,7 @@ export default function RogueDungeon({
   devCheatsEnabled = true,
   playerLevel = 1,
   screenShakeEnabled = true,
+  hapticsEnabled = true,
   combatSpeed = 1.0,
   fpsLimit = '60',
   language = 'en',
@@ -465,6 +471,8 @@ export default function RogueDungeon({
           characterLevels={characterLevels}
           characterEquippedWeapon={characterEquippedWeapon}
           inventoryWeapons={inventoryWeapons}
+          inventoryArtifacts={inventoryArtifacts}
+          characterEquippedArtifacts={characterEquippedArtifacts}
           characterPortraits={characterPortraits}
           dungeonMode={true}
           dungeonBuffs={activeBuffs}
@@ -479,6 +487,7 @@ export default function RogueDungeon({
           devCheatsEnabled={devCheatsEnabled}
           playerLevel={playerLevel}
           screenShakeEnabled={screenShakeEnabled}
+          hapticsEnabled={hapticsEnabled}
           combatSpeed={combatSpeed}
           fpsLimit={fpsLimit}
           language={language}

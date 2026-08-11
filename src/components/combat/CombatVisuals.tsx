@@ -1,5 +1,7 @@
 import React, { useMemo } from 'react';
 import { motion } from 'motion/react';
+import type { CriticalVisualIdentity, DamageNumberMotion } from '../../utils/damageFeedback';
+import CriticalHitStyle from './CriticalHitStyle';
 
 export interface FloatingDamageTextEntry {
   id: string;
@@ -11,6 +13,8 @@ export interface FloatingDamageTextEntry {
   isCrit: boolean;
   skin?: string;
   isDot?: boolean;
+  motion?: DamageNumberMotion;
+  criticalStyle?: CriticalVisualIdentity;
 }
 
 interface FloatingDamageTextDOMProps {
@@ -20,16 +24,12 @@ interface FloatingDamageTextDOMProps {
 
 export function FloatingDamageTextDOM({ t }: FloatingDamageTextDOMProps) {
   const keyframes = useMemo(() => {
-    // Generate random angle (-20 to 20 degrees) and initial speed for the burst
-    const angle = (Math.random() * 40 - 20) * (Math.PI / 180);
-    const speed = t.isDot ? 45 : t.isCrit ? (150 + Math.random() * 70) : (100 + Math.random() * 60);
-    const dir = Math.random() > 0.5 ? 1 : -1;
-
-    // vx is horizontal, vy is vertical (upward)
-    const vx = dir * speed * Math.sin(Math.abs(angle) + 0.18);
-    const vy = -speed * Math.cos(angle);
-    const gravity = t.isDot ? 120 : t.isCrit ? 520 : 440;
-    const duration = 0.75; // 750ms total lifetime
+    const seed = Array.from(t.id).reduce((value, char) => ((value * 31) + char.charCodeAt(0)) | 0, 7);
+    const fallbackDirection = seed % 2 === 0 ? 1 : -1;
+    const vx = t.motion?.velocityX ?? fallbackDirection * (t.isDot ? 12 : t.isCrit ? 44 : 28);
+    const vy = t.motion?.velocityY ?? (t.isDot ? -45 : t.isCrit ? -142 : -108);
+    const gravity = t.motion?.gravity ?? (t.isDot ? 120 : t.isCrit ? 390 : 430);
+    const duration = t.motion?.duration ?? 0.75;
 
     const xPath: number[] = [];
     const yPath: number[] = [];
@@ -67,8 +67,8 @@ export function FloatingDamageTextDOM({ t }: FloatingDamageTextDOMProps) {
       }
     }
 
-    return { x: xPath, y: yPath, opacity: opacityPath, scale: scalePath };
-  }, [t.id, t.isCrit, t.isDot]);
+    return { x: xPath, y: yPath, opacity: opacityPath, scale: scalePath, duration };
+  }, [t.id, t.isCrit, t.isDot, t.motion]);
 
   let skinStyle: React.CSSProperties = {
     position: 'absolute',
@@ -120,7 +120,7 @@ export function FloatingDamageTextDOM({ t }: FloatingDamageTextDOMProps) {
         }}
         exit={{ opacity: 0 }}
         transition={{
-          duration: 0.75,
+          duration: keyframes.duration,
           ease: "linear",
           times: Array.from({ length: 11 }, (_, i) => i / 10)
         }}
@@ -139,7 +139,11 @@ export function FloatingDamageTextDOM({ t }: FloatingDamageTextDOMProps) {
             <div className="absolute inset-[-6px] bg-purple-950/30 rounded-full blur-sm -z-10 animate-ping pointer-events-none" style={{ animationDuration: '2s' }} />
           )}
 
-          <span>{t.text}</span>
+          {t.isCrit ? (
+            <CriticalHitStyle identity={t.criticalStyle || 'neutral'}>{t.text}</CriticalHitStyle>
+          ) : (
+            <span>{t.text}</span>
+          )}
         </div>
       </motion.div>
     </div>

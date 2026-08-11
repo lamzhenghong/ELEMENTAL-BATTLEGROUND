@@ -7,6 +7,7 @@ interface MainMenuSettingsModalProps {
   bgmVolume: number;
   sfxVolume: number;
   screenShakeEnabled: boolean;
+  hapticsEnabled: boolean;
   devCheatsEnabled: boolean;
   playerLevel: number;
   activeThemeId: UiThemeId;
@@ -15,6 +16,7 @@ interface MainMenuSettingsModalProps {
   onBgmVolumeChange: (value: number) => void;
   onSfxVolumeChange: (value: number) => void;
   onScreenShakeChange: (enabled: boolean) => void;
+  onHapticsChange: (enabled: boolean) => void;
   onSelectTheme: (themeId: UiThemeId) => void;
   onOpenMobileControlEditor: () => void;
 }
@@ -24,6 +26,7 @@ export default function MainMenuSettingsModal({
   bgmVolume,
   sfxVolume,
   screenShakeEnabled,
+  hapticsEnabled,
   devCheatsEnabled,
   playerLevel,
   activeThemeId,
@@ -32,6 +35,7 @@ export default function MainMenuSettingsModal({
   onBgmVolumeChange,
   onSfxVolumeChange,
   onScreenShakeChange,
+  onHapticsChange,
   onSelectTheme,
   onOpenMobileControlEditor,
 }: MainMenuSettingsModalProps) {
@@ -65,6 +69,10 @@ export default function MainMenuSettingsModal({
             <label className="flex min-h-12 items-center justify-between gap-4 border-t border-white/10 pt-4 text-[10px] font-black uppercase tracking-wider text-slate-300">
               Screen Shake
               <input type="checkbox" checked={screenShakeEnabled} onChange={(event) => onScreenShakeChange(event.target.checked)} className="h-5 w-5 accent-cyan-400" />
+            </label>
+            <label className="flex min-h-12 items-center justify-between gap-4 border-t border-white/10 pt-4 text-[10px] font-black uppercase tracking-wider text-slate-300">
+              Combat Haptics
+              <input type="checkbox" checked={hapticsEnabled} onChange={(event) => onHapticsChange(event.target.checked)} className="h-5 w-5 accent-cyan-400" />
             </label>
           </div>
 

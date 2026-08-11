@@ -581,6 +581,9 @@ export default function App() {
     const saved = localStorage.getItem('aetheria_pref_screen_shake');
     return saved !== null ? saved === 'true' : true;
   });
+  const [hapticsEnabled, setHapticsEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('aetheria_pref_haptics') !== 'false';
+  });
   const [combatSpeed, setCombatSpeed] = useState<number>(() => {
     const saved = localStorage.getItem('aetheria_pref_combat_speed');
     return saved !== null ? parseFloat(saved) : 1.0;
@@ -589,6 +592,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('aetheria_pref_screen_shake', screenShakeEnabled.toString());
   }, [screenShakeEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem('aetheria_pref_haptics', hapticsEnabled.toString());
+  }, [hapticsEnabled]);
 
   useEffect(() => {
     localStorage.setItem('aetheria_pref_combat_speed', combatSpeed.toString());
@@ -2797,6 +2804,7 @@ export default function App() {
           bgmVolume={bgmVolume}
           sfxVolume={sfxVolume}
           screenShakeEnabled={screenShakeEnabled}
+          hapticsEnabled={hapticsEnabled}
           devCheatsEnabled={devCheatsEnabled}
           playerLevel={currentPlayerLevel}
           activeThemeId={activeUiThemeId}
@@ -2811,6 +2819,7 @@ export default function App() {
             AetheriaAudioEngine.setSfxVolume(value / 100);
           }}
           onScreenShakeChange={setScreenShakeEnabled}
+          onHapticsChange={setHapticsEnabled}
           onSelectTheme={handleSelectUiTheme}
           onOpenMobileControlEditor={() => setShowMobileControlEditor(true)}
         />
@@ -3314,6 +3323,8 @@ export default function App() {
                     characterLevels={saveState.characterLevels}
                     characterEquippedWeapon={saveState.characterEquippedWeapon}
                     inventoryWeapons={saveState.inventoryWeapons}
+                    inventoryArtifacts={saveState.inventoryArtifacts || []}
+                    characterEquippedArtifacts={saveState.characterEquippedArtifacts || {}}
                     characterPortraits={saveState.characterPortraits || {}}
                     highScoreWave={saveState.stats.highScoreWave || 1}
                     highScoreArtifactWave={saveState.stats.highScoreArtifactWave || 1}
@@ -3346,11 +3357,10 @@ export default function App() {
                     devCheatsEnabled={devCheatsEnabled}
                     playerLevel={saveState.playerLevel || 1}
                     screenShakeEnabled={screenShakeEnabled}
+                    hapticsEnabled={hapticsEnabled}
                     combatSpeed={combatSpeed}
                     fpsLimit={fpsLimit}
                     language={language}
-                    inventoryArtifacts={saveState.inventoryArtifacts || []}
-                    characterEquippedArtifacts={saveState.characterEquippedArtifacts || {}}
                     onAwardArtifact={handleAwardArtifact}
                     activeDamageSkin={saveState.activeDamageSkin || 'Default'}
                     disableGameplayCutscenes={saveState.disableGameplayCutscenes || false}
@@ -3374,6 +3384,8 @@ export default function App() {
                     characterLevels={saveState.characterLevels}
                     characterEquippedWeapon={saveState.characterEquippedWeapon}
                     inventoryWeapons={saveState.inventoryWeapons}
+                    inventoryArtifacts={saveState.inventoryArtifacts || []}
+                    characterEquippedArtifacts={saveState.characterEquippedArtifacts || {}}
                     characterPortraits={saveState.characterPortraits || {}}
                     onEarnRewards={(gems, mora, exp) => handleModifyCurrencies(gems, mora, exp)}
                     onIncrementStat={(pk, val) => handleIncrementStat(pk, val)}
@@ -3386,6 +3398,7 @@ export default function App() {
                     devCheatsEnabled={devCheatsEnabled}
                     playerLevel={saveState.playerLevel || 1}
                     screenShakeEnabled={screenShakeEnabled}
+                    hapticsEnabled={hapticsEnabled}
                     combatSpeed={combatSpeed}
                     fpsLimit={fpsLimit}
                     language={language}
@@ -4244,6 +4257,7 @@ export default function App() {
         bgmVolume={bgmVolume}
         sfxVolume={sfxVolume}
         screenShakeEnabled={screenShakeEnabled}
+        hapticsEnabled={hapticsEnabled}
         disableGameplayCutscenes={Boolean(saveState.disableGameplayCutscenes)}
         combatSpeed={combatSpeed}
         fpsLimit={fpsLimit}
@@ -4275,6 +4289,10 @@ export default function App() {
         onSelectUiTheme={handleSelectUiTheme}
         onToggleScreenShake={() => {
           setScreenShakeEnabled(!screenShakeEnabled);
+          AetheriaAudioEngine.playClick();
+        }}
+        onToggleHaptics={() => {
+          setHapticsEnabled(!hapticsEnabled);
           AetheriaAudioEngine.playClick();
         }}
         onToggleGameplayCutscenes={() => {
@@ -4369,6 +4387,7 @@ export default function App() {
               devCheatsEnabled={devCheatsEnabled}
               playerLevel={saveState.playerLevel || 1}
               screenShakeEnabled={screenShakeEnabled}
+              hapticsEnabled={hapticsEnabled}
               combatSpeed={combatSpeed}
               fpsLimit={fpsLimit}
               language={language}

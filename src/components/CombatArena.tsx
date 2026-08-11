@@ -28,6 +28,10 @@ import MobileJoystick from './MobileJoystick';
 import MobileControls from './MobileControls';
 import CharacterRoleBadge from './CharacterRoleBadge';
 import { FloatingDamageTextDOM, type FloatingDamageTextEntry } from './combat/CombatVisuals';
+import ArtifactSetEmblem from './artifacts/ArtifactSetEmblem';
+import { DamageFeedbackManager } from './combat/DamageFeedbackManager';
+import { drawEnemyDamageVisualState } from './combat/EnemyDamageVisualState';
+import { drawArtifactResonanceAura } from './combat/ArtifactResonanceAura';
 import { drawEnemyArchetypeEnemy } from './combat/enemyArchetypeVfx';
 import { drawBossModel } from './combat/bossModelRenderer';
 import {
@@ -162,6 +166,17 @@ import {
   tickCombatActionQueue,
   type QueuedCombatAction,
 } from '../utils/combatActionQueue';
+import {
+  getCriticalVisualIdentity,
+  getDamageNumberMotion,
+  getEnemyDamageVisualState,
+  getImpactShape,
+  type CriticalVisualIdentity,
+  type DamageNumberMotion,
+  type FeedbackQuality,
+} from '../utils/damageFeedback';
+import { HapticManager } from '../utils/haptics';
+import { getArtifactSetProgress, type ArtifactSetProgress } from '../utils/artifactSetVisuals';
 
 const EMPTY_STORY_CHOICE_SELECTIONS: StoryChoiceSelections = {};
 
@@ -171,6 +186,8 @@ interface DamageTextMeta {
   amount: number;
   reaction: string;
   isDot?: boolean;
+  motion?: DamageNumberMotion;
+  criticalStyle?: CriticalVisualIdentity;
 }
 
 interface CombatArenaProps {
@@ -195,6 +212,7 @@ interface CombatArenaProps {
   devCheatsEnabled?: boolean;
   playerLevel?: number;
   screenShakeEnabled?: boolean;
+  hapticsEnabled?: boolean;
   combatSpeed?: number;
   fpsLimit?: '60' | 'none';
   language?: LanguageType;
@@ -242,6 +260,7 @@ export default function CombatArena({
   devCheatsEnabled = true,
   playerLevel = 1,
   screenShakeEnabled = true,
+  hapticsEnabled = true,
   combatSpeed = 1.0,
   fpsLimit = '60',
   language = 'en',
@@ -276,6 +295,19 @@ export default function CombatArena({
   const [combatParty, setCombatParty] = useState<CombatCharacter[]>([]);
   const [activePartyIndex, setActivePartyIndex] = useState<number>(0);
   const activeChar = combatParty[activePartyIndex] || null;
+  const artifactProgressByCharacter = useMemo<Record<string, ArtifactSetProgress[]>>(() => {
+    const progress: Record<string, ArtifactSetProgress[]> = {};
+    partyIds.forEach(characterId => {
+      const equippedIds = Object.values(characterEquippedArtifacts[characterId] || {});
+      const equipped = equippedIds
+        .map(artifactId => inventoryArtifacts.find(artifact => artifact.id === artifactId))
+        .filter((artifact): artifact is Artifact => Boolean(artifact));
+      progress[characterId] = getArtifactSetProgress(equipped);
+    });
+    return progress;
+  }, [characterEquippedArtifacts, inventoryArtifacts, partyIds]);
+  const artifactProgressByCharacterRef = useRef(artifactProgressByCharacter);
+  artifactProgressByCharacterRef.current = artifactProgressByCharacter;
 
   const activeResonances = useMemo(() => {
     const elementCounts: Record<ElementType, number> = {} as any;
@@ -466,6 +498,12 @@ export default function CombatArena({
     bucket: DamageTextBucket;
     timeoutId: ReturnType<typeof setTimeout>;
   }>());
+  const damageTextPoolCursorRef = useRef(0);
+  const damageTextGenerationRef = useRef(new Map<string, number>());
+  const damageFeedbackRef = useRef(new DamageFeedbackManager(
+    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ? 12 : 24,
+  ));
+  const damageHitIndexRef = useRef(0);
   const lightningWarningRef = useRef<{ x: number; y: number; timer: number } | null>(null);
   const lightningStrikeVisualRef = useRef<{ x: number; y: number; duration: number } | null>(null);
   const lightningTimerRef = useRef<number>(0);
@@ -529,7 +567,8 @@ export default function CombatArena({
     isWorldSpace: boolean = true,
     damageMeta?: DamageTextMeta,
   ) => {
-    const id = Math.random().toString(36).substring(2, 9);
+    let id = '';
+    let generation = 0;
     
     let renderX = x;
     let renderY = y;
@@ -564,6 +603,7 @@ export default function CombatArena({
       const existing = damageTextBucketsRef.current.get(bucketKey);
       const merged = existing ? mergeDamageTextBucket(existing.bucket, event) : null;
       if (existing && merged) {
+        const existingGeneration = damageTextGenerationRef.current.get(existing.id) || 0;
         clearTimeout(existing.timeoutId);
         const mergedText = `${merged.isCrit ? 'CRIT ' : ''}${merged.amount}${merged.hitCount > 1 ? ` x${merged.hitCount}` : ''}`;
         setDomDamageTexts(previous => previous.map(entry => (
@@ -572,6 +612,7 @@ export default function CombatArena({
             : entry
         )));
         const timeoutId = setTimeout(() => {
+          if (damageTextGenerationRef.current.get(existing.id) !== existingGeneration) return;
           setDomDamageTexts(previous => previous.filter(entry => entry.id !== existing.id));
           if (damageTextBucketsRef.current.get(bucketKey!)?.id === existing.id) {
             damageTextBucketsRef.current.delete(bucketKey!);
@@ -583,6 +624,16 @@ export default function CombatArena({
       damageBucket = createDamageTextBucket(event);
       displayText = `${isCrit ? 'CRIT ' : ''}${damageBucket.amount}`;
     }
+
+    id = `damage-${damageTextPoolCursorRef.current}`;
+    damageTextPoolCursorRef.current = (damageTextPoolCursorRef.current + 1) % 24;
+    damageTextBucketsRef.current.forEach((entry, key) => {
+      if (entry.id !== id) return;
+      clearTimeout(entry.timeoutId);
+      damageTextBucketsRef.current.delete(key);
+    });
+    generation = (damageTextGenerationRef.current.get(id) || 0) + 1;
+    damageTextGenerationRef.current.set(id, generation);
 
     const formattedText = formatWithDamageSkin(displayText, activeDamageSkin);
 
@@ -630,15 +681,18 @@ export default function CombatArena({
       isCrit: damageMeta?.isDot ? false : isCrit,
       skin: activeDamageSkin,
       isDot: damageMeta?.isDot,
+      motion: damageMeta?.motion,
+      criticalStyle: damageMeta?.criticalStyle,
     };
     setDomDamageTexts(previous => {
-      const next = [...previous, nextEntry];
+      const next = [...previous.filter(entry => entry.id !== id), nextEntry];
       if (next.length <= 24) return next;
       const oldestNonCritical = next.findIndex(entry => !entry.isCrit);
       next.splice(oldestNonCritical >= 0 ? oldestNonCritical : 0, 1);
       return next;
     });
     const timeoutId = setTimeout(() => {
+      if (damageTextGenerationRef.current.get(id) !== generation) return;
       setDomDamageTexts(previous => previous.filter(entry => entry.id !== id));
       if (bucketKey && damageTextBucketsRef.current.get(bucketKey)?.id === id) {
         damageTextBucketsRef.current.delete(bucketKey);
@@ -723,6 +777,10 @@ export default function CombatArena({
     pendingImpactSoundRef.current = null;
     damageTextBucketsRef.current.forEach(entry => clearTimeout(entry.timeoutId));
     damageTextBucketsRef.current.clear();
+    damageTextGenerationRef.current.clear();
+    damageTextPoolCursorRef.current = 0;
+    damageFeedbackRef.current.clear();
+    HapticManager.stop();
     setDomDamageTexts([]);
     resetComboState();
     perfectDodgeWindowRef.current = 0;
@@ -941,6 +999,14 @@ export default function CombatArena({
   // Refs for keyboard controls to prevent scope-binding loss in standard fast loops
   const keyboardState = useRef<Record<string, boolean>>({});
   const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const feedbackQuality: FeedbackQuality = isMobile ? 'low' : fpsLimit === 'none' ? 'high' : 'medium';
+  useEffect(() => {
+    HapticManager.setEnabled(hapticsEnabled);
+    return () => HapticManager.stop();
+  }, [hapticsEnabled]);
+  useEffect(() => {
+    if (isPaused || isGameOver) HapticManager.stop();
+  }, [isPaused, isGameOver]);
   const [mobileViewport, setMobileViewport] = useState(() => ({
     width: Math.max(1, window.innerWidth),
     height: Math.max(1, window.innerHeight),
@@ -1483,6 +1549,8 @@ export default function CombatArena({
   const triggerSpawnWave = (waveNum: number) => {
     waveResolvingRef.current = false;
     bossPhaseMilestonesRef.current.clear();
+    damageFeedbackRef.current.clear();
+    HapticManager.stop();
     loopStateRef.current.currentWave = waveNum;
     setCurrentWave(waveNum);
     setIsGameOver(false);
@@ -2045,6 +2113,7 @@ export default function CombatArena({
     
     // Play SFX
     AetheriaAudioEngine.playParry();
+    HapticManager.trigger('PARRY');
   };
 
   const resolveElementalSkill = (action: QueuedCombatAction) => {
@@ -3201,9 +3270,35 @@ export default function CombatArena({
       }
     }
 
-    // Decrease enemy HP
+    // Visual feedback reads the result after combat math has finished; it never changes damage.
     finalDmg = Math.round(finalDmg);
+    const enemyWasAlive = enemy.hp > 0;
     enemy.hp = Math.max(0, enemy.hp - finalDmg);
+    const premiumHitIndex = damageHitIndexRef.current++;
+    const damageMotion = getDamageNumberMotion({
+      attackDirectionX: playerRef.current.lastDirX,
+      source: impactSource,
+      isCrit,
+      hitIndex: premiumHitIndex,
+      upwardLaunch: reactionName.includes('OVERLOADED'),
+    });
+    const criticalStyle = getCriticalVisualIdentity(type, activeDamageSkin);
+    const impactShape = getImpactShape({
+      weaponType: currentActiveChar.weaponType,
+      source: impactSource,
+    });
+    if (finalDmg > 0) {
+      damageFeedbackRef.current.spawnImpact({
+        x: enemy.x,
+        y: enemy.y,
+        directionX: playerRef.current.lastDirX,
+        directionY: playerRef.current.lastDirY,
+        shape: impactShape,
+        color: damageColor,
+        strength: finalDmg / Math.max(1, currentActiveChar.atk),
+        critical: isCrit,
+      });
+    }
     
     const impactProfile = getCombatImpactProfile({
       source: impactSource,
@@ -3238,6 +3333,26 @@ export default function CombatArena({
     requestCombatImpactSound(impactProfile.soundTier, type, isCrit);
     if (finalDmg > 0) {
       registerComboHit(enemy.x, enemy.y);
+      if (impactSource === 'normal-attack') {
+        HapticManager.trigger(isCrit ? 'M1_CRITICAL' : 'M1_HIT');
+      } else if (impactSource === 'ultimate' || impactSource === 'special-ultimate') {
+        HapticManager.trigger('ULTIMATE_IMPACT');
+      }
+      if (enemyWasAlive && enemy.hp <= 0 && enemy.type !== 'Boss') {
+        damageFeedbackRef.current.spawnFinalHit({
+          x: enemy.x,
+          y: enemy.y,
+          radius: enemy.radius,
+          color: damageColor,
+          isBoss: false,
+        });
+        HapticManager.trigger('FINAL_HIT');
+        AetheriaAudioEngine.playFinalHit(type);
+        hitStopRemainingMsRef.current = requestStrongestHitStop(hitStopRemainingMsRef.current, 58);
+        if (screenShakeEnabled) {
+          shakeRef.current.intensity = Math.max(shakeRef.current.intensity, 3);
+        }
+      }
     }
     
     // Apply Vampiric Grace dungeon healing buff (3% of damage)
@@ -3283,6 +3398,8 @@ export default function CombatArena({
         amount: finalDmg,
         reaction: reactionName,
         isDot: impactSource === 'dot' || impactSource === 'persistent-field',
+        motion: damageMotion,
+        criticalStyle,
       },
     );
 
@@ -3298,7 +3415,7 @@ export default function CombatArena({
     }
 
     // Death hook checking
-    if (enemy.hp <= 0) {
+    if (enemyWasAlive && enemy.hp <= 0) {
       setGameScore(s => s + 100);
       onIncrementStat('enemiesDefeated');
 
@@ -4851,6 +4968,16 @@ export default function CombatArena({
           ctx.stroke();
         }
 
+        drawEnemyDamageVisualState(
+          ctx,
+          enemy,
+          enemy.x,
+          enemy.y,
+          enemy.radius,
+          getEnemyDamageVisualState(enemy.hp, enemy.maxHp),
+          now,
+        );
+
         // Draw HP bar above enemy
         ctx.fillStyle = '#ef4444';
         ctx.fillRect(enemy.x - enemy.radius, enemy.y - enemy.radius - 15, enemy.radius * 2, 4);
@@ -4896,6 +5023,15 @@ export default function CombatArena({
       // --- DRAW PLAYER CORE SHIELD AND MODEL ---
       ctx.save();
       ctx.translate(visualRecoilRef.current.x, visualRecoilRef.current.y);
+      drawArtifactResonanceAura(
+        ctx,
+        artifactProgressByCharacterRef.current[currentActiveChar.id] || [],
+        playerRef.current.x,
+        playerRef.current.y,
+        playerRef.current.radius,
+        now,
+        feedbackQuality,
+      );
       ctx.beginPath();
       ctx.arc(playerRef.current.x, playerRef.current.y, playerRef.current.radius, 0, Math.PI * 2);
       ctx.fillStyle = getElementColorHex(currentActiveChar.element);
@@ -5047,6 +5183,15 @@ export default function CombatArena({
 
       // Unconditional context restore to reverse the save/translations at the start of the rendering block
       ctx.restore();
+
+      damageFeedbackRef.current.updateAndDraw(
+        ctx,
+        delta,
+        camX,
+        camY,
+        dimensions.width,
+        dimensions.height,
+      );
 
       // --- DRAW FOREGROUND SCREEN SPACE OVERLAYS ---
       if (weatherRef.current === 'Rain' || weatherRef.current === 'Thunderstorm') {
@@ -5230,6 +5375,9 @@ export default function CombatArena({
       pendingImpactSoundRef.current = null;
       damageTextBucketsRef.current.forEach(entry => clearTimeout(entry.timeoutId));
       damageTextBucketsRef.current.clear();
+      damageTextGenerationRef.current.clear();
+      damageFeedbackRef.current.clear();
+      HapticManager.stop();
       AetheriaAudioEngine.setBossFightActive(false);
     };
   }, []);
@@ -6609,6 +6757,7 @@ export default function CombatArena({
               const activeRatio = (c.currentHp / c.maxHp) * 100;
               const charTemplate = PLAYABLE_CHARACTERS.find(p => p.id === c.id);
               const starCount = charTemplate ? charTemplate.rarity : 4;
+              const activeArtifactSets = (artifactProgressByCharacter[c.id] || []).filter(progress => progress.tier >= 2);
               return (
                 <button
                   key={c.id}
@@ -6636,6 +6785,15 @@ export default function CombatArena({
                       </div>
                       <CharacterRoleBadge role={c.role ?? charTemplate?.role ?? 'sub-dps'} compact />
                     </div>
+                    {activeArtifactSets.length > 0 ? (
+                      <div className="flex gap-1" aria-label="Active artifact set bonuses">
+                        {activeArtifactSets.slice(0, 2).map(progress => (
+                          <span key={progress.set}>
+                            <ArtifactSetEmblem progress={progress} compact />
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                   <div className="bg-black/50 h-2 rounded overflow-hidden mt-2">
                     <div 
@@ -6736,6 +6894,7 @@ export default function CombatArena({
             {combatParty.map((c, i) => {
               const activeRatio = (c.currentHp / c.maxHp) * 100;
               const isCurrent = activePartyIndex === i;
+              const activeArtifactSet = (artifactProgressByCharacter[c.id] || []).find(progress => progress.tier >= 2);
               return (
                 <button
                   key={c.id}
@@ -6766,6 +6925,9 @@ export default function CombatArena({
                   {c.ultimateEnergy >= c.ultimateMaxEnergy && c.currentHp > 0 && (
                     <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
                   )}
+                  {activeArtifactSet ? (
+                    <ArtifactSetEmblem progress={activeArtifactSet} compact className="absolute bottom-0.5 right-0.5 scale-75" />
+                  ) : null}
                 </button>
               );
             })}
