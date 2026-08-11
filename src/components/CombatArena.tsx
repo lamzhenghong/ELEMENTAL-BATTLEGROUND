@@ -44,6 +44,7 @@ import StoryRewards from './StoryRewards';
 import {
   getCombatSessionPresentation,
   getImprovedClearTime,
+  getStoryElapsedSeconds,
   type CombatSessionContext,
 } from '../utils/combatSessionPresentation';
 import {
@@ -1482,6 +1483,7 @@ export default function CombatArena({
   const triggerSpawnWave = (waveNum: number) => {
     waveResolvingRef.current = false;
     bossPhaseMilestonesRef.current.clear();
+    loopStateRef.current.currentWave = waveNum;
     setCurrentWave(waveNum);
     setIsGameOver(false);
     setIsPaused(false);
@@ -2664,7 +2666,7 @@ export default function CombatArena({
 
     if (combatState.storyMode) {
       updatePartyEffects(clearPartyEffects(partyEffectsRef.current));
-      const elapsed = Math.round((Date.now() - (battleStartTimeRef.current || Date.now())) / 1000);
+      const elapsed = getStoryElapsedSeconds(battleStartTimeRef.current);
       let stars = 1;
       if (characterDeathsRef.current === 0) stars++;
       if (elapsed < 60) stars++;
@@ -2713,11 +2715,11 @@ export default function CombatArena({
     }
 
     const nextWave = waveNumber + 1;
-    if (combatState.isArtifactGrindMode) {
-      onUpdateWaveRecord?.('artifact-grind', waveNumber, combatState.gameScore + 200);
-    } else {
-      onUpdateWaveRecord?.('endless-arena', waveNumber, combatState.gameScore + 200);
-    }
+    onUpdateWaveRecord?.(
+      combatState.isArtifactGrindMode ? 'artifact-grind' : 'endless-arena',
+      nextWave,
+      combatState.gameScore + 200,
+    );
 
     setWaveClearMessage(`WAVE ${waveNumber} SECURED! +${boostedRewards.gems} Gems / +${boostedRewards.mora} Mora / +${boostedRewards.exp} XP${artifactMessage}`);
     setTimeout(() => {
@@ -3329,74 +3331,6 @@ export default function CombatArena({
         }
       }
 
-      // Dynamic automatic wave advancement check
-      const anyAlive = enemiesRef.current.some(e => e.id !== enemy.id && e.hp > 0);
-      if (!anyAlive && !waveClearMessage) {
-        if (waveResolvingRef.current) return;
-        waveResolvingRef.current = true;
-        resetCombatPolishState(storyMode || dungeonMode);
-        if (storyMode) {
-          const elapsed = Math.round((Date.now() - (battleStartTimeRef.current || Date.now())) / 1000);
-          let stars = 1;
-          if (characterDeathsRef.current === 0) stars++;
-          if (elapsed < 60) stars++;
-
-          setStoryStarsEarned(stars);
-          setStoryElapsedSecs(elapsed);
-          updatePartyEffects(clearPartyEffects(partyEffectsRef.current));
-          setStoryVictory(true);
-          AetheriaAudioEngine.playWaveClear();
-          AetheriaAudioEngine.setBossFightActive(false);
-          spawnTextRef.current(450, 250, '🏆 STAGE SECURED! 🏆', '#f59e0b', 22, true, false);
-        } else if (dungeonMode) {
-          updatePartyEffects(clearPartyEffects(partyEffectsRef.current));
-          setDungeonVictory(true);
-          AetheriaAudioEngine.playWaveClear();
-          spawnTextRef.current(400, 200, '🏆 ROOM CLEANSED! 🏆', '#10b981', 20, true, false);
-        } else {
-          const rewardGems = 40 + currentWave * 15;
-          const rewardMora = 500 + currentWave * 200;
-          const rewardExp = 30 + currentWave * 15;
-          
-          AetheriaAudioEngine.playWaveClear();
-          const boostedRewards = awardCombatRewards(rewardGems, rewardMora, rewardExp);
-
-          // Award Hero's Wit books on wave clear: 1 + 1 per 3 waves
-          const witReward = 1 + Math.floor(currentWave / 3);
-          onAddItems?.('char_xp', witReward);
-          spawnFloatingDamageText(playerRef.current.x, playerRef.current.y - 60, `📖 +${witReward} Hero's Wit`, '#a78bfa', 13, true);
-
-          // If in Artifact Grind Mode, drop a random artifact!
-          let artifactMessage = '';
-          if (isArtifactGrindMode) {
-            const newArt = generateRandomArtifact(currentWave);
-            setDroppedArtifacts(prev => [...prev, newArt]);
-            if (onAwardArtifact) {
-              onAwardArtifact(newArt);
-            }
-            const rarityStr = newArt.rarity === 5 ? 'Gold 5★' : newArt.rarity === 4 ? 'Purple 4★' : 'Blue 3★';
-            setActiveArtifactNotification(`🎉 Artifact Dropped: ${newArt.name} (${rarityStr})`);
-            spawnFloatingDamageText(playerRef.current.x, playerRef.current.y - 90, `✨ DROPPED: ${newArt.name}!`, '#fbbf24', 14, true);
-            setTimeout(() => {
-              setActiveArtifactNotification(null);
-            }, 3000);
-            artifactMessage = ` • 📦 Artifact Dropped: ${newArt.name}`;
-          }
-
-          const nextWave = currentWave + 1;
-          if (isArtifactGrindMode) {
-            onUpdateWaveRecord?.('artifact-grind', currentWave, gameScore + 200);
-          } else {
-            onUpdateWaveRecord?.('endless-arena', currentWave, gameScore + 200);
-          }
-
-          setWaveClearMessage(`WAVE ${currentWave} SECURED! +${boostedRewards.gems} Gems / +${boostedRewards.mora} Mora / +${boostedRewards.exp} XP${artifactMessage}`);
-          setTimeout(() => {
-            setWaveClearMessage(null);
-            triggerSpawnWave(nextWave);
-          }, 2200);
-        }
-      }
     }
   };
 
@@ -5528,6 +5462,7 @@ export default function CombatArena({
     setStoryVictory(false);
     setStoryStarsEarned(0);
     setStoryElapsedSecs(0);
+    battleStartTimeRef.current = null;
     characterDeathsRef.current = 0;
     setDroppedArtifacts([]);
     setActiveArtifactNotification(null);
@@ -6134,7 +6069,9 @@ export default function CombatArena({
                     onClick={() => {
                       AetheriaAudioEngine.playClick();
                       setBattleStarted(true);
-                      startCountdown(() => {});
+                      startCountdown(() => {
+                        battleStartTimeRef.current = Date.now();
+                      });
                     }}
                     className="w-full p-2.5 md:p-4 bg-indigo-650 hover:bg-indigo-550 active:scale-95 text-xs rounded-xl font-black uppercase tracking-widest shadow-[0_0_20px_rgba(99,102,241,0.3)] transition-all cursor-pointer text-white"
                   >

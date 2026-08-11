@@ -686,6 +686,7 @@ export default function StoryMode({
             stageId={selectedStageId}
             storyChoices={storyProgress.storyChoices}
             previousStars={storyProgress.starRatings[selectedStageId] || 0}
+            bestClearSecs={storyProgress.fastestClearTimes[selectedStageId]}
             onDeploy={handleDeployStage}
             onClose={() => setSelectedStageId(null)}
             isHardMode={isHardMode}

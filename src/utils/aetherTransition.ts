@@ -41,7 +41,7 @@ const TRANSITION_TONES: Record<AppScreen, TransitionTone> = {
   story: { id: 'story', color: '#10b981', label: 'Story' },
   arena: { id: 'arena', color: '#ef4444', label: 'Arena' },
   dungeon: { id: 'dungeon', color: '#8b5cf6', label: 'Rogue Ruins' },
-  wish: { id: 'wish', color: '#fbbf24', label: 'Celestial Summons' },
+  wish: { id: 'wish', color: '#f472b6', label: 'Celestial Summons' },
   inventory: { id: 'inventory', color: '#f97316', label: 'Forge' },
   party: { id: 'party', color: '#3b82f6', label: 'Party Setup' },
   quest: { id: 'quest', color: '#eab308', label: 'Quest Log' },

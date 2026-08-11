@@ -3,6 +3,7 @@ import {
   formatCombatDuration,
   getCombatSessionPresentation,
   getImprovedClearTime,
+  getStoryElapsedSeconds,
 } from './combatSessionPresentation';
 
 assert.equal(formatCombatDuration(0), '00:00');
@@ -10,6 +11,9 @@ assert.equal(formatCombatDuration(65), '01:05');
 assert.equal(getImprovedClearTime(undefined, 42), 42);
 assert.equal(getImprovedClearTime(42, 42), undefined);
 assert.equal(getImprovedClearTime(42, 41), 41);
+assert.equal(getStoryElapsedSeconds(1_000, 60_999), 59);
+assert.equal(getStoryElapsedSeconds(null, 60_999), 0);
+assert.equal(getStoryElapsedSeconds(61_000, 60_999), 0);
 
 assert.deepEqual(
   getCombatSessionPresentation({ mode: 'story-campaign', stageId: '4-3', bestClearSecs: 73 }),

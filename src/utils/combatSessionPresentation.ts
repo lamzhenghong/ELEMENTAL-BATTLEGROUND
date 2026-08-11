@@ -63,6 +63,16 @@ export const getImprovedClearTime = (
   return next;
 };
 
+export const getStoryElapsedSeconds = (
+  startedAt: number | null,
+  endedAt: number = Date.now(),
+): number => {
+  if (startedAt === null || !Number.isFinite(startedAt) || !Number.isFinite(endedAt) || endedAt < startedAt) {
+    return 0;
+  }
+  return Math.floor((endedAt - startedAt) / 1000);
+};
+
 export const getCombatSessionPresentation = (
   context: CombatSessionContext,
 ): CombatSessionPresentation => {

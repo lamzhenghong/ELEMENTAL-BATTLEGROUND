@@ -5,10 +5,14 @@ const arena = readFileSync(new URL('./components/CombatArena.tsx', import.meta.u
 const rewards = readFileSync(new URL('./components/StoryRewards.tsx', import.meta.url), 'utf8');
 const rogue = readFileSync(new URL('./components/RogueDungeon.tsx', import.meta.url), 'utf8');
 const app = readFileSync(new URL('./App.tsx', import.meta.url), 'utf8');
+const storyStage = readFileSync(new URL('./components/StoryStage.tsx', import.meta.url), 'utf8');
 
 assert.match(arena, /getCombatSessionPresentation/);
-assert.match(arena, /onUpdateWaveRecord\?\.\('artifact-grind'/);
-assert.match(arena, /onUpdateWaveRecord\?\.\('endless-arena'/);
+assert.match(arena, /combatState\.isArtifactGrindMode\s*\?\s*'artifact-grind'\s*:\s*'endless-arena'/);
+assert.equal(arena.match(/onUpdateWaveRecord\?\.\(/g)?.length, 1, 'one synchronized wave-record path');
+assert.match(arena, /loopStateRef\.current\.currentWave = waveNum/);
+assert.match(arena, /battleStartTimeRef\.current = Date\.now\(\)/);
+assert.doesNotMatch(arena, /Dynamic automatic wave advancement check/);
 assert.doesNotMatch(arena, /High Score: Wave \{highScoreWave\}/);
 assert.match(
   arena,
@@ -19,6 +23,9 @@ assert.match(rewards, /BEST TIME/);
 assert.match(rewards, /NEW RECORD/);
 assert.match(app, /fastestClearTimes/);
 assert.match(app, /highScoreArtifactWave/);
+assert.match(storyStage, /bestClearSecs/);
+assert.match(storyStage, /BEST TIME/);
+assert.match(storyStage, /formatCombatDuration/);
 assert.match(rogue, /runStartedAt/);
 assert.match(rogue, /useState<number \| null>\(\(\) => getSavedValue\('completedRunDurationSecs', null\)\)/);
 assert.match(rogue, /useState<boolean>\(\(\) => getSavedValue\('completedRunIsNewRecord', false\)\)/);

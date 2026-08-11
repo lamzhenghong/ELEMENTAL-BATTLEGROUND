@@ -3,17 +3,19 @@ import { getStageSpec, getStoryModifier } from '../data/storyStages';
 import type { StoryChoiceSelections } from '../data/story';
 import { Star, X, ShieldAlert, Award, Swords, Sparkles, Coins } from 'lucide-react';
 import { motion } from 'motion/react';
+import { formatCombatDuration } from '../utils/combatSessionPresentation';
 
 interface StoryStageProps {
   stageId: string;
   storyChoices: StoryChoiceSelections;
   previousStars: number;
+  bestClearSecs?: number;
   onDeploy: (stageId: string, isHardMode: boolean) => void;
   onClose: () => void;
   isHardMode: boolean;
 }
 
-export default function StoryStage({ stageId, storyChoices, previousStars, onDeploy, onClose, isHardMode }: StoryStageProps) {
+export default function StoryStage({ stageId, storyChoices, previousStars, bestClearSecs, onDeploy, onClose, isHardMode }: StoryStageProps) {
   const spec = getStageSpec(stageId, storyChoices);
   const location = 'location' in spec && typeof spec.location === 'string' ? spec.location : undefined;
   const modifier = spec.difficulty === 'Boss' ? undefined : getStoryModifier(stageId, storyChoices);
@@ -109,7 +111,7 @@ export default function StoryStage({ stageId, storyChoices, previousStars, onDep
           <div className="space-y-2 bg-slate-950/50 p-3.5 rounded-xl border border-white/5 text-left">
             <span className="text-[9.5px] text-slate-500 uppercase font-black tracking-widest block font-mono border-b border-white/5 pb-1">Stage Objectives:</span>
             <div className="space-y-1.5 mt-2">
-              <div className="flex items-center gap-2 text-xs">
+              <div className="flex flex-wrap items-center gap-2 text-xs">
                 <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
                 <span className="text-slate-200">Clear Stage (Victory)</span>
               </div>
@@ -127,6 +129,15 @@ export default function StoryStage({ stageId, storyChoices, previousStars, onDep
                   <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
                 </div>
                 <span className="text-slate-200">Finish under 1 minute</span>
+                {bestClearSecs !== undefined && bestClearSecs > 0 && (
+                  <span className={`ml-auto rounded-md border px-2 py-1 font-mono text-[10px] font-black tracking-wider ${
+                    bestClearSecs < 60
+                      ? 'border-emerald-400/45 bg-emerald-500/15 text-emerald-300 shadow-[0_0_14px_rgba(52,211,153,0.14)]'
+                      : 'border-amber-400/40 bg-amber-500/10 text-amber-300'
+                  }`}>
+                    BEST TIME {formatCombatDuration(bestClearSecs)}
+                  </span>
+                )}
               </div>
             </div>
           </div>

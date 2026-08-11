@@ -8,6 +8,8 @@ import {
 
 assert.deepEqual(getTransitionTone('story'), { id: 'story', color: '#10b981', label: 'Story' });
 assert.equal(getTransitionTone('inventory').color, '#f97316');
+assert.equal(getTransitionTone('wish').color, '#f472b6');
+assert.notEqual(getTransitionTone('wish').color, getTransitionTone('quest').color);
 assert.deepEqual(getTransitionTimings('standard', false), { coverMs: 220, swapMs: 450, totalMs: 850 });
 assert.deepEqual(getTransitionTimings('standard', true), { coverMs: 100, swapMs: 140, totalMs: 280 });
 assert.equal(getTransitionTimings('title', false).totalMs, 1550);
