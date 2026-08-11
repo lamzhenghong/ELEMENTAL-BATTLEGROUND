@@ -106,8 +106,13 @@ assert.match(appSource, /return \{\s*success: true,[\s\S]*?operation: 'upgrade'/
 assert.match(appSource, /return \{\s*success: true,[\s\S]*?operation: 'fusion'/);
 assert.match(appSource, /lowGraphics=\{isMobile\}/);
 assert.match(cssSource, /\.forge-presentation-layout/);
-assert.match(cssSource, /@media \(min-width: 1024px\)/);
+assert.match(source, /forge-detail-container/);
+assert.match(cssSource, /\.forge-detail-container\s*\{[\s\S]*?container-type:\s*inline-size/);
+assert.match(cssSource, /@container \(min-width: 34rem\)/);
+assert.doesNotMatch(cssSource, /@media \(min-width: 1024px\)[\s\S]*?\.forge-presentation-layout/);
 assert.match(cssSource, /@media \(max-height: 480px\) and \(orientation: landscape\)/);
+assert.match(cssSource, /@media \(max-height: 480px\) and \(orientation: landscape\)[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\)/);
+assert.match(cssSource, /@media \(max-height: 480px\) and \(orientation: landscape\)[\s\S]*?\.forge-presentation-layout\[data-forge-layout="artifact"\][\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\)/);
 assert.match(source, /data-artifact-status/);
 assert.match(source, /data-artifact-actions/);
 assert.match(source, /className="grid grid-cols-1 gap-3 border-t border-white\/10 pt-4 sm:grid-cols-2" data-artifact-actions/);

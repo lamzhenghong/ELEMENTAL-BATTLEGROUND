@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { PLAYABLE_CHARACTERS } from '../data/characters';
 import { PlayableCharacter, Weapon, InventoryItem, ElementType, Artifact, ArtifactSlot, ArtifactSet } from '../types';
@@ -111,22 +111,6 @@ export default function InventoryManager({
   const [forgeOperation, setForgeOperation] = useState<ForgeOperationEvent | undefined>();
   const [forgeOperationVersion, setForgeOperationVersion] = useState(0);
 
-  const tabContainerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const container = tabContainerRef.current;
-    if (!container) return;
-
-    const handleWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      container.scrollLeft += e.deltaY;
-    };
-
-    container.addEventListener('wheel', handleWheel, { passive: false });
-    return () => {
-      container.removeEventListener('wheel', handleWheel);
-    };
-  }, []);
   const [rarityFilter, setRarityFilter] = useState<'all' | 5 | 4 | 3>('all');
   const [elementFilter, setElementFilter] = useState<'all' | ElementType>('all');
   const [showInventoryFilters, setShowInventoryFilters] = useState(false);
@@ -518,16 +502,13 @@ export default function InventoryManager({
         {/* Left column selection list (Roster and Filters) */}
         <div className="bg-[#060811]/45 border border-white/10 rounded-xl p-5 space-y-5 flex flex-col justify-between">
           <div className="space-y-5">
-            <div 
-              ref={tabContainerRef}
-              className="w-full flex overflow-x-auto scrollbar-none whitespace-nowrap gap-1 bg-black/45 p-1 rounded-lg border border-white/10"
-            >
+            <div className="w-full grid grid-cols-2 gap-1 rounded-lg border border-white/10 bg-black/45 p-1">
               <button
                 onClick={() => {
                   setActiveTab('characters');
                   AetheriaAudioEngine.playClick();
                 }}
-                className={`flex-1 shrink-0 sm:shrink text-center py-2.5 px-2 sm:px-3 rounded-md text-[9px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest transition-all cursor-pointer ${
+                className={`w-full rounded-md px-2 py-2.5 text-center text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer sm:text-[10px] ${
                   activeTab === 'characters' ? 'bg-amber-400 text-slate-955 font-black' : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
@@ -538,7 +519,7 @@ export default function InventoryManager({
                   setActiveTab('weapons');
                   AetheriaAudioEngine.playClick();
                 }}
-                className={`flex-1 shrink-0 sm:shrink text-center py-2.5 px-2 sm:px-3 rounded-md text-[9px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest transition-all cursor-pointer ${
+                className={`w-full rounded-md px-2 py-2.5 text-center text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer sm:text-[10px] ${
                   activeTab === 'weapons' ? 'bg-amber-400 text-slate-955 font-black' : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
@@ -549,7 +530,7 @@ export default function InventoryManager({
                   setActiveTab('artifacts');
                   AetheriaAudioEngine.playClick();
                 }}
-                className={`flex-1 shrink-0 sm:shrink text-center py-2.5 px-2 sm:px-3 rounded-md text-[9px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest transition-all cursor-pointer ${
+                className={`w-full rounded-md px-2 py-2.5 text-center text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer sm:text-[10px] ${
                   activeTab === 'artifacts' ? 'bg-amber-400 text-slate-955 font-black' : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
@@ -560,7 +541,7 @@ export default function InventoryManager({
                   setActiveTab('items');
                   AetheriaAudioEngine.playClick();
                 }}
-                className={`flex-1 shrink-0 sm:shrink text-center py-2.5 px-2 sm:px-3 rounded-md text-[9px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest transition-all cursor-pointer ${
+                className={`w-full rounded-md px-2 py-2.5 text-center text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer sm:text-[10px] ${
                   activeTab === 'items' ? 'bg-amber-400 text-slate-955 font-black' : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
@@ -1050,7 +1031,7 @@ export default function InventoryManager({
         </div>
 
         {/* Right Columns (2 columns) display detail of selected character */}
-        <div className="lg:col-span-2 bg-[#060811]/60 border border-white/10 p-6 rounded-xl flex flex-col justify-between shadow-[0_0_25px_rgba(99,102,241,0.06)]">
+        <div className="forge-detail-container lg:col-span-2 bg-[#060811]/60 border border-white/10 p-6 rounded-xl flex flex-col justify-between shadow-[0_0_25px_rgba(99,102,241,0.06)]">
           {activeTab === 'items' ? (
             // AUGMENT DETAIL AND DESCRIPTION CONTENT
             <div className="space-y-6 flex-1 flex flex-col justify-start">

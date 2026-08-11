@@ -17,6 +17,12 @@ assert.doesNotMatch(
   /Squadron Quest ledger|activeQuestTab|setActiveQuestTab/,
   'Forge tab should not render the embedded quest ledger',
 );
+assert.match(
+  inventorySource,
+  /className="w-full grid grid-cols-2 gap-1[^"]*"/,
+  'Forge tabs should use a stable two-column grid so every tab remains visible',
+);
+assert.doesNotMatch(inventorySource, /tabContainerRef|addEventListener\('wheel'/);
 
 const partyStart = appSource.indexOf("{activeScreen === 'party'");
 const partyEnd = appSource.indexOf("{activeScreen === 'story'", partyStart);
