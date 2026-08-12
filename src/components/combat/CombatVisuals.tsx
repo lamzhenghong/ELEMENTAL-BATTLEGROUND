@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { motion } from 'motion/react';
 import type { CriticalVisualIdentity, DamageNumberMotion } from '../../utils/damageFeedback';
+import { getDamageSkinTextPresentation } from '../../utils/combatReadability';
 import CriticalHitStyle from './CriticalHitStyle';
 
 export interface FloatingDamageTextEntry {
@@ -23,6 +24,7 @@ interface FloatingDamageTextDOMProps {
 }
 
 export function FloatingDamageTextDOM({ t }: FloatingDamageTextDOMProps) {
+  const skinPresentation = getDamageSkinTextPresentation(t.skin, t.isCrit, t.isDot === true);
   const keyframes = useMemo(() => {
     const seed = Array.from(t.id).reduce((value, char) => ((value * 31) + char.charCodeAt(0)) | 0, 7);
     const fallbackDirection = seed % 2 === 0 ? 1 : -1;
@@ -80,22 +82,24 @@ export function FloatingDamageTextDOM({ t }: FloatingDamageTextDOMProps) {
     WebkitTextStroke: t.isDot ? undefined : '0.35px rgba(0,0,0,0.72)',
   };
 
-  let textClass = '';
+  let textClass = skinPresentation.className;
 
   switch (t.skin) {
     case 'Ice':
       skinStyle.fontFamily = '"Trebuchet MS", sans-serif';
-      skinStyle.textShadow = '1px 1px 0 #38bdf8, -1px -1px 0 #e0f2fe';
-      textClass = 'shiver-text';
+      skinStyle.color = '#f0fbff';
+      skinStyle.WebkitTextStroke = '0.75px #075985';
+      skinStyle.textShadow = '0 0 2px #ffffff, 0 0 8px rgba(56,189,248,0.95), 0 2px 2px rgba(2,12,27,0.95)';
       break;
     case 'Void':
       skinStyle.fontFamily = '"Lucida Console", monospace';
       skinStyle.textShadow = '1px 1px 0 #1e1b4b, -1px -1px 0 #d946ef';
-      textClass = 'pulse-void-text';
       break;
     case 'Celestial':
       skinStyle.fontFamily = '"Georgia", serif';
-      skinStyle.textShadow = '1px 1px 0 #fde047, -1px -1px 0 #ffffff';
+      skinStyle.color = '#fff8cf';
+      skinStyle.WebkitTextStroke = '0.8px #854d0e';
+      skinStyle.textShadow = '0 0 2px #ffffff, 0 0 9px rgba(250,204,21,0.98), 0 2px 2px rgba(30,18,2,0.98)';
       break;
     default:
       skinStyle.fontFamily = '"Space Grotesk", sans-serif';

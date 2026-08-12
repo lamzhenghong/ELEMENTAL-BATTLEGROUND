@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   getCriticalHealthBlinkAlpha,
+  getDamageSkinTextPresentation,
   getReadableDamageTextSize,
   isCriticalPlayerHealth,
 } from './combatReadability';
@@ -27,4 +28,20 @@ test('normal damage text has a readable minimum while dots stay compact', () => 
   assert.equal(getReadableDamageTextSize(20, { isCrit: false, isDot: false }), 20);
   assert.equal(getReadableDamageTextSize(14, { isCrit: true, isDot: false }), 20);
   assert.equal(getReadableDamageTextSize(18, { isCrit: false, isDot: true }), 11);
+});
+
+test('ice and celestial skins receive stronger but bounded text presentation', () => {
+  assert.deepEqual(getDamageSkinTextPresentation('Ice', false, false), {
+    className: 'damage-skin-text damage-skin-text--ice',
+    minimumSize: 20,
+  });
+  assert.deepEqual(getDamageSkinTextPresentation('Celestial', true, false), {
+    className: 'damage-skin-text damage-skin-text--celestial',
+    minimumSize: 24,
+  });
+  assert.deepEqual(getDamageSkinTextPresentation('Void', false, false), {
+    className: 'pulse-void-text',
+    minimumSize: 0,
+  });
+  assert.equal(getDamageSkinTextPresentation('Ice', false, true).minimumSize, 0);
 });

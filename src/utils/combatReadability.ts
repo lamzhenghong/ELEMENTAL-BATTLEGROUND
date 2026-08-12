@@ -20,8 +20,40 @@ interface DamageTextSizeOptions {
   isDot: boolean;
 }
 
+interface DamageSkinTextPresentation {
+  className: string;
+  minimumSize: number;
+}
+
 export function getReadableDamageTextSize(baseSize: number, options: DamageTextSizeOptions): number {
   const safeSize = Number.isFinite(baseSize) ? Math.max(1, baseSize) : 14;
   if (options.isDot) return Math.min(safeSize, 11);
   return Math.max(safeSize, options.isCrit ? 20 : 18);
+}
+
+export function getDamageSkinTextPresentation(
+  skin: string | undefined,
+  isCrit: boolean,
+  isDot: boolean,
+): DamageSkinTextPresentation {
+  if (isDot) return { className: '', minimumSize: 0 };
+
+  if (skin === 'Ice') {
+    return {
+      className: 'damage-skin-text damage-skin-text--ice',
+      minimumSize: isCrit ? 23 : 20,
+    };
+  }
+
+  if (skin === 'Celestial') {
+    return {
+      className: 'damage-skin-text damage-skin-text--celestial',
+      minimumSize: isCrit ? 24 : 21,
+    };
+  }
+
+  return {
+    className: skin === 'Void' ? 'pulse-void-text' : '',
+    minimumSize: 0,
+  };
 }

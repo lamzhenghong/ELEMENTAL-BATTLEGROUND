@@ -179,6 +179,7 @@ import { HapticManager } from '../utils/haptics';
 import { getArtifactSetProgress, type ArtifactSetProgress } from '../utils/artifactSetVisuals';
 import {
   getCriticalHealthBlinkAlpha,
+  getDamageSkinTextPresentation,
   getReadableDamageTextSize,
   isCriticalPlayerHealth,
 } from '../utils/combatReadability';
@@ -679,15 +680,21 @@ export default function CombatArena({
       }
     }
 
+    const readableSize = damageMeta
+      ? getReadableDamageTextSize(size, { isCrit, isDot: damageMeta.isDot === true })
+      : size;
+    const skinPresentation = getDamageSkinTextPresentation(
+      activeDamageSkin,
+      isCrit,
+      damageMeta?.isDot === true,
+    );
     const nextEntry: FloatingDamageTextEntry = {
       id,
       x: renderX,
       y: renderY,
       text: formattedText,
       color,
-      size: damageMeta
-        ? getReadableDamageTextSize(size, { isCrit, isDot: damageMeta.isDot === true })
-        : size,
+      size: Math.max(readableSize, skinPresentation.minimumSize),
       isCrit: damageMeta?.isDot ? false : isCrit,
       skin: activeDamageSkin,
       isDot: damageMeta?.isDot,
