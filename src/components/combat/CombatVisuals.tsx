@@ -77,6 +77,7 @@ export function FloatingDamageTextDOM({ t }: FloatingDamageTextDOMProps) {
     fontWeight: '900',
     whiteSpace: 'nowrap',
     transform: 'translate(-50%, -50%)',
+    WebkitTextStroke: t.isDot ? undefined : '0.35px rgba(0,0,0,0.72)',
   };
 
   let textClass = '';
@@ -98,7 +99,7 @@ export function FloatingDamageTextDOM({ t }: FloatingDamageTextDOMProps) {
       break;
     default:
       skinStyle.fontFamily = '"Space Grotesk", sans-serif';
-      skinStyle.textShadow = '1px 1px 0 rgba(0,0,0,0.85)';
+      skinStyle.textShadow = '0 2px 2px rgba(0,0,0,0.95), 0 0 5px rgba(0,0,0,0.78)';
   }
 
   return (

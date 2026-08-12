@@ -177,6 +177,11 @@ import {
 } from '../utils/damageFeedback';
 import { HapticManager } from '../utils/haptics';
 import { getArtifactSetProgress, type ArtifactSetProgress } from '../utils/artifactSetVisuals';
+import {
+  getCriticalHealthBlinkAlpha,
+  getReadableDamageTextSize,
+  isCriticalPlayerHealth,
+} from '../utils/combatReadability';
 
 const EMPTY_STORY_CHOICE_SELECTIONS: StoryChoiceSelections = {};
 
@@ -295,6 +300,9 @@ export default function CombatArena({
   const [combatParty, setCombatParty] = useState<CombatCharacter[]>([]);
   const [activePartyIndex, setActivePartyIndex] = useState<number>(0);
   const activeChar = combatParty[activePartyIndex] || null;
+  const isActiveCharacterCritical = activeChar
+    ? isCriticalPlayerHealth(activeChar.currentHp, activeChar.maxHp)
+    : false;
   const artifactProgressByCharacter = useMemo<Record<string, ArtifactSetProgress[]>>(() => {
     const progress: Record<string, ArtifactSetProgress[]> = {};
     partyIds.forEach(characterId => {
@@ -677,7 +685,9 @@ export default function CombatArena({
       y: renderY,
       text: formattedText,
       color,
-      size: damageMeta?.isDot ? Math.min(size, 11) : size,
+      size: damageMeta
+        ? getReadableDamageTextSize(size, { isCrit, isDot: damageMeta.isDot === true })
+        : size,
       isCrit: damageMeta?.isDot ? false : isCrit,
       skin: activeDamageSkin,
       isDot: damageMeta?.isDot,
@@ -5023,6 +5033,7 @@ export default function CombatArena({
       // --- DRAW PLAYER CORE SHIELD AND MODEL ---
       ctx.save();
       ctx.translate(visualRecoilRef.current.x, visualRecoilRef.current.y);
+      ctx.globalAlpha = getCriticalHealthBlinkAlpha(currentActiveChar.currentHp, currentActiveChar.maxHp, now);
       drawArtifactResonanceAura(
         ctx,
         artifactProgressByCharacterRef.current[currentActiveChar.id] || [],
@@ -5847,6 +5858,13 @@ export default function CombatArena({
 
       {/* Primary interactive Combat Container */}
       <div ref={containerRef} className="flex-1 min-h-[350px] bg-[#03060f] relative overflow-hidden flex flex-col justify-end">
+        {isActiveCharacterCritical && battleStarted && !isGameOver && (
+          <div
+            data-testid="critical-health-overlay"
+            className="critical-health-vignette absolute inset-0 z-[28] pointer-events-none select-none"
+            aria-hidden="true"
+          />
+        )}
         {rareWeatherOverlayClass && (
           <div className={`absolute inset-0 pointer-events-none z-10 mix-blend-screen ${rareWeatherOverlayClass}`} />
         )}
@@ -6772,7 +6790,7 @@ export default function CombatArena({
                       : activePartyIndex === i
                         ? 'bg-[#0f172a] border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.25)]'
                         : 'bg-[#04060b] border-white/5 text-slate-400 hover:border-slate-800'
-                  }`}
+                  } ${isCriticalPlayerHealth(c.currentHp, c.maxHp) ? 'critical-health-character' : ''}`}
                   id={`arena_char_swap_${i}`}
                 >
                   <div className="flex flex-col gap-1">
@@ -6919,7 +6937,7 @@ export default function CombatArena({
                       : isCurrent
                         ? 'bg-indigo-950/80 border-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.4)]'
                         : 'bg-slate-950/85 border-white/10 text-slate-400'
-                  }`}
+                  } ${isCriticalPlayerHealth(c.currentHp, c.maxHp) ? 'critical-health-character' : ''}`}
                   style={{
                     touchAction: 'none'
                   }}
