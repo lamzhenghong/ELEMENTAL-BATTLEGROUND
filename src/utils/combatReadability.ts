@@ -52,8 +52,12 @@ export function getDamageSkinTextPresentation(
     };
   }
 
-  return {
-    className: skin === 'Void' ? 'pulse-void-text' : '',
-    minimumSize: 0,
-  };
+  if (skin === 'Void') {
+    return {
+      className: 'damage-skin-text damage-skin-text--void',
+      minimumSize: isCrit ? 23 : 20,
+    };
+  }
+
+  return { className: '', minimumSize: 0 };
 }

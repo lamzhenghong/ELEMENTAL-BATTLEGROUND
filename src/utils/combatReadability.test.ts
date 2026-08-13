@@ -30,7 +30,7 @@ test('normal damage text has a readable minimum while dots stay compact', () => 
   assert.equal(getReadableDamageTextSize(18, { isCrit: false, isDot: true }), 11);
 });
 
-test('ice and celestial skins receive stronger but bounded text presentation', () => {
+test('premium damage skins receive stronger but bounded text presentation', () => {
   assert.deepEqual(getDamageSkinTextPresentation('Ice', false, false), {
     className: 'damage-skin-text damage-skin-text--ice',
     minimumSize: 20,
@@ -40,8 +40,9 @@ test('ice and celestial skins receive stronger but bounded text presentation', (
     minimumSize: 24,
   });
   assert.deepEqual(getDamageSkinTextPresentation('Void', false, false), {
-    className: 'pulse-void-text',
-    minimumSize: 0,
+    className: 'damage-skin-text damage-skin-text--void',
+    minimumSize: 20,
   });
+  assert.equal(getDamageSkinTextPresentation('Void', true, false).minimumSize, 23);
   assert.equal(getDamageSkinTextPresentation('Ice', false, true).minimumSize, 0);
 });

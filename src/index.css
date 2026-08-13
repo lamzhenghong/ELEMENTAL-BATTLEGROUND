@@ -1517,6 +1517,12 @@ canvas {
   box-shadow: inset 0 0 5px rgba(254, 240, 138, 0.24);
 }
 
+.damage-skin-text--void::before {
+  border: 1px solid rgba(192, 132, 252, 0.52);
+  background: radial-gradient(circle, rgba(88, 28, 135, 0.44), rgba(15, 6, 29, 0.22) 72%);
+  box-shadow: inset 0 0 5px rgba(216, 180, 254, 0.22);
+}
+
 .damage-skin-text--ice .critical-hit {
   color: #e0f2fe;
 }
@@ -1525,13 +1531,8 @@ canvas {
   color: #fff7b3;
 }
 
-/* Void Skin Pulse and Distortion */
-@keyframes pulse-void {
-  0%, 100% { transform: translate(-50%, -50%) scale(1); }
-  50% { transform: translate(-50%, -50%) scale(1.06); }
-}
-.pulse-void-text {
-  animation: pulse-void 0.65s infinite ease-in-out !important;
+.damage-skin-text--void .critical-hit {
+  color: #f3e8ff;
 }
 @keyframes black-hole-pulse {
   0% { transform: translate(-50%, -50%) scale(0.1); opacity: 0.9; box-shadow: 0 0 0 0px rgba(192, 132, 252, 0.7); }

@@ -93,7 +93,9 @@ export function FloatingDamageTextDOM({ t }: FloatingDamageTextDOMProps) {
       break;
     case 'Void':
       skinStyle.fontFamily = '"Lucida Console", monospace';
-      skinStyle.textShadow = '1px 1px 0 #1e1b4b, -1px -1px 0 #d946ef';
+      skinStyle.color = '#f5f3ff';
+      skinStyle.WebkitTextStroke = '0.8px #3b0764';
+      skinStyle.textShadow = '0 0 2px #ffffff, 0 0 9px rgba(192,132,252,0.95), 0 2px 2px rgba(12,4,24,0.98)';
       break;
     case 'Celestial':
       skinStyle.fontFamily = '"Georgia", serif';
@@ -140,10 +142,6 @@ export function FloatingDamageTextDOM({ t }: FloatingDamageTextDOMProps) {
           }}
           className={`select-none pointer-events-none ${textClass}`}
         >
-          {t.skin === 'Void' && (
-            <div className="absolute inset-[-6px] bg-purple-950/30 rounded-full blur-sm -z-10 animate-ping pointer-events-none" style={{ animationDuration: '2s' }} />
-          )}
-
           {t.isCrit ? (
             <CriticalHitStyle identity={t.criticalStyle || 'neutral'}>{t.text}</CriticalHitStyle>
           ) : (
