@@ -3476,11 +3476,6 @@ export default function CombatArena({
       setGameScore(s => s + 100);
       onIncrementStat('enemiesDefeated');
 
-      // Drop crystal shield shards on enemy death
-      if (!enemy.isSummonedMinion && Math.random() < 0.45 && shardsRef.current.length < 5) {
-        shardsRef.current.push(new CrystalShard(enemy.x, enemy.y, type, getElementColorHex(type)));
-      }
-
       // Hero's Wit drop on enemy kill (30% chance per enemy, 1 book)
       if (!enemy.isSummonedMinion && !dungeonMode && Math.random() < 0.30) {
         onAddItems?.('char_xp', 1);
