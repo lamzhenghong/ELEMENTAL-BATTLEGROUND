@@ -183,6 +183,14 @@ import {
   getReadableDamageTextSize,
   isCriticalPlayerHealth,
 } from '../utils/combatReadability';
+import {
+  CinematicCameraDirector,
+  createNeutralCameraFrame,
+  getBossFramingRadius,
+  screenToWorld,
+  worldToScreen,
+  type CameraFrame,
+} from '../utils/cinematicCamera';
 
 const EMPTY_STORY_CHOICE_SELECTIONS: StoryChoiceSelections = {};
 
@@ -218,6 +226,7 @@ interface CombatArenaProps {
   devCheatsEnabled?: boolean;
   playerLevel?: number;
   screenShakeEnabled?: boolean;
+  motionIntensity?: number;
   hapticsEnabled?: boolean;
   combatSpeed?: number;
   fpsLimit?: '60' | 'none';
@@ -266,6 +275,7 @@ export default function CombatArena({
   devCheatsEnabled = true,
   playerLevel = 1,
   screenShakeEnabled = true,
+  motionIntensity = 70,
   hapticsEnabled = true,
   combatSpeed = 1.0,
   fpsLimit = '60',
@@ -512,6 +522,18 @@ export default function CombatArena({
   const damageFeedbackRef = useRef(new DamageFeedbackManager(
     /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ? 12 : 24,
   ));
+  const cameraDirectorRef = useRef(new CinematicCameraDirector());
+  const cameraFrameRef = useRef<CameraFrame>(createNeutralCameraFrame({
+    playerX: 1000,
+    playerY: 1000,
+    viewportWidth: 800,
+    viewportHeight: 400,
+    worldWidth: WORLD_WIDTH,
+    worldHeight: WORLD_HEIGHT,
+    motionIntensity,
+  }));
+  const motionIntensityRef = useRef(motionIntensity);
+  motionIntensityRef.current = motionIntensity;
   const damageHitIndexRef = useRef(0);
   const lightningWarningRef = useRef<{ x: number; y: number; timer: number } | null>(null);
   const lightningStrikeVisualRef = useRef<{ x: number; y: number; duration: number } | null>(null);
@@ -583,11 +605,9 @@ export default function CombatArena({
     let renderY = y;
     
     if (isWorldSpace) {
-      const { dimensions: currentDimensions } = loopStateRef.current;
-      const camX = Math.max(0, Math.min(WORLD_WIDTH - currentDimensions.width, playerRef.current.x - currentDimensions.width / 2));
-      const camY = Math.max(0, Math.min(WORLD_HEIGHT - currentDimensions.height, playerRef.current.y - currentDimensions.height / 2));
-      renderX = x - camX;
-      renderY = y - camY;
+      const projected = worldToScreen({ x, y }, cameraFrameRef.current);
+      renderX = projected.x;
+      renderY = projected.y;
     }
 
     let bucketKey: string | null = null;
@@ -797,6 +817,7 @@ export default function CombatArena({
     damageTextGenerationRef.current.clear();
     damageTextPoolCursorRef.current = 0;
     damageFeedbackRef.current.clear();
+    cameraDirectorRef.current.reset();
     HapticManager.stop();
     setDomDamageTexts([]);
     resetComboState();
@@ -1866,6 +1887,15 @@ export default function CombatArena({
     }
 
     enemiesRef.current = list.map(enemy => ({ ...enemy, statusEffects: [] as CombatStatusEffect[] }));
+    const spawnedBoss = enemiesRef.current.find(enemy => enemy.type === 'Boss');
+    if (spawnedBoss) {
+      const bossIdentity = getBossIdentityForEnemy(spawnedBoss.name, spawnedBoss.bossType);
+      cameraDirectorRef.current.triggerBossIntro(
+        spawnedBoss.x,
+        spawnedBoss.y,
+        getBossFramingRadius(spawnedBoss.radius, bossIdentity.visualKind),
+      );
+    }
     shardsRef.current = [];
     particlesRef.current = [];
     bossProjectilesRef.current = [];
@@ -2031,6 +2061,7 @@ export default function CombatArena({
     const dirX = playerRef.current.lastDirX;
     const dirY = playerRef.current.lastDirY;
     const dashDistance = 85;
+    cameraDirectorRef.current.triggerDash(dirX, dirY);
 
     // Move player position immediate/slide in facing direction
     playerRef.current.x = Math.max(25, Math.min(WORLD_WIDTH - 25, playerRef.current.x + dirX * dashDistance));
@@ -2414,6 +2445,7 @@ export default function CombatArena({
       )) {
         setPartyEffectRevision(revision => revision + 1);
       }
+      cameraDirectorRef.current.triggerUltimateRecovery(px, py);
     };
 
     if (disableGameplayCutscenes) {
@@ -2496,6 +2528,7 @@ export default function CombatArena({
           setTimeout(() => arenaEl.classList.remove('animate-shake'), 500);
         }
       }
+      cameraDirectorRef.current.triggerUltimateRecovery(px, py);
     };
 
     clearSpecialUltimateTimeouts();
@@ -3325,6 +3358,13 @@ export default function CombatArena({
       screenShakeEnabled,
       shielded: wasShielded,
     });
+    if (finalDmg > 0 && impactSource === 'elemental-skill') {
+      cameraDirectorRef.current.triggerHeavyImpact(
+        playerRef.current.lastDirX,
+        playerRef.current.lastDirY,
+        finalDmg / Math.max(1, currentActiveChar.atk),
+      );
+    }
     if (finalDmg > 0 && impactProfile.hitStopMs > 0) {
       hitStopRemainingMsRef.current = requestStrongestHitStop(
         hitStopRemainingMsRef.current,
@@ -3840,9 +3880,18 @@ export default function CombatArena({
       // Clear Screen
       ctx.clearRect(0, 0, currentDimensions.width, currentDimensions.height);
 
-      // Calculate camera scroll offsets to keep the player centered
-      const camX = Math.max(0, Math.min(WORLD_WIDTH - currentDimensions.width, playerRef.current.x - currentDimensions.width / 2));
-      const camY = Math.max(0, Math.min(WORLD_HEIGHT - currentDimensions.height, playerRef.current.y - currentDimensions.height / 2));
+      const cameraFrame = cameraDirectorRef.current.update(delta, {
+        playerX: playerRef.current.x,
+        playerY: playerRef.current.y,
+        viewportWidth: currentDimensions.width,
+        viewportHeight: currentDimensions.height,
+        worldWidth: WORLD_WIDTH,
+        worldHeight: WORLD_HEIGHT,
+        motionIntensity: motionIntensityRef.current,
+      });
+      cameraFrameRef.current = cameraFrame;
+      const camX = cameraFrame.left;
+      const camY = cameraFrame.top;
 
       ctx.save();
 
@@ -3855,8 +3904,10 @@ export default function CombatArena({
         shakeRef.current.y = (Math.random() - 0.5) * shakeRef.current.intensity;
       }
 
-      // Apply camera translation
-      ctx.translate(-camX, -camY);
+      // Canvas rendering and pointer projection share this same cinematic frame.
+      ctx.translate(currentDimensions.width / 2, currentDimensions.height / 2);
+      ctx.scale(cameraFrame.zoom, cameraFrame.zoom);
+      ctx.translate(-cameraFrame.centerX, -cameraFrame.centerY);
 
       // Draw background board grid in world coordinates
       ctx.strokeStyle = '#1e293b';
@@ -3887,7 +3938,12 @@ export default function CombatArena({
         sunGrad.addColorStop(0.5, 'rgba(251, 191, 36, 0.02)');
         sunGrad.addColorStop(1, 'transparent');
         ctx.fillStyle = sunGrad;
-        ctx.fillRect(camX, camY, currentDimensions.width, currentDimensions.height);
+        ctx.fillRect(
+          cameraFrame.left,
+          cameraFrame.top,
+          currentDimensions.width / cameraFrame.zoom,
+          currentDimensions.height / cameraFrame.zoom,
+        );
       }
 
       partyEffectsRef.current.effects.forEach(effect => {
@@ -5207,8 +5263,9 @@ export default function CombatArena({
         delta,
         camX,
         camY,
-        dimensions.width,
-        dimensions.height,
+        currentDimensions.width,
+        currentDimensions.height,
+        cameraFrame.zoom,
       );
 
       // --- DRAW FOREGROUND SCREEN SPACE OVERLAYS ---
@@ -5395,6 +5452,7 @@ export default function CombatArena({
       damageTextBucketsRef.current.clear();
       damageTextGenerationRef.current.clear();
       damageFeedbackRef.current.clear();
+      cameraDirectorRef.current.reset();
       HapticManager.stop();
       AetheriaAudioEngine.setBossFightActive(false);
     };
@@ -5446,6 +5504,7 @@ export default function CombatArena({
       
       const px = playerRef.current.x;
       const py = playerRef.current.y;
+      cameraDirectorRef.current.triggerParry(enemy?.x ?? px, enemy?.y ?? py);
       
       // Detonate counter-strike damage reflected back on enemy
       const reflect = 750;
@@ -5571,11 +5630,9 @@ export default function CombatArena({
     const clickX = (e.clientX - rect.left) * scaleX;
     const clickY = (e.clientY - rect.top) * scaleY;
 
-    // Convert viewport clicks to world coordinates
-    const camX = Math.max(0, Math.min(WORLD_WIDTH - dimensions.width, playerRef.current.x - dimensions.width / 2));
-    const camY = Math.max(0, Math.min(WORLD_HEIGHT - dimensions.height, playerRef.current.y - dimensions.height / 2));
-    const worldClickX = clickX + camX;
-    const worldClickY = clickY + camY;
+    const worldPoint = screenToWorld({ x: clickX, y: clickY }, cameraFrameRef.current);
+    const worldClickX = worldPoint.x;
+    const worldClickY = worldPoint.y;
 
     const dx = worldClickX - playerRef.current.x;
     const dy = worldClickY - playerRef.current.y;
@@ -5599,11 +5656,9 @@ export default function CombatArena({
     const mouseX = (e.clientX - rect.left) * scaleX;
     const mouseY = (e.clientY - rect.top) * scaleY;
 
-    // Convert viewport mouse positions to world coordinates
-    const camX = Math.max(0, Math.min(WORLD_WIDTH - dimensions.width, playerRef.current.x - dimensions.width / 2));
-    const camY = Math.max(0, Math.min(WORLD_HEIGHT - dimensions.height, playerRef.current.y - dimensions.height / 2));
-    const worldMouseX = mouseX + camX;
-    const worldMouseY = mouseY + camY;
+    const worldPoint = screenToWorld({ x: mouseX, y: mouseY }, cameraFrameRef.current);
+    const worldMouseX = worldPoint.x;
+    const worldMouseY = worldPoint.y;
 
     const dx = worldMouseX - playerRef.current.x;
     const dy = worldMouseY - playerRef.current.y;

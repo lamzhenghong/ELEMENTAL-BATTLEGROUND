@@ -62,11 +62,12 @@ const isVisible = (
   cameraY: number,
   width: number,
   height: number,
+  zoom = 1,
   margin = 80,
-): boolean => x >= cameraX - margin
-  && x <= cameraX + width + margin
-  && y >= cameraY - margin
-  && y <= cameraY + height + margin;
+): boolean => x >= cameraX - margin / zoom
+  && x <= cameraX + width / zoom + margin / zoom
+  && y >= cameraY - margin / zoom
+  && y <= cameraY + height / zoom + margin / zoom;
 
 const drawImpact = (ctx: CanvasRenderingContext2D, impact: ImpactPoolEntry, x: number, y: number): void => {
   const progress = Math.min(1, impact.ageMs / impact.lifetimeMs);
@@ -180,6 +181,7 @@ export class DamageFeedbackManager {
     cameraY: number,
     width: number,
     height: number,
+    zoom = 1,
   ): void {
     for (const impact of this.impacts) {
       if (!impact.active) continue;
@@ -188,8 +190,8 @@ export class DamageFeedbackManager {
         impact.active = false;
         continue;
       }
-      if (isVisible(impact.x, impact.y, cameraX, cameraY, width, height)) {
-        drawImpact(ctx, impact, impact.x - cameraX, impact.y - cameraY);
+      if (isVisible(impact.x, impact.y, cameraX, cameraY, width, height, zoom)) {
+        drawImpact(ctx, impact, (impact.x - cameraX) * zoom, (impact.y - cameraY) * zoom);
       }
     }
 
@@ -200,7 +202,7 @@ export class DamageFeedbackManager {
         flash.active = false;
         continue;
       }
-      if (!isVisible(flash.x, flash.y, cameraX, cameraY, width, height)) continue;
+      if (!isVisible(flash.x, flash.y, cameraX, cameraY, width, height, zoom)) continue;
       const alpha = 1 - flash.ageMs / flash.lifetimeMs;
       ctx.save();
       ctx.globalAlpha = alpha * 0.82;
@@ -208,7 +210,13 @@ export class DamageFeedbackManager {
       ctx.shadowColor = flash.color;
       ctx.shadowBlur = 14;
       ctx.beginPath();
-      ctx.arc(flash.x - cameraX, flash.y - cameraY, flash.radius * (1 + (1 - alpha) * 0.15), 0, Math.PI * 2);
+      ctx.arc(
+        (flash.x - cameraX) * zoom,
+        (flash.y - cameraY) * zoom,
+        flash.radius * zoom * (1 + (1 - alpha) * 0.15),
+        0,
+        Math.PI * 2,
+      );
       ctx.fill();
       ctx.restore();
     }

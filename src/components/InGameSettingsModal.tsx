@@ -32,6 +32,7 @@ interface InGameSettingsModalProps {
   bgmVolume: number;
   sfxVolume: number;
   screenShakeEnabled: boolean;
+  motionIntensity: number;
   hapticsEnabled: boolean;
   disableGameplayCutscenes: boolean;
   combatSpeed: number;
@@ -48,6 +49,7 @@ interface InGameSettingsModalProps {
   onToggleDevCheats: () => void;
   onSelectUiTheme: (themeId: UiThemeId) => void;
   onToggleScreenShake: () => void;
+  onMotionIntensityChange: (value: number) => void;
   onToggleHaptics: () => void;
   onToggleGameplayCutscenes: () => void;
   onCombatSpeedChange: (speed: number) => void;
@@ -68,6 +70,7 @@ export default function InGameSettingsModal({
   bgmVolume,
   sfxVolume,
   screenShakeEnabled,
+  motionIntensity,
   hapticsEnabled,
   disableGameplayCutscenes,
   combatSpeed,
@@ -84,6 +87,7 @@ export default function InGameSettingsModal({
   onToggleDevCheats,
   onSelectUiTheme,
   onToggleScreenShake,
+  onMotionIntensityChange,
   onToggleHaptics,
   onToggleGameplayCutscenes,
   onCombatSpeedChange,
@@ -151,6 +155,27 @@ export default function InGameSettingsModal({
                     {!muteSfx ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
                     <span>{!muteSfx ? 'SFX ENABLED' : 'SFX MUTED'}</span>
                   </button>
+                </div>
+
+                <div className="space-y-1.5 border-b border-white/5 pb-3">
+                  <div className="flex justify-between text-[11px] text-slate-300 uppercase font-bold">
+                    <span>Motion Intensity</span>
+                    <span className={`font-mono font-bold ${activeUiTheme.textClass}`}>{motionIntensity}%</span>
+                  </div>
+                  <input
+                    aria-label="Motion Intensity"
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="5"
+                    value={motionIntensity}
+                    onChange={(event) => onMotionIntensityChange(Number.parseInt(event.target.value, 10))}
+                    className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+                    style={{ accentColor: activeUiTheme.accent }}
+                  />
+                  <span className="block text-[9px] text-slate-500">
+                    Scales cinematic camera movement without changing screen shake.
+                  </span>
                 </div>
 
                 <div className="space-y-1.5">

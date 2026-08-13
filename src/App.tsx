@@ -582,6 +582,11 @@ export default function App() {
     const saved = localStorage.getItem('aetheria_pref_screen_shake');
     return saved !== null ? saved === 'true' : true;
   });
+  const [motionIntensity, setMotionIntensity] = useState<number>(() => {
+    const saved = localStorage.getItem('aetheria_pref_motion_intensity');
+    const parsed = saved === null ? 70 : Number.parseInt(saved, 10);
+    return Number.isFinite(parsed) ? Math.max(0, Math.min(100, parsed)) : 70;
+  });
   const [hapticsEnabled, setHapticsEnabled] = useState<boolean>(() => {
     return localStorage.getItem('aetheria_pref_haptics') !== 'false';
   });
@@ -593,6 +598,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('aetheria_pref_screen_shake', screenShakeEnabled.toString());
   }, [screenShakeEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem('aetheria_pref_motion_intensity', motionIntensity.toString());
+  }, [motionIntensity]);
 
   useEffect(() => {
     localStorage.setItem('aetheria_pref_haptics', hapticsEnabled.toString());
@@ -2833,6 +2842,7 @@ export default function App() {
           bgmVolume={bgmVolume}
           sfxVolume={sfxVolume}
           screenShakeEnabled={screenShakeEnabled}
+          motionIntensity={motionIntensity}
           hapticsEnabled={hapticsEnabled}
           devCheatsEnabled={devCheatsEnabled}
           playerLevel={currentPlayerLevel}
@@ -2848,6 +2858,7 @@ export default function App() {
             AetheriaAudioEngine.setSfxVolume(value / 100);
           }}
           onScreenShakeChange={setScreenShakeEnabled}
+          onMotionIntensityChange={setMotionIntensity}
           onHapticsChange={setHapticsEnabled}
           onSelectTheme={handleSelectUiTheme}
           onOpenMobileControlEditor={() => setShowMobileControlEditor(true)}
@@ -3386,6 +3397,7 @@ export default function App() {
                     devCheatsEnabled={devCheatsEnabled}
                     playerLevel={saveState.playerLevel || 1}
                     screenShakeEnabled={screenShakeEnabled}
+                    motionIntensity={motionIntensity}
                     hapticsEnabled={hapticsEnabled}
                     combatSpeed={combatSpeed}
                     fpsLimit={fpsLimit}
@@ -3427,6 +3439,7 @@ export default function App() {
                     devCheatsEnabled={devCheatsEnabled}
                     playerLevel={saveState.playerLevel || 1}
                     screenShakeEnabled={screenShakeEnabled}
+                    motionIntensity={motionIntensity}
                     hapticsEnabled={hapticsEnabled}
                     combatSpeed={combatSpeed}
                     fpsLimit={fpsLimit}
@@ -4287,6 +4300,7 @@ export default function App() {
         bgmVolume={bgmVolume}
         sfxVolume={sfxVolume}
         screenShakeEnabled={screenShakeEnabled}
+        motionIntensity={motionIntensity}
         hapticsEnabled={hapticsEnabled}
         disableGameplayCutscenes={Boolean(saveState.disableGameplayCutscenes)}
         combatSpeed={combatSpeed}
@@ -4321,6 +4335,7 @@ export default function App() {
           setScreenShakeEnabled(!screenShakeEnabled);
           AetheriaAudioEngine.playClick();
         }}
+        onMotionIntensityChange={setMotionIntensity}
         onToggleHaptics={() => {
           setHapticsEnabled(!hapticsEnabled);
           AetheriaAudioEngine.playClick();
@@ -4417,6 +4432,7 @@ export default function App() {
               devCheatsEnabled={devCheatsEnabled}
               playerLevel={saveState.playerLevel || 1}
               screenShakeEnabled={screenShakeEnabled}
+              motionIntensity={motionIntensity}
               hapticsEnabled={hapticsEnabled}
               combatSpeed={combatSpeed}
               fpsLimit={fpsLimit}

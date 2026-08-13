@@ -7,6 +7,7 @@ interface MainMenuSettingsModalProps {
   bgmVolume: number;
   sfxVolume: number;
   screenShakeEnabled: boolean;
+  motionIntensity: number;
   hapticsEnabled: boolean;
   devCheatsEnabled: boolean;
   playerLevel: number;
@@ -16,6 +17,7 @@ interface MainMenuSettingsModalProps {
   onBgmVolumeChange: (value: number) => void;
   onSfxVolumeChange: (value: number) => void;
   onScreenShakeChange: (enabled: boolean) => void;
+  onMotionIntensityChange: (value: number) => void;
   onHapticsChange: (enabled: boolean) => void;
   onSelectTheme: (themeId: UiThemeId) => void;
   onOpenMobileControlEditor: () => void;
@@ -26,6 +28,7 @@ export default function MainMenuSettingsModal({
   bgmVolume,
   sfxVolume,
   screenShakeEnabled,
+  motionIntensity,
   hapticsEnabled,
   devCheatsEnabled,
   playerLevel,
@@ -35,6 +38,7 @@ export default function MainMenuSettingsModal({
   onBgmVolumeChange,
   onSfxVolumeChange,
   onScreenShakeChange,
+  onMotionIntensityChange,
   onHapticsChange,
   onSelectTheme,
   onOpenMobileControlEditor,
@@ -69,6 +73,24 @@ export default function MainMenuSettingsModal({
             <label className="flex min-h-12 items-center justify-between gap-4 border-t border-white/10 pt-4 text-[10px] font-black uppercase tracking-wider text-slate-300">
               Screen Shake
               <input type="checkbox" checked={screenShakeEnabled} onChange={(event) => onScreenShakeChange(event.target.checked)} className="h-5 w-5 accent-cyan-400" />
+            </label>
+            <label className="block border-t border-white/10 pt-4">
+              <span className="flex justify-between text-[10px] font-black uppercase tracking-wider text-slate-300">
+                <b>Motion Intensity</b><b>{motionIntensity}%</b>
+              </span>
+              <input
+                aria-label="Motion Intensity"
+                className="mt-3 w-full accent-cyan-400"
+                type="range"
+                min="0"
+                max="100"
+                step="5"
+                value={motionIntensity}
+                onChange={(event) => onMotionIntensityChange(Number(event.target.value))}
+              />
+              <small className="mt-2 block font-mono text-[8px] uppercase leading-relaxed text-slate-500">
+                Scales cinematic camera movement without changing screen shake.
+              </small>
             </label>
             <label className="flex min-h-12 items-center justify-between gap-4 border-t border-white/10 pt-4 text-[10px] font-black uppercase tracking-wider text-slate-300">
               Combat Haptics

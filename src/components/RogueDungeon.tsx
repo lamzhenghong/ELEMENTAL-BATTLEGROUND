@@ -41,6 +41,7 @@ interface RogueDungeonProps {
   devCheatsEnabled?: boolean;
   playerLevel?: number;
   screenShakeEnabled?: boolean;
+  motionIntensity?: number;
   hapticsEnabled?: boolean;
   combatSpeed?: number;
   fpsLimit?: '60' | 'none';
@@ -80,6 +81,7 @@ export default function RogueDungeon({
   devCheatsEnabled = true,
   playerLevel = 1,
   screenShakeEnabled = true,
+  motionIntensity = 70,
   hapticsEnabled = true,
   combatSpeed = 1.0,
   fpsLimit = '60',
@@ -487,6 +489,7 @@ export default function RogueDungeon({
           devCheatsEnabled={devCheatsEnabled}
           playerLevel={playerLevel}
           screenShakeEnabled={screenShakeEnabled}
+          motionIntensity={motionIntensity}
           hapticsEnabled={hapticsEnabled}
           combatSpeed={combatSpeed}
           fpsLimit={fpsLimit}
