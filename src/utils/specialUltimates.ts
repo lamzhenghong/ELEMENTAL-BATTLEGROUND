@@ -5,6 +5,7 @@ export const SPECIAL_ULTIMATE_COOLDOWN_MS = 60_000;
 
 export type SpecialUltimateId = 'eternal_vapor' | 'worldstorm_genesis';
 export type SpecialUltimateStyle = 'vapor' | 'worldstorm';
+export type SpecialUltimateFollowup = 'boiling-point' | 'living-storm-network';
 
 export interface SpecialUltimateDialogueLine {
   characterId: string;
@@ -21,6 +22,7 @@ export interface SpecialUltimateCombo {
   damageMultiplier: number;
   impactText: string;
   style: SpecialUltimateStyle;
+  followup: SpecialUltimateFollowup;
 }
 
 export interface SpecialUltimateCombatant {
@@ -55,9 +57,10 @@ export const SPECIAL_ULTIMATE_COMBOS: readonly SpecialUltimateCombo[] = [
       { characterId: 'kaelen', speaker: 'Kaelen', line: 'Always.' }
     ],
     damageElement: 'Pyro',
-    damageMultiplier: 20,
+    damageMultiplier: 5,
     impactText: 'MASSIVE VAPORIZE DETONATION',
-    style: 'vapor'
+    style: 'vapor',
+    followup: 'boiling-point'
   },
   {
     id: 'worldstorm_genesis',
@@ -68,9 +71,10 @@ export const SPECIAL_ULTIMATE_COMBOS: readonly SpecialUltimateCombo[] = [
       { characterId: 'veyra', speaker: 'Veyra', line: 'Then let the heavens roar.' }
     ],
     damageElement: 'Electro',
-    damageMultiplier: 21,
+    damageMultiplier: 5,
     impactText: 'HYPERBLOOM WORLDSTORM',
-    style: 'worldstorm'
+    style: 'worldstorm',
+    followup: 'living-storm-network'
   }
 ];
 

@@ -53,7 +53,6 @@ import {
 } from '../utils/combatSessionPresentation';
 import {
   getReactionDamageOutcome,
-  getSpecialUltimateStatDamage,
   getStatScaledAttackDamage
 } from '../utils/combatDamage';
 import {
@@ -177,6 +176,17 @@ import {
 } from '../utils/damageFeedback';
 import { HapticManager } from '../utils/haptics';
 import { getArtifactSetProgress, type ArtifactSetProgress } from '../utils/artifactSetVisuals';
+import {
+  activateBoilingPoint,
+  activateLivingStormNetwork,
+  clearSpecialUltimateEffects,
+  createSpecialUltimateEffectState,
+  getSpecialUltimateDamageMultiplier,
+  registerSpecialUltimateDirectHit,
+  tickSpecialUltimateEffects,
+  type SpecialUltimateEffectEvent,
+} from '../utils/specialUltimateEffects';
+import { drawSpecialUltimateFollowupVfx } from './combat/SpecialUltimateFollowupVfx';
 import {
   getCriticalHealthBlinkAlpha,
   getDamageSkinTextPresentation,
@@ -409,6 +419,8 @@ export default function CombatArena({
       specialUltimateTimeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
       AetheriaAudioEngine.stopSpecialUltimateTheme(false);
       partyEffectsRef.current = clearPartyEffects(partyEffectsRef.current);
+      specialUltimateEffectsRef.current = clearSpecialUltimateEffects(specialUltimateEffectsRef.current);
+      specialUltimateDamageEventsRef.current = [];
     };
   }, []);
 
@@ -471,6 +483,8 @@ export default function CombatArena({
   const [shieldActive, setShieldActive] = useState<ElementType | null>(null);
   const [shieldWeight, setShieldWeight] = useState(0);
   const partyEffectsRef = useRef(createPartyEffectState());
+  const specialUltimateEffectsRef = useRef(createSpecialUltimateEffectState());
+  const specialUltimateDamageEventsRef = useRef<SpecialUltimateEffectEvent[]>([]);
   const [, setPartyEffectRevision] = useState(0);
 
   // Time metrics inside arena
@@ -818,6 +832,8 @@ export default function CombatArena({
     damageTextPoolCursorRef.current = 0;
     damageFeedbackRef.current.clear();
     cameraDirectorRef.current.reset();
+    specialUltimateEffectsRef.current = clearSpecialUltimateEffects(specialUltimateEffectsRef.current);
+    specialUltimateDamageEventsRef.current = [];
     HapticManager.stop();
     setDomDamageTexts([]);
     resetComboState();
@@ -1588,6 +1604,8 @@ export default function CombatArena({
     waveResolvingRef.current = false;
     bossPhaseMilestonesRef.current.clear();
     damageFeedbackRef.current.clear();
+    specialUltimateEffectsRef.current = clearSpecialUltimateEffects(specialUltimateEffectsRef.current);
+    specialUltimateDamageEventsRef.current = [];
     HapticManager.stop();
     loopStateRef.current.currentWave = waveNum;
     setCurrentWave(waveNum);
@@ -2487,8 +2505,7 @@ export default function CombatArena({
     const combo = available.combo;
     const specialUltimateReactionContext = createReactionContext('special-ultimate', true);
     const participantIds = new Set(combo.requiredCharacterIds);
-    const participants = currentParty.filter(c => participantIds.has(c.id));
-    const specialDamage = getSpecialUltimateStatDamage(currentActiveChar.atk, participants.map(c => c.atk), combo.damageMultiplier);
+    const specialDamage = getStatScaledAttackDamage(currentActiveChar.atk, combo.damageMultiplier);
     const px = playerRef.current.x;
     const py = playerRef.current.y;
     const impactColor = combo.style === 'vapor' ? '#fb923c' : '#a855f7';
@@ -2517,6 +2534,25 @@ export default function CombatArena({
         applySkillDamage(enemy, specialDamage, combo.damageElement, specialUltimateReactionContext, true, true);
         spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 58, combo.impactText, impactColor, 13, true);
       });
+
+      const followupTargets = enemiesRef.current
+        .filter(enemy => enemy.hp > 0)
+        .map(enemy => ({ id: String(enemy.id), targetClass: getEnemyTargetClass(enemy) }));
+      if (combo.followup === 'boiling-point') {
+        specialUltimateEffectsRef.current = activateBoilingPoint(
+          specialUltimateEffectsRef.current,
+          followupTargets,
+          currentActiveChar.atk,
+        );
+        spawnTextRef.current(px, py - 105, 'VAPOR PRESSURE \u00b7 10s', '#67e8f9', 14, true);
+      } else if (combo.followup === 'living-storm-network') {
+        specialUltimateEffectsRef.current = activateLivingStormNetwork(
+          specialUltimateEffectsRef.current,
+          followupTargets,
+          currentActiveChar.atk,
+        );
+        spawnTextRef.current(px, py - 105, 'LIVING STORM NETWORK \u00b7 12s', '#86efac', 14, true);
+      }
 
       if (screenShakeEnabled) {
         shakeRef.current.intensity = 24;
@@ -3277,6 +3313,10 @@ export default function CombatArena({
       finalDmg = Math.round(finalDmg * 1.4);
     }
 
+    if (usesActiveAttackerModifiers) {
+      finalDmg *= getSpecialUltimateDamageMultiplier(specialUltimateEffectsRef.current, String(enemy.id));
+    }
+
     if (enemy.type !== 'Boss' && enemy.archetypeId === 'siphon' && (enemy.archetypeState?.beamFrames ?? 0) > 0 && finalDmg > 0) {
       restoreSiphonedEnergy(enemy);
     }
@@ -3390,6 +3430,15 @@ export default function CombatArena({
     requestCombatImpactSound(impactProfile.soundTier, type, isCrit);
     if (finalDmg > 0) {
       registerComboHit(enemy.x, enemy.y);
+      if (source === 'normal-attack' || source === 'elemental-skill' || source === 'elemental-burst') {
+        const followup = registerSpecialUltimateDirectHit(
+          specialUltimateEffectsRef.current,
+          String(enemy.id),
+          finalDmg,
+        );
+        specialUltimateEffectsRef.current = followup.state;
+        specialUltimateDamageEventsRef.current.push(...followup.events);
+      }
       if (impactSource === 'normal-attack') {
         HapticManager.trigger(isCrit ? 'M1_CRITICAL' : 'M1_HIT');
       } else if (impactSource === 'ultimate' || impactSource === 'special-ultimate') {
@@ -3690,6 +3739,9 @@ export default function CombatArena({
         );
       }
 
+      const specialUltimateEventsToResolve = specialUltimateDamageEventsRef.current;
+      specialUltimateDamageEventsRef.current = [];
+
       const actionTick = tickCombatActionQueue(
         combatActionQueueRef.current,
         delta * combatSpeed,
@@ -3857,6 +3909,60 @@ export default function CombatArena({
       }
 
       const frameSeconds = Math.min(0.05, Math.max(0.001, delta / 1000)) * combatSpeed;
+      const specialUltimateTick = tickSpecialUltimateEffects(specialUltimateEffectsRef.current, frameSeconds);
+      specialUltimateEffectsRef.current = specialUltimateTick.state;
+      specialUltimateDamageEventsRef.current.push(...specialUltimateTick.events);
+
+      specialUltimateEventsToResolve.forEach(event => {
+        if (event.kind === 'pull') {
+          const center = enemiesRef.current.find(enemy => String(enemy.id) === event.centerTargetId && enemy.hp > 0);
+          if (!center) return;
+          enemiesRef.current.forEach(enemy => {
+            if (enemy.hp <= 0 || enemy.type === 'Boss' || String(enemy.id) === event.centerTargetId) return;
+            const dx = center.x - enemy.x;
+            const dy = center.y - enemy.y;
+            const distance = Math.hypot(dx, dy);
+            if (distance <= 1 || distance > event.radius + enemy.radius) return;
+            const pullDistance = Math.min(event.distance, Math.max(0, distance - center.radius - enemy.radius - 4));
+            enemy.x = Math.max(enemy.radius, Math.min(WORLD_WIDTH - enemy.radius, enemy.x + (dx / distance) * pullDistance));
+            enemy.y = Math.max(enemy.radius, Math.min(WORLD_HEIGHT - enemy.radius, enemy.y + (dy / distance) * pullDistance));
+          });
+          return;
+        }
+
+        const target = enemiesRef.current.find(enemy => String(enemy.id) === event.targetId && enemy.hp > 0);
+        if (!target) return;
+        if (event.kind === 'root') {
+          const rootStatus: CombatStatusEffect = {
+            id: 'special-ultimate:living-storm-root',
+            type: 'stun',
+            sourceCharacterId: 'special-ultimate',
+            sourceAbility: 'worldstorm-genesis',
+            duration: event.duration,
+            remainingDuration: event.duration,
+            strength: 1,
+            stackBehavior: 'refresh',
+            visualKind: 'rooted',
+          };
+          target.statusEffects = applyCombatStatus(
+            target.statusEffects ?? [],
+            rootStatus,
+            getEnemyTargetClass(target),
+          ).statuses;
+          spawnTextRef.current(target.x, target.y - target.radius - 42, 'ROOTED', '#86efac', 11, true);
+          return;
+        }
+
+        applySkillDamage(
+          target,
+          event.damage,
+          event.element,
+          createReactionContext('persistent-field', true, false),
+          false,
+          false,
+        );
+        spawnTextRef.current(target.x, target.y - target.radius - 45, event.label, getElementColorHex(event.element), 10, true);
+      });
       const partyEffectTick = tickPartyEffects(
         partyEffectsRef.current,
         frameSeconds,
@@ -3967,6 +4073,14 @@ export default function CombatArena({
         ctx.stroke();
         ctx.restore();
       });
+
+      drawSpecialUltimateFollowupVfx(
+        ctx,
+        specialUltimateEffectsRef.current,
+        enemiesRef.current,
+        now,
+        feedbackQuality === 'low',
+      );
 
       // --- PLAYER MOVEMENT CONTROL ---
       let dx = 0;
