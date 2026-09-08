@@ -3,8 +3,10 @@ import { createDefaultStoryProgress, normalizeStoryProgress } from '../data/stor
 import type { SaveState } from '../types';
 import { normalizeUniqueEquippedWeapons } from '../utils/equipmentRules';
 import { normalizeUiTheme } from '../utils/uiThemes';
+import { normalizeTeamBuilds } from '../utils/teamBuilds';
 
 export const INITIAL_SAVE_STATE: SaveState = {
+  savedTeamBuilds: [],
   mora: 30000,
   aetherGems: 1600,
   playerLevel: 1,
@@ -97,6 +99,7 @@ export const normalizeLoadedSaveState = (parsed: Partial<SaveState>): SaveState 
   const merged: SaveState = {
     ...defaultState,
     ...parsed,
+    savedTeamBuilds: normalizeTeamBuilds(parsed.savedTeamBuilds),
     bannerPity5Star: { ...defaultState.bannerPity5Star, ...(parsed.bannerPity5Star || {}) },
     bannerPity4Star: { ...defaultState.bannerPity4Star, ...(parsed.bannerPity4Star || {}) },
     bannerGuaranteed5Star: { ...defaultState.bannerGuaranteed5Star, ...(parsed.bannerGuaranteed5Star || {}) },

@@ -23,6 +23,7 @@ import MainMenuSettingsModal from './components/MainMenuSettingsModal';
 import CharacterRoleBadge from './components/CharacterRoleBadge';
 import CloudAccountModal from './components/CloudAccountModal';
 import CloudSaveConflictModal from './components/CloudSaveConflictModal';
+import SavedTeamBuilds from './components/SavedTeamBuilds';
 import InGameSettingsModal from './components/InGameSettingsModal';
 import MobileControlEditor from './components/MobileControlEditor';
 import PlayerStatsModal from './components/PlayerStatsModal';
@@ -3567,8 +3568,10 @@ export default function App() {
                           Deploy up to 4 heroes to sync elemental reaction triggers inside the active arena.
                         </p>
                       </div>
-
-
+                      <SavedTeamBuilds saveState={saveState} onUpdate={updater => {
+                        if (activeScreenRef.current !== 'party') return;
+                        triggerSaveUpdate(prev => activeScreenRef.current === 'party' ? updater(prev) : prev);
+                      }} />
                     </div>
 
                     <div className="flex justify-end">

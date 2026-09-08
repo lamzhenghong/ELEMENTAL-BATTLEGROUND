@@ -148,7 +148,24 @@ export interface StoryProgress {
   fastestClearTimes: Record<string, number>;
 }
 
+export interface TeamBuildItem {
+  id: string;
+  name: string;
+}
+
+export interface SavedTeamBuild {
+  id: string;
+  name: string;
+  members: {
+    characterId: string;
+    weapon: TeamBuildItem | null;
+    artifacts: Partial<Record<ArtifactSlot, TeamBuildItem>>;
+  }[];
+  damageSkin: string;
+}
+
 export interface SaveState {
+  savedTeamBuilds?: SavedTeamBuild[];
   mora: number;
   aetherGems: number;
   playerLevel?: number;
