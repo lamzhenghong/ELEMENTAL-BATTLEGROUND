@@ -1,8 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
-import { Bookmark, Check, Pencil, Plus, RefreshCw, Trash2, X } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Axe, Bookmark, BowArrow, Check, ChevronDown, MoveUpRight, Pencil, Plus, RefreshCw, Shield, Sparkles, Star, Sword, Trash2, Users, WandSparkles, X } from 'lucide-react';
 import type { SaveState, SavedTeamBuild } from '../types';
 import { PLAYABLE_CHARACTERS } from '../data/characters';
+import ArtifactSlotIcon from './artifacts/ArtifactSlotIcon';
+import { getBannerImage } from './gacha/bannerCatalog';
+import { getRarityColor } from '../utils/forgePresentation';
 import {
   applyTeamBuild, BUILD_SLOT_LABELS, BUILD_SLOTS, buildHeroName, captureTeamBuild,
   cleanTeamBuildName, MAX_TEAM_BUILDS, previewTeamBuild, renameTeamBuild, TEAM_BUILD_NAME_LENGTH,
@@ -12,6 +15,58 @@ import './SavedTeamBuilds.css';
 interface Props {
   saveState: SaveState;
   onUpdate: (updater: (prev: SaveState) => SaveState) => void;
+}
+
+function HeroMark({ id }: { id: string }) {
+  const illustrated = ['aurelia', 'kaelen', 'maelis', 'veyra'].includes(id);
+  return <span className="team-build-avatar" aria-hidden="true">
+    {illustrated ? <img src={getBannerImage(id, 'character')} alt="" loading="lazy" /> : <span>{buildHeroName(id).slice(0, 1)}</span>}
+  </span>;
+}
+
+function BuildMember({ member, state, index }: { key?: string; member: SavedTeamBuild['members'][number]; state: SaveState; index: number }) {
+  const [inspected, setInspected] = useState<string | null>(null);
+  const hero = PLAYABLE_CHARACTERS.find(c => c.id === member.characterId);
+  const currentWeaponId = state.characterEquippedWeapon[member.characterId];
+  const weapon = state.inventoryWeapons.find(w => w.id === member.weapon?.id);
+  const WeaponIcon = { Sword, Claymore: Axe, Bow: BowArrow, Catalyst: WandSparkles, Polearm: MoveUpRight }[hero?.weaponType ?? 'Sword'];
+  const gear = [
+    { key: 'weapon', label: 'Weapon', icon: <WeaponIcon />, name: member.weapon?.name, rarity: weapon?.rarity,
+      meta: weapon ? `Lv.${weapon.level}` : '', missing: !!member.weapon && !weapon,
+      changed: (currentWeaponId ?? null) !== (member.weapon?.id ?? null),
+      before: state.inventoryWeapons.find(w => w.id === currentWeaponId)?.name ?? 'Empty' },
+    ...BUILD_SLOTS.map(slot => {
+      const ref = member.artifacts[slot];
+      const art = state.inventoryArtifacts?.find(a => a.id === ref?.id);
+      const beforeId = state.characterEquippedArtifacts?.[member.characterId]?.[slot];
+      return { key: slot, label: BUILD_SLOT_LABELS[slot], icon: <ArtifactSlotIcon slot={slot} />, name: ref?.name,
+        rarity: art?.rarity, meta: art ? `${art.rarity}` : '', missing: !!ref && !art,
+        changed: (beforeId ?? null) !== (ref?.id ?? null),
+        before: state.inventoryArtifacts?.find(a => a.id === beforeId)?.name ?? 'Empty' };
+    }),
+  ];
+  const detail = gear.find(g => g.key === inspected);
+  return <article className="team-build-member" style={{ '--hero-color': hero?.themeColor ?? '#94a3b8' } as CSSProperties}>
+    <div className="team-build-hero-header">
+      <HeroMark id={member.characterId} />
+      <div><span className="team-build-eyebrow">0{index + 1} / {hero?.element ?? 'Unknown'}</span><h4 title={buildHeroName(member.characterId)}>{buildHeroName(member.characterId).split(' ')[0]}</h4>
+        <span className="team-build-level">Lv.{state.characterLevels[member.characterId] ?? 1}</span></div>
+      {!state.unlockedCharacterIds.includes(member.characterId) && <AlertTriangle size={16} aria-label="Hero locked" />}
+    </div>
+    <div className="team-build-slots">{gear.map(g => <button key={g.key} type="button"
+      className={`team-build-slot ${!g.name ? 'is-empty' : ''} ${g.missing ? 'is-missing' : ''} ${g.changed ? 'is-changed' : ''}`}
+      style={{ '--rarity-color': g.rarity ? getRarityColor(g.rarity) : '#748198' } as CSSProperties}
+      title={`${g.label}: ${g.name ?? 'Empty'}${g.missing ? ' (Missing)' : ''}`}
+      aria-label={`${buildHeroName(member.characterId)}, ${g.label}: ${g.name ?? 'Empty'}${g.missing ? ', missing' : ''}`}
+      aria-expanded={inspected === g.key} onClick={() => setInspected(inspected === g.key ? null : g.key)}>
+      {g.icon}<span>{g.missing ? <AlertTriangle size={11} /> : g.meta ? <>{g.key !== 'weapon' && <Star size={9} fill="currentColor" />}{g.meta}</> : <span aria-hidden="true">&mdash;</span>}</span>
+      {g.changed && <ArrowRight className="team-build-change" size={10} />}
+    </button>)}</div>
+    {detail && <div className="team-build-inspect"><span className="team-build-eyebrow">{detail.label}</span><strong>{detail.name ?? 'Empty slot'}</strong>
+      {detail.missing && <span className="team-build-warning">Missing from inventory</span>}
+      {detail.changed && <small>Replaces: {detail.before}</small>}
+    </div>}
+  </article>;
 }
 
 export default function SavedTeamBuilds({ saveState, onUpdate }: Props) {
@@ -106,7 +161,7 @@ export default function SavedTeamBuilds({ saveState, onUpdate }: Props) {
     {open && createPortal(<div className="team-build-backdrop" onClick={e => { if (e.target === e.currentTarget) setOpen(false); }}>
       <section ref={dialog} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="team-build-title" className="team-build-dialog">
         <header className="team-build-header">
-          <div><h2 id="team-build-title">Saved Team Builds <span>{builds.length}/{MAX_TEAM_BUILDS}</span></h2><p>Party, equipment and damage skin</p></div>
+          <div className="team-build-heading"><Bookmark size={22} /><h2 id="team-build-title">Team Loadouts</h2><span className="team-build-count">{builds.length}/{MAX_TEAM_BUILDS}</span></div>
           <button type="button" className="team-build-icon" title="Close saved builds" aria-label="Close saved builds" onClick={() => setOpen(false)}><X size={20} /></button>
         </header>
         <div className="team-build-content">
@@ -118,51 +173,39 @@ export default function SavedTeamBuilds({ saveState, onUpdate }: Props) {
                 <button className="team-build-icon" type="button" aria-label="Cancel rename" title="Cancel rename" onClick={() => setRenameId(null)}><X size={16} /></button>
               </form> : <div className="team-build-entry-top">
                 <button type="button" className="team-build-select" aria-pressed={selectedId === build.id} onClick={() => { resetMessages(); setSelectedId(build.id); }}>
-                  <strong>{build.name}</strong><span>{build.members.length} heroes / {build.damageSkin}</span>
+                  <strong>{build.name}</strong><span><Users size={12} aria-label="Heroes" />{build.members.length}/4 <Sparkles size={12} aria-label="Damage skin" />{build.damageSkin}</span>
                 </button>
                 <button type="button" className="team-build-icon" title={`Rename ${build.name}`} aria-label={`Rename ${build.name}`} onClick={() => { resetMessages(); setRenameId(build.id); setDraft(build.name); }}><Pencil size={14} /></button>
               </div>}
               <div className="team-build-hero-list">{build.members.map((m, index) => {
                 const hero = PLAYABLE_CHARACTERS.find(c => c.id === m.characterId);
-                return <span key={`${m.characterId}-${index}`} style={{ borderColor: hero?.themeColor }} title={buildHeroName(m.characterId)}>{buildHeroName(m.characterId).split(' ')[0]}</span>;
+                return <span key={`${m.characterId}-${index}`} style={{ '--hero-color': hero?.themeColor } as CSSProperties} title={buildHeroName(m.characterId)}><HeroMark id={m.characterId} /></span>;
               })}</div>
-              {previewTeamBuild(saveState, build).issues.length > 0 && <small className="team-build-warning">Needs attention</small>}
+              {previewTeamBuild(saveState, build).issues.length > 0 && <small className="team-build-warning"><AlertTriangle size={12} />Check equipment</small>}
             </div>)}
             {!builds.length && <p className="team-build-empty">No saved builds yet.</p>}
             <form className="team-build-new" onSubmit={e => { e.preventDefault(); saveNew(); }}>
-              <label htmlFor="new-team-build">Save Current Party</label>
+              <label htmlFor="new-team-build"><Plus size={14} />New loadout</label>
               <input id="new-team-build" placeholder="Team name" maxLength={TEAM_BUILD_NAME_LENGTH} value={newName} onChange={e => setNewName(e.target.value)} disabled={builds.length >= MAX_TEAM_BUILDS} />
-              <button type="submit" className="team-build-button" disabled={!newName.trim() || !saveState.partyIds.length || builds.length >= MAX_TEAM_BUILDS}><Plus size={16} />Save New Build</button>
-              {builds.length >= MAX_TEAM_BUILDS && <small>All 5 presets used. Update or delete a saved build.</small>}
-              {!saveState.partyIds.length && <small>Select at least one hero in Party Setup.</small>}
+              <button type="submit" className="team-build-button" disabled={!newName.trim() || !saveState.partyIds.length || builds.length >= MAX_TEAM_BUILDS}><Plus size={16} />Save Party</button>
+              {builds.length >= MAX_TEAM_BUILDS && <small>5/5 slots used</small>}
+              {!saveState.partyIds.length && <small>Add a hero to save a team.</small>}
             </form>
           </aside>
           <div className="team-build-preview">
             {selected && preview ? <>
-              <h3>{selected.name}</h3>
-              <div className="team-build-summary"><span>Current party</span><p>{saveState.partyIds.map(buildHeroName).join(', ') || 'Empty'}</p><span>Saved party</span><p>{selected.members.map(m => buildHeroName(m.characterId)).join(', ')}</p><span>Damage skin</span><p>{saveState.activeDamageSkin || 'Default'} <span aria-hidden="true">&rarr;</span> {selected.damageSkin}</p></div>
-              <div className="team-build-members">{selected.members.map((member, index) => {
-                const currentWeaponId = saveState.characterEquippedWeapon[member.characterId];
-                const currentWeapon = saveState.inventoryWeapons.find(w => w.id === currentWeaponId);
-                const desiredWeapon = saveState.inventoryWeapons.find(w => w.id === member.weapon?.id);
-                const row = (label: string, before: string, after: string, changed: boolean, missing: boolean) => <div className={`team-build-gear ${changed ? 'is-changed' : ''} ${missing ? 'is-missing' : ''}`} key={label}>
-                  <span>{label}</span><div>{changed && <small>Current: {before}</small>}<p>{after}{missing && <strong> (Missing)</strong>}</p></div>
-                </div>;
-                return <article className="team-build-member" key={`${member.characterId}-${index}`}>
-                  <h4>{index + 1}. {buildHeroName(member.characterId)}</h4>
-                  {row('Weapon', currentWeapon?.name ?? 'Unequipped', desiredWeapon ? `${desiredWeapon.name} / Lv.${desiredWeapon.level}` : member.weapon?.name ?? 'Unequipped', (currentWeaponId ?? null) !== (member.weapon?.id ?? null), !!member.weapon && !desiredWeapon)}
-                  {BUILD_SLOTS.map(slot => {
-                    const beforeId = saveState.characterEquippedArtifacts?.[member.characterId]?.[slot];
-                    const before = saveState.inventoryArtifacts?.find(a => a.id === beforeId);
-                    const desired = member.artifacts[slot];
-                    const after = saveState.inventoryArtifacts?.find(a => a.id === desired?.id);
-                    return row(BUILD_SLOT_LABELS[slot], before?.name ?? 'Unequipped', after ? `${after.name} / ${after.rarity}-Star` : desired?.name ?? 'Unequipped', (beforeId ?? null) !== (desired?.id ?? null), !!desired && !after);
-                  })}
-                </article>;
-              })}</div>
-              {!!preview.transfers.length && <div className="team-build-transfers"><h4>Equipment Transfers</h4><ul>{preview.transfers.map((line, i) => <li key={i}>{line}</li>)}</ul></div>}
-              {!!preview.issues.length && <div className="team-build-issues"><h4>Resolve Before Applying</h4><ul>{preview.issues.map((line, i) => <li key={i}>{line}</li>)}</ul></div>}
-              <div className="team-build-actions">
+              <div className="team-build-preview-heading"><div><span className="team-build-eyebrow">Squad preview</span><h3>{selected.name}</h3></div><span className="team-build-skin"><Sparkles size={15} /><span>{(saveState.activeDamageSkin || 'Default') !== selected.damageSkin && <>{saveState.activeDamageSkin || 'Default'} &rarr; </>}{selected.damageSkin}</span></span></div>
+              <div className="team-build-members">{selected.members.map((member, index) => <BuildMember key={`${selected.id}-${member.characterId}-${index}`} member={member} state={saveState} index={index} />)}</div>
+              <details className="team-build-details"><summary><Users size={14} />Party changes<ChevronDown size={14} /></summary><p>{saveState.partyIds.map(buildHeroName).join(', ') || 'Empty party'} <ArrowRight size={14} /> {selected.members.map(m => buildHeroName(m.characterId)).join(', ')}</p></details>
+              {!!preview.transfers.length && <details className="team-build-details team-build-transfers"><summary><RefreshCw size={14} />{preview.transfers.length} gear transfers<ChevronDown size={14} /></summary><ul>{preview.transfers.map((line, i) => <li key={i}>{line}</li>)}</ul></details>}
+              {!!preview.issues.length && <div className="team-build-issues"><h4><AlertTriangle size={14} />Build unavailable</h4><ul>{preview.issues.map((line, i) => <li key={i}>{line}</li>)}</ul></div>}
+            </> : <div className="team-build-empty"><Shield size={42} /><p>Your next squad starts here.</p></div>}
+          </div>
+        </div>
+        <div className="team-build-dock">
+          {selected && preview && <>
+            {pending ? <div className="team-build-confirm" role="alert"><div><strong>{pending === 'delete' ? `Delete ${selected.name}?` : `Overwrite ${selected.name}?`}</strong><small>{pending === 'delete' ? 'Equipment stays untouched.' : 'Use your current party and gear.'}</small></div><div><button type="button" className="team-build-button" onClick={() => setPending(null)}>Cancel</button><button type="button" className={`team-build-button ${pending === 'delete' ? 'danger' : 'primary'}`} onClick={confirmAction}>{pending === 'delete' ? <Trash2 size={16} /> : <RefreshCw size={16} />}{pending === 'delete' ? 'Delete' : 'Overwrite'}</button></div></div> : <div className="team-build-actions">
+                <span className="team-build-ready">{preview.issues.length ? <><AlertTriangle size={14} />Needs attention</> : <><Check size={14} />Ready</>}</span>
                 <button type="button" className="team-build-button primary" disabled={!!preview.issues.length || !!pending} onClick={() => {
                   resetMessages();
                   onUpdate(prev => {
@@ -170,15 +213,13 @@ export default function SavedTeamBuilds({ saveState, onUpdate }: Props) {
                     return currentBuild ? applyTeamBuild(prev, currentBuild, true) : prev;
                   });
                   setNotice(`${selected.name} applied.`);
-                }}><Check size={16} />Apply Build</button>
-                <button type="button" className="team-build-button" disabled={!saveState.partyIds.length} onClick={() => { resetMessages(); setPending('replace'); }}><RefreshCw size={16} />Update from Current Party</button>
+                }}><Check size={16} />Equip Team</button>
+                <button type="button" className="team-build-icon" aria-label="Overwrite with current party" title="Overwrite with current party" disabled={!saveState.partyIds.length} onClick={() => { resetMessages(); setPending('replace'); }}><RefreshCw size={18} /></button>
                 <button type="button" className="team-build-icon danger" title="Delete preset" aria-label="Delete preset" onClick={() => { resetMessages(); setPending('delete'); }}><Trash2 size={17} /></button>
-              </div>
-              {pending && <div className="team-build-confirm" role="alert"><p>{pending === 'delete' ? `Delete "${selected.name}"? Only this preset will be removed.` : `Replace "${selected.name}" with your current party and equipment?`}</p><div><button type="button" className="team-build-button" onClick={() => setPending(null)}>Cancel</button><button type="button" className="team-build-button primary" onClick={confirmAction}>Confirm</button></div></div>}
-            </> : <div className="team-build-empty"><Bookmark size={30} /><p>Select a saved build to preview its equipment.</p></div>}
-          </div>
+              </div>}
+          </>}
+          {(error || notice) && <div className="team-build-status" aria-live="polite">{error ? <span role="alert" className="team-build-warning">{error}</span> : notice}</div>}
         </div>
-        <footer className="team-build-footer" aria-live="polite">{error ? <span role="alert" className="team-build-warning">{error}</span> : notice || 'Builds are saved with your progress. Sign in to sync across devices.'}</footer>
       </section>
     </div>, document.body)}
   </>;
