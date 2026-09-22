@@ -63,6 +63,9 @@ for (const removedCopy of ['Ledger signature status', 'MATRIX ONLINE', 'Active c
 }
 
 assert.match(source, /aria-controls="forge-stat-breakdown-panel"/);
+assert.match(source, /ELEMENTAL DMG: portrait/);
+assert.match(source, /ENERGY RECHARGE: weapon/);
+assert.match(source, /ELEMENTAL MASTERY: weapon/);
 assert.match(source, /const \[showArtifactFusion, setShowArtifactFusion\] = useState\(false\)/);
 assert.match(source, /aria-expanded=\{showArtifactFusion\}/);
 assert.match(source, /aria-controls="artifact-fusion-panel"/);

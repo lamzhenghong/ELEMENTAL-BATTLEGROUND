@@ -97,11 +97,8 @@ const aureliaPortrait = calculateCharacterBuildStats({
   equippedArtifacts: [],
   portraitLevel: 1
 });
-assert.equal(aureliaPortrait.portraitBuffs.atk, 0.08);
-assert.equal(
-  aureliaPortrait.finalAtk,
-  Math.round(aureliaBase.finalAtk * 1.08)
-);
+assert.equal(aureliaPortrait.portraitBuffs.atk, 0);
+assert.equal(aureliaPortrait.finalAtk, aureliaBase.finalAtk);
 
 const aureliaPortraitThree = calculateCharacterBuildStats({
   character: aurelia,
@@ -109,15 +106,34 @@ const aureliaPortraitThree = calculateCharacterBuildStats({
   equippedArtifacts: [],
   portraitLevel: 3
 });
-assert.equal(aureliaPortraitThree.portraitBuffs.atk, 0.16);
-assert.equal(aureliaPortraitThree.portraitBuffs.critRate, 0.04);
-assert.equal(
-  aureliaPortraitThree.finalAtk,
-  Math.round(aureliaBase.finalAtk * 1.16)
-);
+assert.equal(aureliaPortraitThree.portraitBuffs.atk, 0);
+assert.equal(aureliaPortraitThree.portraitBuffs.critRate, 0.10);
+assert.equal(aureliaPortraitThree.finalAtk, aureliaBase.finalAtk);
 assert.equal(
   aureliaPortraitThree.finalCritRate,
-  aureliaBase.finalCritRate + 4
+  aureliaBase.finalCritRate + 10
 );
+
+const zephyr = PLAYABLE_CHARACTERS.find(candidate => candidate.id === 'zephyr');
+assert.ok(zephyr);
+const zephyrPortraitFour = calculateCharacterBuildStats({
+  character: zephyr,
+  level: 1,
+  equippedArtifacts: [],
+  portraitLevel: 4
+});
+assert.equal(zephyrPortraitFour.finalEnergyRecharge, 0.18);
+assert.equal(zephyrPortraitFour.finalElementalMastery, 80);
+assert.equal(zephyrPortraitFour.finalElementalDamageBonus, 0);
+
+const veyra = PLAYABLE_CHARACTERS.find(candidate => candidate.id === 'veyra');
+assert.ok(veyra);
+const veyraPortraitFour = calculateCharacterBuildStats({
+  character: veyra,
+  level: 1,
+  equippedArtifacts: [],
+  portraitLevel: 4
+});
+assert.equal(veyraPortraitFour.finalElementalDamageBonus, 0.18);
 
 console.log('character build stat rules ok');

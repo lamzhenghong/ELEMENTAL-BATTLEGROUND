@@ -314,6 +314,11 @@ export default function InventoryManager({
     finalAtk,
     finalCritRate,
     finalCritDmg,
+    finalEnergyRecharge,
+    finalElementalMastery,
+    finalElementalDamageBonus,
+    weaponEnergyRecharge,
+    weaponElementalMastery,
     finalCooldownReduction: finalCdReduction,
   } = buildStats;
 
@@ -1577,6 +1582,9 @@ export default function InventoryManager({
                     <p>DEF: base {Math.round(selectedChar.baseStats.def * charMult)} + growth {Math.round(charLevel * 2.4 * charMult)}{pBuffs.def > 0 ? ` (+${Math.round(pBuffs.def * 100)}% portrait)` : ''}</p>
                     <p>CRIT: base {(selectedChar.baseStats.critRate * 100).toFixed(1)}% + weapon {(bonusCritRate * 100).toFixed(1)}%{totalArtCritRate > 0 ? ` + artifact +${(totalArtCritRate * 100).toFixed(1)}%` : ''}{pBuffs.critRate > 0 ? ` + portrait +${(pBuffs.critRate * 100).toFixed(1)}%` : ''}</p>
                     <p>CRIT DMG: base {(selectedChar.baseStats.critDmg * 100).toFixed(1)}% + weapon {(bonusCritDmg * 100).toFixed(1)}%{totalArtCritDmg > 0 ? ` + artifact +${(totalArtCritDmg * 100).toFixed(1)}%` : ''}{pBuffs.critDmg > 0 ? ` + portrait +${(pBuffs.critDmg * 100).toFixed(1)}%` : ''}</p>
+                    {finalElementalDamageBonus > 0 && <p>ELEMENTAL DMG: portrait +{(pBuffs.elementalDamage * 100).toFixed(1)}% = {(finalElementalDamageBonus * 100).toFixed(1)}%</p>}
+                    {finalEnergyRecharge > 0 && <p>ENERGY RECHARGE: weapon +{(weaponEnergyRecharge * 100).toFixed(1)}%{pBuffs.energyRecharge > 0 ? ` + portrait +${(pBuffs.energyRecharge * 100).toFixed(1)}%` : ''} = {(finalEnergyRecharge * 100).toFixed(1)}%</p>}
+                    {finalElementalMastery > 0 && <p>ELEMENTAL MASTERY: weapon +{weaponElementalMastery.toFixed(0)}{pBuffs.elementalMastery > 0 ? ` + portrait +${pBuffs.elementalMastery.toFixed(0)}` : ''} = {finalElementalMastery.toFixed(0)}</p>}
                     <p>Cooldown: artifact chrono set bonus -{finalCdReduction.toFixed(0)}% skill cooldown duration</p>
                     <p>{pLvl > 0 ? `Portrait: P0-P${pLvl} active (cumulative)` : 'Portrait: P0 base'}</p>
                   </div>

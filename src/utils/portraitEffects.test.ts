@@ -4,9 +4,10 @@ import { resolvePortraitEffect, unlockNextPortraitTier } from './portraitEffects
 
 const unlocked = { aurelia: 4, kaelen: 2, locked: 6 };
 assert.equal(resolvePortraitEffect('aurelia', unlocked, 'Pyro').activeTier, 4);
-assert.equal(resolvePortraitEffect('aurelia', unlocked, 'Pyro').buffs.atk, 0.16);
-assert.equal(resolvePortraitEffect('aurelia', { aurelia: 3 }, 'Pyro').buffs.atk, 0.16);
-assert.equal(resolvePortraitEffect('aurelia', { aurelia: 3 }, 'Pyro').buffs.critRate, 0.04);
+assert.equal(resolvePortraitEffect('aurelia', unlocked, 'Pyro').buffs.atk, 0);
+assert.equal(resolvePortraitEffect('aurelia', unlocked, 'Pyro').buffs.elementalDamage, 0.18);
+assert.equal(resolvePortraitEffect('aurelia', { aurelia: 3 }, 'Pyro').buffs.atk, 0);
+assert.equal(resolvePortraitEffect('aurelia', { aurelia: 3 }, 'Pyro').buffs.critRate, 0.10);
 assert.equal(
   (resolvePortraitEffect('aurelia', unlocked, 'Pyro').frameStyle as Record<string, string>)['--portrait-effect-color'],
   '#fb7185',

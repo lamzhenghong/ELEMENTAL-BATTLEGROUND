@@ -149,6 +149,9 @@ export const calculateCharacterBuildStats = ({
     finalAtk: atk,
     finalCritRate: critRate * 100,
     finalCritDmg: critDmg * 100,
+    finalEnergyRecharge: weaponSecondaryStats.energyRecharge + portraitBuffs.energyRecharge,
+    finalElementalMastery: weaponSecondaryStats.elementalMastery + portraitBuffs.elementalMastery,
+    finalElementalDamageBonus: portraitBuffs.elementalDamage,
     finalCooldownReduction: artifactCooldownReduction * 100,
     upgradedWeaponStats: equippedWeapon
       ? getUpgradedWeaponStats(equippedWeapon)

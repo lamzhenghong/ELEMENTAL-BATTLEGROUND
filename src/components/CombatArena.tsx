@@ -131,14 +131,25 @@ import {
 import {
   activateVeyraDominion,
   addMaelisShield,
+  addPeriodicField,
   addReactionField,
   addWhirlpool,
+  advanceVeyraFieldTick,
   clearPartyEffects,
   consumePartyShield,
   createPartyEffectState,
   getReactionFieldModifiers,
+  restorePartyShield,
   tickPartyEffects
 } from '../utils/combatPartyEffects';
+import {
+  createPortraitCombatState,
+  isPortraitTierActive,
+  resolvePortraitCombatEvent,
+  tickPortraitCombatState,
+  type PortraitCombatEvent,
+  type PortraitCombatProc
+} from '../utils/fiveStarPortraits';
 import {
   createCampaignBossMechanicState,
   stepCampaignBossMechanic,
@@ -392,6 +403,7 @@ export default function CombatArena({
       specialUltimateTimeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
       AetheriaAudioEngine.stopSpecialUltimateTheme(false);
       partyEffectsRef.current = clearPartyEffects(partyEffectsRef.current);
+      portraitCombatRef.current = createPortraitCombatState();
       specialUltimateEffectsRef.current = clearSpecialUltimateEffects(specialUltimateEffectsRef.current);
       specialUltimateDamageEventsRef.current = [];
     };
@@ -456,6 +468,7 @@ export default function CombatArena({
   const [shieldActive, setShieldActive] = useState<ElementType | null>(null);
   const [shieldWeight, setShieldWeight] = useState(0);
   const partyEffectsRef = useRef(createPartyEffectState());
+  const portraitCombatRef = useRef(createPortraitCombatState());
   const specialUltimateEffectsRef = useRef(createSpecialUltimateEffectState());
   const specialUltimateDamageEventsRef = useRef<SpecialUltimateEffectEvent[]>([]);
   const [, setPartyEffectRevision] = useState(0);
@@ -1149,6 +1162,52 @@ export default function CombatArena({
     setPartyEffectRevision(revision => revision + 1);
   };
 
+  function applyPortraitProcs(
+    procs: PortraitCombatProc[],
+    sourceCharacter: CombatCharacter,
+    target?: any
+  ) {
+    procs.forEach(proc => {
+      if (proc.kind === 'shield-restore') {
+        updatePartyEffects(restorePartyShield(partyEffectsRef.current, proc.amount));
+      } else if (proc.kind === 'shield-restore-percent') {
+        const shield = partyEffectsRef.current.shield;
+        if (shield) updatePartyEffects(restorePartyShield(partyEffectsRef.current, shield.maxHp * proc.percent));
+      } else if (proc.kind === 'advance-field-tick') {
+        updatePartyEffects(advanceVeyraFieldTick(partyEffectsRef.current, proc.seconds));
+      } else if (proc.kind === 'reaction-buff' || proc.kind === 'apply-sigil') {
+        // The timed buff and sigil counts are stored by the portrait state resolver.
+      } else if (target && target.hp > 0) {
+        const damage = proc.kind === 'def-damage'
+          ? sourceCharacter.def * proc.multiplier
+          : proc.kind === 'bonus-damage'
+            ? sourceCharacter.atk * proc.bonusMultiplier
+            : sourceCharacter.atk * proc.multiplier;
+        applySkillDamage(
+          target,
+          damage,
+          proc.element,
+          createReactionContext('persistent-field', true, false),
+          false,
+          false
+        );
+      }
+
+      const x = target?.x ?? playerRef.current.x;
+      const y = target ? target.y - target.radius - 48 : playerRef.current.y - 72;
+      spawnTextRef.current(x, y, proc.label, '#fde68a', 11, true);
+    });
+  }
+
+  function dispatchPortraitEvent(event: PortraitCombatEvent, target?: any) {
+    const sourceCharacter = loopStateRef.current.combatParty.find(character => character.id === event.characterId);
+    if (!sourceCharacter) return [] as PortraitCombatProc[];
+    const outcome = resolvePortraitCombatEvent(portraitCombatRef.current, event);
+    portraitCombatRef.current = outcome.state;
+    applyPortraitProcs(outcome.procs, sourceCharacter, target);
+    return outcome.procs;
+  }
+
   const applyKitStatusEffect = (
     enemy: any,
     effect: CharacterKitEffect,
@@ -1158,17 +1217,25 @@ export default function CombatArena({
   ) => {
     const targetClass = getEnemyTargetClass(enemy);
     const fieldModifiers = getReactionFieldModifiers(partyEffectsRef.current, enemy.x, enemy.y);
+    const sourcePortraitLevel = loopStateRef.current.combatParty.find(character => character.id === sourceCharacterId)?.portraitLevel ?? 0;
     let status: CombatStatusEffect | null = null;
 
     if (effect.kind === 'burn') {
+      const aureliaBurnDuration = sourceCharacterId === 'aurelia' && sourceAbility === 'skill' && isPortraitTierActive(sourcePortraitLevel, 3)
+        ? effect.duration + 2
+        : effect.duration;
+      const aureliaBurnStrength = sourceCharacterId === 'aurelia'
+        ? (sourceAbility === 'burst' && isPortraitTierActive(sourcePortraitLevel, 5) ? 1 : effect.attackMultiplier)
+          * (isPortraitTierActive(sourcePortraitLevel, 1) ? 1.2 : 1)
+        : effect.attackMultiplier;
       status = {
         id: `burn:${sourceCharacterId}:${sourceAbility}`,
         type: 'burn',
         sourceCharacterId,
         sourceAbility,
-        duration: effect.duration,
-        remainingDuration: effect.duration,
-        strength: effect.attackMultiplier,
+        duration: aureliaBurnDuration,
+        remainingDuration: aureliaBurnDuration,
+        strength: aureliaBurnStrength,
         stackBehavior: 'strongest',
         visualKind: 'burning',
         tickInterval: effect.tickInterval,
@@ -1176,14 +1243,17 @@ export default function CombatArena({
         snapshotAtk
       };
     } else if (effect.kind === 'slow') {
+      const kaelenP3Slow = sourceCharacterId === 'kaelen'
+        && sourceAbility === 'skill'
+        && isPortraitTierActive(sourcePortraitLevel, 3);
       status = {
         id: `slow:${sourceCharacterId}:${sourceAbility}`,
         type: 'slow',
         sourceCharacterId,
         sourceAbility,
-        duration: effect.duration * fieldModifiers.crowdControlDurationMultiplier,
-        remainingDuration: effect.duration * fieldModifiers.crowdControlDurationMultiplier,
-        strength: effect.strength,
+        duration: (kaelenP3Slow ? 4 : effect.duration) * fieldModifiers.crowdControlDurationMultiplier,
+        remainingDuration: (kaelenP3Slow ? 4 : effect.duration) * fieldModifiers.crowdControlDurationMultiplier,
+        strength: kaelenP3Slow ? 0.5 : effect.strength,
         stackBehavior: 'refresh',
         visualKind: 'slow'
       };
@@ -1220,7 +1290,22 @@ export default function CombatArena({
     const currentStatuses = (enemy.statusEffects ??= []) as CombatStatusEffect[];
     const result = applyCombatStatus(currentStatuses, status, targetClass);
     enemy.statusEffects = result.statuses;
+    if (!result.immune && sourceCharacterId === 'kaelen' && effect.kind === 'slow') {
+      dispatchPortraitEvent({
+        kind: 'kaelen-control', characterId: 'kaelen', portraitLevel: sourcePortraitLevel,
+        targetId: String(enemy.id)
+      }, enemy);
+    }
     if (result.immune && 'bossesImmune' in effect && effect.bossesImmune) {
+      if (
+        sourceCharacterId === 'veyra'
+        && sourceAbility === 'skill'
+        && isPortraitTierActive(sourcePortraitLevel, 3)
+      ) {
+        enemy.veyraVulnerabilityTimer = 4;
+        enemy.veyraVulnerabilityMultiplier = 1.12;
+        spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 62, 'PRISM EXPOSED 4s', '#c084fc', 11, true);
+      }
       const now = performance.now();
       if (!enemy.lastKitImmuneFeedbackAt || now - enemy.lastKitImmuneFeedbackAt > 900) {
         enemy.lastKitImmuneFeedbackAt = now;
@@ -1422,8 +1507,12 @@ export default function CombatArena({
           spearDoubleCd: 0,
           favoniusCooldown: 0,
           cooldownReduction: artBonusCdReduction,
-          energyRecharge: sharedBuild.weaponEnergyRecharge + partyResonanceModifiers.energyRecharge,
-          elementalMastery: sharedBuild.weaponElementalMastery + partyResonanceModifiers.elementalMastery,
+          energyRecharge: sharedBuild.finalEnergyRecharge + partyResonanceModifiers.energyRecharge,
+          elementalMastery: sharedBuild.finalElementalMastery + partyResonanceModifiers.elementalMastery,
+          elementalDamageBonus: sharedBuild.finalElementalDamageBonus,
+          portraitLevel: pLvl,
+          portraitNormalHitCount: 0,
+          portraitUltimateTimer: 0,
           physicalDamageBonus: sharedBuild.weaponPhysicalDamagePercent,
         });
       }
@@ -1473,6 +1562,7 @@ export default function CombatArena({
     setIsPaused(false);
     if (waveNum === 1) {
       updatePartyEffects(clearPartyEffects(partyEffectsRef.current));
+      portraitCombatRef.current = createPortraitCombatState();
     }
     lastPlayerSkillRef.current = null;
     
@@ -1934,6 +2024,11 @@ export default function CombatArena({
 
     setIsDashing(true);
     perfectDodgeWindowRef.current = 12;
+    if (currentActiveChar.id === 'veyra') {
+      dispatchPortraitEvent({
+        kind: 'veyra-dodge', characterId: 'veyra', portraitLevel: currentActiveChar.portraitLevel ?? 0
+      });
+    }
     
     // Play SFX
     AetheriaAudioEngine.playDodge();
@@ -2051,7 +2146,11 @@ export default function CombatArena({
     if (!currentActiveChar) return;
     if (currentActiveChar.id !== action.characterId || currentActiveChar.currentHp <= 0) return;
 
-    if (currentActiveChar.skillCooldownRemaining > 0) {
+    const isRaijinRecast = currentActiveChar.id === 'raijin'
+      && isPortraitTierActive(currentActiveChar.portraitLevel ?? 0, 3)
+      && portraitCombatRef.current.raijinSkillRecastAvailable
+      && portraitCombatRef.current.raijinSkillRecastWindow > 0;
+    if (currentActiveChar.skillCooldownRemaining > 0 && !isRaijinRecast) {
       // Feedback for skill on cooldown
       const px = playerRef.current.x;
       const py = playerRef.current.y;
@@ -2091,23 +2190,44 @@ export default function CombatArena({
 
     const shieldEffect = skillKit ? getKitEffect(skillKit.skill, 'party-shield') : undefined;
     if (shieldEffect?.kind === 'party-shield') {
-      partyEffectsRef.current = addMaelisShield(partyEffectsRef.current, shieldEffect.amount, shieldEffect.cap);
+      const shieldCap = currentActiveChar.id === 'maelis' && isPortraitTierActive(currentActiveChar.portraitLevel ?? 0, 3)
+        ? 4000
+        : shieldEffect.cap;
+      partyEffectsRef.current = addMaelisShield(partyEffectsRef.current, shieldEffect.amount, shieldCap);
       setPartyEffectRevision(revision => revision + 1);
-      spawnFloatingDamageText(px, py - 78, `PARTY SHIELD ${partyEffectsRef.current.shield?.currentHp}/${shieldEffect.cap}`, '#4ade80', 13, true);
+      spawnFloatingDamageText(px, py - 78, `PARTY SHIELD ${partyEffectsRef.current.shield?.currentHp}/${shieldCap}`, '#4ade80', 13, true);
     }
 
+    if (currentActiveChar.id === 'goliath') {
+      const shieldMultiplier = isPortraitTierActive(currentActiveChar.portraitLevel ?? 0, 2) ? 1.2 : 1;
+      const goliathShield = Math.round(currentActiveChar.def * 4 * shieldMultiplier);
+      setShieldActive('Geo');
+      setShieldWeight(previous => Math.max(previous, goliathShield));
+      spawnFloatingDamageText(px, py - 78, `OBSIDIAN AEGIS ${goliathShield}`, '#fbbf24', 13, true);
+    }
+
+    const zephyrBounceRange = currentActiveChar.id === 'zephyr'
+      && isPortraitTierActive(currentActiveChar.portraitLevel ?? 0, 1)
+      ? 1.5
+      : 1;
     const skillRadius = skillKit?.skill.shape === 'full-aoe'
       ? Number.POSITIVE_INFINITY
-      : 150 * (skillKit?.skill.rangeMultiplier ?? 1);
+      : 150 * (skillKit?.skill.rangeMultiplier ?? 1) * zephyrBounceRange;
+    let portraitSkillEventResolved = false;
     if (skillDealsDirectDamage) {
       enemiesRef.current.forEach(enemy => {
         if (enemy.hp <= 0) return;
         const dist = Math.hypot(enemy.x - px, enemy.y - py);
         if (dist >= skillRadius + enemy.radius) return;
 
+        let skillDamageMultiplier = 1;
+        if (currentActiveChar.id === 'zephyr' && isPortraitTierActive(currentActiveChar.portraitLevel ?? 0, 3)) {
+          skillDamageMultiplier *= 1 + Math.min(4, portraitCombatRef.current.zephyrRecordedElements.length) * 0.1;
+        }
+        if (isRaijinRecast) skillDamageMultiplier *= 0.8;
         applySkillDamage(
           enemy,
-          getStatScaledAttackDamage(currentActiveChar.atk, currentActiveChar.skills.skill.damageMultiplier),
+          getStatScaledAttackDamage(currentActiveChar.atk, currentActiveChar.skills.skill.damageMultiplier, skillDamageMultiplier),
           currentActiveChar.element,
           skillReactionContext,
           false,
@@ -2118,7 +2238,38 @@ export default function CombatArena({
             applyKitStatusEffect(enemy, effect, currentActiveChar.id, 'skill', currentActiveChar.atk);
           }
         });
+
+        if (!portraitSkillEventResolved && currentActiveChar.id === 'lyra') {
+          portraitSkillEventResolved = true;
+          dispatchPortraitEvent({
+            kind: 'lyra-skill', characterId: 'lyra', portraitLevel: currentActiveChar.portraitLevel ?? 0,
+            targetId: String(enemy.id), targetIsFrozen: enemy.isFrozen > 0
+          }, enemy);
+        } else if (!portraitSkillEventResolved && currentActiveChar.id === 'goliath') {
+          portraitSkillEventResolved = true;
+          dispatchPortraitEvent({
+            kind: 'goliath-skill', characterId: 'goliath', portraitLevel: currentActiveChar.portraitLevel ?? 0
+          }, enemy);
+        } else if (!portraitSkillEventResolved && currentActiveChar.id === 'raijin') {
+          portraitSkillEventResolved = true;
+          dispatchPortraitEvent({
+            kind: 'raijin-skill', characterId: 'raijin', portraitLevel: currentActiveChar.portraitLevel ?? 0,
+            targetId: String(enemy.id)
+          }, enemy);
+        }
       });
+    }
+    if (!portraitSkillEventResolved && currentActiveChar.id === 'raijin') {
+      dispatchPortraitEvent({
+        kind: 'raijin-skill', characterId: 'raijin', portraitLevel: currentActiveChar.portraitLevel ?? 0
+      });
+    }
+
+    if (currentActiveChar.id === 'lyra' && isPortraitTierActive(currentActiveChar.portraitLevel ?? 0, 3)) {
+      updatePartyEffects(addPeriodicField(partyEffectsRef.current, {
+        sourceCharacterId: 'lyra', x: px, y: py, radius: 260, duration: 4,
+        snapshotAtk: currentActiveChar.atk, attackMultiplier: 0.6, tickInterval: 1
+      }));
     }
 
     const echo = activeAetherEchoRef.current;
@@ -2151,8 +2302,13 @@ export default function CombatArena({
         if (weaponEffect?.skillCooldownReduction) cdMultiplier *= (1 - weaponEffect.skillCooldownReduction);
         if (c.cooldownReduction) cdMultiplier *= (1 - c.cooldownReduction);
 
+        const portraitCooldownReduction = isPortraitTierActive(c.portraitLevel ?? 0, 3)
+          ? c.id === 'aurelia' || c.id === 'kaelen' || c.id === 'maelis' || c.id === 'veyra' || c.id === 'zephyr' || c.id === 'goliath'
+            ? 2
+            : c.id === 'lyra' ? 1.5 : 0
+          : 0;
         const roleAdjustedCooldown = getRoleAdjustedCooldown(c.skills.skill.cooldown, c.role ?? 'sub-dps', 'skill');
-        const skillCdMax = roleAdjustedCooldown * cdMultiplier;
+        const skillCdMax = Math.max(0, roleAdjustedCooldown * cdMultiplier - portraitCooldownReduction);
 
         const resonanceEnergyMult = 1 + (c.energyRecharge || 0);
         const energyMultiplier = (loopStateRef.current.dungeonMode && loopStateRef.current.dungeonBuffs.includes('Recharge Matrix') ? 1.5 : 1.0) *
@@ -2179,7 +2335,11 @@ export default function CombatArena({
     const { combatParty: currentParty, activePartyIndex: currentPartyIndex } = loopStateRef.current;
     const currentActiveChar = currentParty[currentPartyIndex] || null;
     if (!currentActiveChar) return;
-    if (currentActiveChar.skillCooldownRemaining > 0) {
+    const isRaijinRecast = currentActiveChar.id === 'raijin'
+      && isPortraitTierActive(currentActiveChar.portraitLevel ?? 0, 3)
+      && portraitCombatRef.current.raijinSkillRecastAvailable
+      && portraitCombatRef.current.raijinSkillRecastWindow > 0;
+    if (currentActiveChar.skillCooldownRemaining > 0 && !isRaijinRecast) {
       spawnTextRef.current(
         playerRef.current.x,
         playerRef.current.y - 55,
@@ -2290,10 +2450,29 @@ export default function CombatArena({
       enemiesRef.current.forEach(enemy => {
          if (enemy.hp <= 0) return;
          if (Math.hypot(enemy.x - px, enemy.y - py) >= burstRadius + enemy.radius) return;
-         applySkillDamage(enemy, getStatScaledAttackDamage(currentActiveChar.atk, currentActiveChar.skills.ultimate.damageMultiplier), currentActiveChar.element, burstReactionContext, true, false);
+         let portraitBurstMultiplier = 1;
+         if (isPortraitTierActive(currentActiveChar.portraitLevel ?? 0, 5)) {
+           if (currentActiveChar.id === 'aurelia') portraitBurstMultiplier = 1.25;
+           if (currentActiveChar.id === 'lyra') portraitBurstMultiplier = 1.30;
+         }
+         applySkillDamage(enemy, getStatScaledAttackDamage(
+           currentActiveChar.atk,
+           currentActiveChar.skills.ultimate.damageMultiplier,
+           portraitBurstMultiplier
+         ), currentActiveChar.element, burstReactionContext, true, false);
          burstKit?.burst.effects.forEach(effect => {
            applyKitStatusEffect(enemy, effect, currentActiveChar.id, 'burst', currentActiveChar.atk);
          });
+         if (currentActiveChar.id === 'kaelen' && enemy.type !== 'Boss') {
+           dispatchPortraitEvent({
+             kind: 'kaelen-control', characterId: 'kaelen', portraitLevel: currentActiveChar.portraitLevel ?? 0,
+             targetId: String(enemy.id)
+           }, enemy);
+         }
+         if (currentActiveChar.id === 'lyra' && isPortraitTierActive(currentActiveChar.portraitLevel ?? 0, 5)) {
+           enemy.lyraCryoVulnerabilityTimer = 10;
+           enemy.lyraCryoVulnerabilityMultiplier = 1.12;
+         }
       });
 
       const echo = activeAetherEchoRef.current;
@@ -2309,17 +2488,61 @@ export default function CombatArena({
 
       burstKit?.burst.effects.forEach(effect => {
         if (effect.kind === 'whirlpool') {
-          partyEffectsRef.current = addWhirlpool(partyEffectsRef.current, { x: px, y: py });
+          const kaelenP5 = currentActiveChar.id === 'kaelen' && isPortraitTierActive(currentActiveChar.portraitLevel ?? 0, 5);
+          partyEffectsRef.current = addWhirlpool(partyEffectsRef.current, { x: px, y: py }, {
+            duration: effect.duration + (kaelenP5 ? 1 : 0),
+            snapshotAtk: currentActiveChar.atk,
+            endDamageMultiplier: kaelenP5 ? 1.5 : undefined
+          });
         } else if (effect.kind === 'reaction-field') {
-          partyEffectsRef.current = addReactionField(partyEffectsRef.current, { x: px, y: py });
+          const maelisP5 = currentActiveChar.id === 'maelis' && isPortraitTierActive(currentActiveChar.portraitLevel ?? 0, 5);
+          partyEffectsRef.current = addReactionField(partyEffectsRef.current, { x: px, y: py }, {
+            duration: maelisP5 ? 18 : effect.duration,
+            enemyDamageMultiplier: maelisP5 ? 0.75 : 1 - effect.damageDown,
+            reactionMultiplier: effect.reactionMultiplier,
+            crowdControlDurationMultiplier: effect.crowdControlDurationMultiplier
+          });
         } else if (effect.kind === 'dominion-field') {
+          const veyraP5 = currentActiveChar.id === 'veyra' && isPortraitTierActive(currentActiveChar.portraitLevel ?? 0, 5);
           partyEffectsRef.current = activateVeyraDominion(partyEffectsRef.current, {
             x: px,
             y: py,
-            snapshotAtk: currentActiveChar.atk
+            snapshotAtk: currentActiveChar.atk,
+            duration: veyraP5 ? 12.5 : effect.duration,
+            fieldAttackMultiplier: veyraP5 ? 1.25 : effect.fieldAttackMultiplier,
+            fieldTickInterval: effect.fieldTickInterval
           });
         }
       });
+      if (currentActiveChar.id === 'zephyr') {
+        const zephyrP5 = isPortraitTierActive(currentActiveChar.portraitLevel ?? 0, 5);
+        updatePartyEffects(addPeriodicField(partyEffectsRef.current, {
+          sourceCharacterId: 'zephyr', x: px, y: py, radius: 420,
+          duration: zephyrP5 ? 9 : 6, snapshotAtk: currentActiveChar.atk,
+          attackMultiplier: 0.55, tickInterval: 1
+        }));
+        if (zephyrP5) {
+          const absorbedElement = portraitCombatRef.current.zephyrRecordedElements[0];
+          if (absorbedElement) enemiesRef.current.forEach(enemy => {
+            enemy.zephyrResistanceElement = absorbedElement;
+            enemy.zephyrResistanceTimer = 9;
+          });
+        }
+      } else if (currentActiveChar.id === 'goliath' && isPortraitTierActive(currentActiveChar.portraitLevel ?? 0, 5)) {
+        updatePartyEffects(addPeriodicField(partyEffectsRef.current, {
+          sourceCharacterId: 'goliath', x: px, y: py, radius: 360,
+          duration: 4, snapshotAtk: currentActiveChar.def,
+          attackMultiplier: 0.65, tickInterval: 1
+        }));
+      } else if (currentActiveChar.id === 'raijin') {
+        const raijinP5 = isPortraitTierActive(currentActiveChar.portraitLevel ?? 0, 5);
+        currentActiveChar.portraitUltimateTimer = raijinP5 ? 12.5 : 10;
+        updatePartyEffects(addPeriodicField(partyEffectsRef.current, {
+          sourceCharacterId: 'raijin', x: px, y: py, radius: 380,
+          duration: raijinP5 ? 12.5 : 10, snapshotAtk: currentActiveChar.atk,
+          attackMultiplier: raijinP5 ? 0.5625 : 0.45, tickInterval: 1
+        }));
+      }
       if (burstKit?.burst.effects.some(effect =>
         effect.kind === 'whirlpool' || effect.kind === 'reaction-field' || effect.kind === 'dominion-field'
       )) {
@@ -2568,6 +2791,46 @@ export default function CombatArena({
           if (activeWeaponEffect?.royalCritRatePerStack) {
             currentActiveChar.royalStacks = Math.min(activeWeaponEffect.royalMaxStacks || 0, (currentActiveChar.royalStacks || 0) + 1);
           }
+        }
+
+        if (currentActiveChar.id === 'aurelia') {
+          const isSunBranded = (enemy.statusEffects ?? []).some((status: CombatStatusEffect) => (
+            status.type === 'burn' && status.remainingDuration > 0
+          ));
+          const procs = dispatchPortraitEvent({
+            kind: 'aurelia-direct-hit', characterId: 'aurelia', portraitLevel: currentActiveChar.portraitLevel ?? 0,
+            targetId: String(enemy.id), targetIsSunBranded: isSunBranded
+          }, enemy);
+          if (procs.some(proc => proc.label === 'SOLAR RUPTURE')) {
+            enemy.statusEffects = (enemy.statusEffects ?? []).map((status: CombatStatusEffect) => status.type === 'burn'
+              ? { ...status, remainingDuration: status.remainingDuration + 1.5, duration: status.duration + 1.5 }
+              : status);
+          }
+        } else if (currentActiveChar.id === 'veyra') {
+          dispatchPortraitEvent({
+            kind: 'veyra-normal-hit', characterId: 'veyra', portraitLevel: currentActiveChar.portraitLevel ?? 0,
+            duringDominion: Boolean(activeDominion)
+          }, enemy);
+        } else if (currentActiveChar.id === 'lyra') {
+          currentActiveChar.portraitNormalHitCount = (currentActiveChar.portraitNormalHitCount ?? 0) + 1;
+          if (currentActiveChar.portraitNormalHitCount >= 6) {
+            currentActiveChar.portraitNormalHitCount = 0;
+            dispatchPortraitEvent({
+              kind: 'lyra-combo-finisher', characterId: 'lyra', portraitLevel: currentActiveChar.portraitLevel ?? 0,
+              targetId: String(enemy.id)
+            }, enemy);
+          }
+        } else if (currentActiveChar.id === 'raijin') {
+          dispatchPortraitEvent({
+            kind: 'raijin-normal-hit', characterId: 'raijin', portraitLevel: currentActiveChar.portraitLevel ?? 0,
+            targetId: String(enemy.id), duringUltimate: (currentActiveChar.portraitUltimateTimer ?? 0) > 0
+          }, enemy);
+        }
+        const zephyr = currentParty.find(character => character.id === 'zephyr');
+        if (zephyr) {
+          dispatchPortraitEvent({
+            kind: 'zephyr-direct-or-reaction', characterId: 'zephyr', portraitLevel: zephyr.portraitLevel ?? 0
+          }, enemy);
         }
 
         applySkillDamage(enemy, baseDmg, currentActiveChar.element, normalAttackReactionContext, false, crit);
@@ -2823,6 +3086,31 @@ export default function CombatArena({
       && source !== 'reaction'
       && source !== 'environment';
 
+    if (usesActiveAttackerModifiers) {
+      finalDmg *= (1 + (currentActiveChar.elementalDamageBonus || 0));
+    }
+    if ((enemy.veyraVulnerabilityTimer ?? 0) > 0) {
+      finalDmg *= enemy.veyraVulnerabilityMultiplier ?? 1.12;
+    }
+    if (type === 'Cryo' && (enemy.lyraCryoVulnerabilityTimer ?? 0) > 0) {
+      finalDmg *= enemy.lyraCryoVulnerabilityMultiplier ?? 1.12;
+    }
+    if (type === enemy.zephyrResistanceElement && (enemy.zephyrResistanceTimer ?? 0) > 0) {
+      finalDmg *= 1.12;
+    }
+    const maelis = currentParty.find(character => character.id === 'maelis');
+    const insideMaelisField = partyEffectsRef.current.effects.some(effect => effect.kind === 'reaction-field'
+      && effect.remainingDuration > 0
+      && Math.hypot(enemy.x - effect.x, enemy.y - effect.y) <= effect.radius);
+    if (
+      type === 'Dendro'
+      && insideMaelisField
+      && maelis
+      && isPortraitTierActive(maelis.portraitLevel ?? 0, 5)
+    ) {
+      finalDmg *= 1.12;
+    }
+
     // Apply Widsith theme song buff
     if (usesActiveAttackerModifiers && currentActiveChar.widsithBuffTimer && currentActiveChar.widsithBuffTimer > 0) {
       if (currentActiveChar.widsithBuffAtk && currentActiveChar.widsithBuffAtk > 0) {
@@ -2938,9 +3226,15 @@ export default function CombatArena({
       }
     }
     const index = activeDebuffs.indexOf(type);
+    const maelisShieldedMastery = partyEffectsRef.current.shield
+      && maelis
+      && isPortraitTierActive(maelis.portraitLevel ?? 0, 2)
+      ? 50
+      : 0;
     const reactionOutcome = reactionEligible
-      ? getReactionDamageOutcome(activeDebuffs, type, finalDmg, currentActiveChar.elementalMastery || 0)
+      ? getReactionDamageOutcome(activeDebuffs, type, finalDmg, (currentActiveChar.elementalMastery || 0) + maelisShieldedMastery)
       : null;
+    let reactionConsumedElement: ElementType | undefined;
     
     // Check Shatter Combo (Frozen State broken by heavy elemental strikes)
     if (reactionEligible && enemy.isFrozen > 0 && (type === 'Anemo' || type === 'Geo' || type === 'Pyro' || type === 'Electro')) {
@@ -3121,6 +3415,7 @@ export default function CombatArena({
       // Anemo + any Element = Swirl spreads and consumes elements
       else if (type === 'Anemo') {
         const swirledElement = activeDebuffs[0];
+        reactionConsumedElement = swirledElement;
         finalDmg = reactionOutcome?.finalDamage ?? Math.round(finalDmg * 1.25);
         reactionName = '🌀 SWIRL SPLASH! 🌀';
         damageColor = '#34d399';
@@ -3149,6 +3444,45 @@ export default function CombatArena({
     if (reactionName) {
       const fieldModifiers = getReactionFieldModifiers(partyEffectsRef.current, enemy.x, enemy.y);
       finalDmg *= fieldModifiers.reactionMultiplier;
+      if (portraitCombatRef.current.maelisReactionBuffDuration > 0) finalDmg *= 1.18;
+
+      if (currentActiveChar.id === 'kaelen') {
+        dispatchPortraitEvent({
+          kind: 'kaelen-reaction', characterId: 'kaelen', portraitLevel: currentActiveChar.portraitLevel ?? 0,
+          targetId: String(enemy.id)
+        }, enemy);
+      }
+      if (maelis) {
+        dispatchPortraitEvent({
+          kind: 'maelis-reaction', characterId: 'maelis', portraitLevel: maelis.portraitLevel ?? 0,
+          insideField: insideMaelisField, shielded: Boolean(partyEffectsRef.current.shield)
+        }, enemy);
+      }
+      const zephyr = currentParty.find(character => character.id === 'zephyr');
+      if (zephyr) {
+        if (type === 'Anemo') {
+          dispatchPortraitEvent({
+            kind: 'zephyr-swirl', characterId: 'zephyr', portraitLevel: zephyr.portraitLevel ?? 0,
+            element: reactionConsumedElement
+          }, enemy);
+        }
+        dispatchPortraitEvent({
+          kind: 'zephyr-direct-or-reaction', characterId: 'zephyr', portraitLevel: zephyr.portraitLevel ?? 0
+        }, enemy);
+      }
+    }
+
+    if (usesActiveAttackerModifiers && source !== 'normal-attack' && currentActiveChar.id === 'aurelia') {
+      const isSunBranded = (enemy.statusEffects ?? []).some((status: CombatStatusEffect) => status.type === 'burn' && status.remainingDuration > 0);
+      const procs = dispatchPortraitEvent({
+        kind: 'aurelia-direct-hit', characterId: 'aurelia', portraitLevel: currentActiveChar.portraitLevel ?? 0,
+        targetId: String(enemy.id), targetIsSunBranded: isSunBranded
+      }, enemy);
+      if (procs.some(proc => proc.label === 'SOLAR RUPTURE')) {
+        enemy.statusEffects = (enemy.statusEffects ?? []).map((status: CombatStatusEffect) => status.type === 'burn'
+          ? { ...status, remainingDuration: status.remainingDuration + 1.5, duration: status.duration + 1.5 }
+          : status);
+      }
     }
 
     // Trigger screen shake on reactions
@@ -3760,6 +4094,7 @@ export default function CombatArena({
       }
 
       const frameSeconds = Math.min(0.05, Math.max(0.001, delta / 1000)) * combatSpeed;
+      portraitCombatRef.current = tickPortraitCombatState(portraitCombatRef.current, frameSeconds);
       const specialUltimateTick = tickSpecialUltimateEffects(specialUltimateEffectsRef.current, frameSeconds);
       specialUltimateEffectsRef.current = specialUltimateTick.state;
       specialUltimateDamageEventsRef.current.push(...specialUltimateTick.events);
@@ -3825,8 +4160,19 @@ export default function CombatArena({
         enemiesRef.current.forEach(enemy => {
           if (enemy.hp <= 0 || Math.hypot(enemy.x - event.position.x, enemy.y - event.position.y) > event.radius + enemy.radius) return;
           applySkillDamage(enemy, event.damage, sourceElement, event.reactionContext, false, false);
-          spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 30, 'STORM FIELD', '#c084fc', 9, false);
+          const fieldLabel = event.sourceCharacterId === 'lyra' ? 'FROST LOTUS'
+            : event.sourceCharacterId === 'goliath' ? 'MONOLITH PULSE'
+              : event.sourceCharacterId === 'raijin' ? 'RAIJU LIGHTNING'
+                : event.sourceCharacterId === 'zephyr' ? 'GALE TYPHOON'
+                  : event.sourceCharacterId === 'kaelen' ? 'ABYSSAL BROADSIDE'
+                    : 'STORM FIELD';
+          spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 30, fieldLabel, getElementColorHex(sourceElement), 9, false);
         });
+        if (event.sourceCharacterId === 'goliath') {
+          setShieldActive('Geo');
+          setShieldWeight(previous => previous + 300);
+          spawnTextRef.current(playerRef.current.x, playerRef.current.y - 48, 'AEGIS +300', '#fbbf24', 10, true);
+        }
       });
 
       // Clear Screen
@@ -4068,6 +4414,7 @@ export default function CombatArena({
         if (favoniusCooldown > 0) {
           favoniusCooldown = Math.max(0, favoniusCooldown - 1 * combatSpeed);
         }
+        const portraitUltimateTimer = Math.max(0, (c.portraitUltimateTimer || 0) - frameSeconds);
 
         return {
           ...c,
@@ -4083,6 +4430,7 @@ export default function CombatArena({
           scepterBubbleCd: scepterBubbleCd,
           spearDoubleCd: spearDoubleCd,
           favoniusCooldown,
+          portraitUltimateTimer,
         };
       }));
 
@@ -4310,7 +4658,15 @@ export default function CombatArena({
           // Apply Bulwark Guard rogue-like buff (+40% shield strength) & Geo element resonance (+15%)
           const has2Geo = loopStateRef.current.activeResonances.some(r => r.key === 'geo');
           const geoMult = has2Geo ? 1.15 : 1.0;
-          const baseShield = Math.round((loopStateRef.current.dungeonMode && loopStateRef.current.dungeonBuffs.includes('Bulwark Guard') ? 840 : 600) * geoMult);
+          const portraitShieldMultiplier = currentActiveChar.id === 'goliath'
+            && isPortraitTierActive(currentActiveChar.portraitLevel ?? 0, 2)
+            ? 1.2
+            : 1;
+          const baseShield = Math.round(
+            (loopStateRef.current.dungeonMode && loopStateRef.current.dungeonBuffs.includes('Bulwark Guard') ? 840 : 600)
+            * geoMult
+            * portraitShieldMultiplier
+          );
           setShieldWeight(baseShield); // Shield HP buffer
           
           spawnFloatingDamageText(
@@ -4341,6 +4697,9 @@ export default function CombatArena({
 
         const statusTick = tickCombatStatuses((enemy.statusEffects ??= []), frameSeconds);
         enemy.statusEffects = statusTick.statuses;
+        enemy.veyraVulnerabilityTimer = Math.max(0, (enemy.veyraVulnerabilityTimer ?? 0) - frameSeconds);
+        enemy.lyraCryoVulnerabilityTimer = Math.max(0, (enemy.lyraCryoVulnerabilityTimer ?? 0) - frameSeconds);
+        enemy.zephyrResistanceTimer = Math.max(0, (enemy.zephyrResistanceTimer ?? 0) - frameSeconds);
         statusTick.events.forEach(event => {
           const sourceElement = currentParty.find(character => character.id === event.sourceCharacterId)?.element ?? 'Pyro';
           applySkillDamage(enemy, event.damage, sourceElement, event.reactionContext, false, false);
@@ -5490,6 +5849,12 @@ export default function CombatArena({
 
     const sharedShieldHit = consumePartyShield(partyEffectsRef.current, adjustedAmount);
     if (sharedShieldHit.absorbedDamage > 0) {
+      if (currentActiveChar.id === 'goliath') {
+        dispatchPortraitEvent({
+          kind: 'goliath-shield-absorbed', characterId: 'goliath', portraitLevel: currentActiveChar.portraitLevel ?? 0,
+          amount: sharedShieldHit.absorbedDamage, defense: currentActiveChar.def
+        });
+      }
       partyEffectsRef.current = sharedShieldHit.state;
       setPartyEffectRevision(revision => revision + 1);
       spawnFloatingDamageText(
@@ -5506,6 +5871,27 @@ export default function CombatArena({
 
     // If shield absorbs damage first
     if (currentShieldWeight > 0) {
+      if (currentActiveChar.id === 'goliath') {
+        dispatchPortraitEvent({
+          kind: 'goliath-shield-absorbed', characterId: 'goliath', portraitLevel: currentActiveChar.portraitLevel ?? 0,
+          amount: Math.min(currentShieldWeight, adjustedAmount), defense: currentActiveChar.def
+        });
+        if (
+          adjustedAmount >= currentShieldWeight
+          && isPortraitTierActive(currentActiveChar.portraitLevel ?? 0, 3)
+          && enemy?.hp > 0
+        ) {
+          applySkillDamage(
+            enemy,
+            currentActiveChar.def * 1.6,
+            'Geo',
+            createReactionContext('persistent-field', true, false),
+            false,
+            false
+          );
+          spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 45, 'FAULTLINE REPRISAL', '#fbbf24', 11, true);
+        }
+      }
       setShieldWeight(w => {
         const remaining = w - adjustedAmount;
         if (remaining <= 0) {

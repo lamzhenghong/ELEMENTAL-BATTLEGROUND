@@ -16,5 +16,8 @@ assert.match(
   /const isUnlocked = selectedCharacterOwned && currentPortraitLevel >= portLvl/,
   'locked characters must never render owned portrait tiers as active',
 );
+assert.match(source, /getSpecialUltimateCharacterEntry/);
+assert.match(source, /Special Ultimate/i);
+assert.match(source, /specialUltimateEntry\.fullDescription/);
 
 console.log('Wiki portrait ownership display rules ok');

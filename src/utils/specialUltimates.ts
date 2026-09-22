@@ -47,6 +47,15 @@ export interface AvailableSpecialUltimate {
   cooldownRemainingMs: number;
 }
 
+export interface SpecialUltimateCharacterEntry {
+  characterId: string;
+  comboName: string;
+  partnerName: string;
+  damageMultiplier: number;
+  unlockRule: string;
+  fullDescription: string;
+}
+
 export const SPECIAL_ULTIMATE_COMBOS: readonly SpecialUltimateCombo[] = [
   {
     id: 'eternal_vapor',
@@ -77,6 +86,32 @@ export const SPECIAL_ULTIMATE_COMBOS: readonly SpecialUltimateCombo[] = [
     followup: 'living-storm-network'
   }
 ];
+
+const SPECIAL_ULTIMATE_CHARACTER_ENTRIES: Readonly<Record<string, SpecialUltimateCharacterEntry>> = {
+  aurelia: {
+    characterId: 'aurelia', comboName: 'Eternal Vapor', partnerName: 'Kaelen Tidebound', damageMultiplier: 5,
+    unlockRule: 'Unlocks at Player Level 40. Developer Cheats bypass the level requirement for testing.',
+    fullDescription: 'When Aurelia Sunflare and Kaelen Tidebound are both in the party with full Ultimate gauges, activate Eternal Vapor while either partner is active. The opening blast deals 500% full-AoE damage based on the active hero and inherits their Portrait bonuses. It then applies Vapor Pressure for 10 seconds. Party hits add Pressure; at 5 stacks the target erupts for focused Pyro damage. Normal and elite enemies are briefly pulled inward, while bosses resist the pull and become 10% more vulnerable for 4 seconds.'
+  },
+  kaelen: {
+    characterId: 'kaelen', comboName: 'Eternal Vapor', partnerName: 'Aurelia Sunflare', damageMultiplier: 5,
+    unlockRule: 'Unlocks at Player Level 40. Developer Cheats bypass the level requirement for testing.',
+    fullDescription: 'When Kaelen Tidebound and Aurelia Sunflare are both in the party with full Ultimate gauges, activate Eternal Vapor while either partner is active. The opening blast deals 500% full-AoE damage based on the active hero and inherits their Portrait bonuses. It then applies Vapor Pressure for 10 seconds. Party hits add Pressure; at 5 stacks the target erupts for focused Pyro damage. Normal and elite enemies are briefly pulled inward, while bosses resist the pull and become 10% more vulnerable for 4 seconds.'
+  },
+  maelis: {
+    characterId: 'maelis', comboName: 'Worldstorm Genesis', partnerName: 'Veyra Stormglass', damageMultiplier: 5,
+    unlockRule: 'Unlocks at Player Level 40. Developer Cheats bypass the level requirement for testing.',
+    fullDescription: 'When Maelis Verdantveil and Veyra Stormglass are both in the party with full Ultimate gauges, activate Worldstorm Genesis while either partner is active. The opening blast deals 500% full-AoE damage based on the active hero and inherits their Portrait bonuses. Living Storm Network then links up to five enemies for 12 seconds. Direct damage to one linked target echoes 20% damage to the others, capped at the active hero\'s snapshotted ATK. Every 3 seconds normal and elite enemies are rooted; bosses resist the root and receive a concentrated 75% ATK lightning strike instead.'
+  },
+  veyra: {
+    characterId: 'veyra', comboName: 'Worldstorm Genesis', partnerName: 'Maelis Verdantveil', damageMultiplier: 5,
+    unlockRule: 'Unlocks at Player Level 40. Developer Cheats bypass the level requirement for testing.',
+    fullDescription: 'When Veyra Stormglass and Maelis Verdantveil are both in the party with full Ultimate gauges, activate Worldstorm Genesis while either partner is active. The opening blast deals 500% full-AoE damage based on the active hero and inherits their Portrait bonuses. Living Storm Network then links up to five enemies for 12 seconds. Direct damage to one linked target echoes 20% damage to the others, capped at the active hero\'s snapshotted ATK. Every 3 seconds normal and elite enemies are rooted; bosses resist the root and receive a concentrated 75% ATK lightning strike instead.'
+  }
+};
+
+export const getSpecialUltimateCharacterEntry = (characterId: string): SpecialUltimateCharacterEntry | null =>
+  SPECIAL_ULTIMATE_CHARACTER_ENTRIES[characterId] ?? null;
 
 export const isSpecialUltimateUnlocked = (playerLevel: number, devCheatsEnabled: boolean) => {
   return devCheatsEnabled || playerLevel >= SPECIAL_ULTIMATE_UNLOCK_LEVEL;

@@ -3,6 +3,7 @@ import {
   SPECIAL_ULTIMATE_COOLDOWN_MS,
   SPECIAL_ULTIMATE_UNLOCK_LEVEL,
   getAvailableSpecialUltimate,
+  getSpecialUltimateCharacterEntry,
   getSpecialUltimateCooldownRemaining,
   isSpecialUltimateUnlocked
 } from './specialUltimates';
@@ -99,5 +100,14 @@ assert.equal(getAvailableSpecialUltimate({
 
 assert.equal(getSpecialUltimateCooldownRemaining(61_000, 1000), 60_000);
 assert.equal(getSpecialUltimateCooldownRemaining(61_000, 61_001), 0);
+
+for (const characterId of ['aurelia', 'kaelen', 'maelis', 'veyra']) {
+  const entry = getSpecialUltimateCharacterEntry(characterId);
+  assert.ok(entry, `${characterId} must have a Character Index Special Ultimate entry`);
+  assert.equal(entry.damageMultiplier, 5);
+  assert.match(entry.unlockRule, /Level 40|Developer Cheats/);
+  assert.ok(entry.fullDescription.length > 180);
+}
+assert.equal(getSpecialUltimateCharacterEntry('lyra'), null);
 
 console.log('special ultimate rules ok');

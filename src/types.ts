@@ -112,6 +112,10 @@ export interface CombatCharacter {
   cooldownReduction?: number;
   energyRecharge?: number;
   elementalMastery?: number;
+  elementalDamageBonus?: number;
+  portraitLevel?: number;
+  portraitNormalHitCount?: number;
+  portraitUltimateTimer?: number;
   physicalDamageBonus?: number;
   favoniusCooldown?: number;
 }

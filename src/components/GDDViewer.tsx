@@ -17,6 +17,7 @@ import { LanguageType, t } from '../utils/i18n';
 import { ELEMENTAL_REACTIONS } from '../data/elementalReactions';
 import { ALL_STORY_MEMORIES } from '../data/story';
 import { getCharacterKit } from '../utils/characterKits';
+import { getSpecialUltimateCharacterEntry } from '../utils/specialUltimates';
 import CharacterRoleBadge from './CharacterRoleBadge';
 import EnemyArchiveTab from './wiki/EnemyArchiveTab';
 import PortraitEffectFrame from './PortraitEffectFrame';
@@ -179,6 +180,7 @@ export default function GDDViewer({
   const selectedKit = getCharacterKit(selectedChar.id);
   const selectedCharacterOwned = ownedCharacterIds.includes(selectedChar.id);
   const selectedPortraitLevel = selectedCharacterOwned ? characterPortraits[selectedChar.id] || 0 : 0;
+  const specialUltimateEntry = getSpecialUltimateCharacterEntry(selectedChar.id);
   const selectedNation = GDD_DATA.nations.find(n => n.name === selectedNationName) || GDD_DATA.nations[0];
   const unlockedCampaignMemories = ALL_STORY_MEMORIES.filter(
     (entry) => entry.category === 'campaign' && unlockedLoreEntries.includes(entry.id),
@@ -882,6 +884,34 @@ export default function GDDViewer({
                       })}
                     </div>
                   </div>
+
+                  {specialUltimateEntry && (
+                    <section className="mt-6 border-t border-slate-900 pt-6" aria-label={`${selectedChar.name} Special Ultimate`}>
+                      <div className="overflow-hidden rounded-xl border border-amber-400/25 bg-[linear-gradient(135deg,rgba(251,191,36,0.08),rgba(34,211,238,0.05),rgba(2,6,23,0.85))]">
+                        <div className="flex flex-col gap-4 border-b border-white/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="flex min-w-0 items-center gap-3">
+                            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-amber-300/30 bg-amber-300/10 text-amber-300">
+                              <Sparkles className="h-5 w-5" />
+                            </span>
+                            <div className="min-w-0">
+                              <p className="text-[9px] font-black uppercase tracking-[0.22em] text-amber-400">Special Ultimate</p>
+                              <h4 className="truncate text-base font-black uppercase tracking-wide text-slate-100">{specialUltimateEntry.comboName}</h4>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-2 text-[9px] font-black uppercase tracking-wider">
+                            <span className="rounded-md border border-cyan-400/25 bg-cyan-400/10 px-2.5 py-1.5 text-cyan-200">Partner: {specialUltimateEntry.partnerName}</span>
+                            <span className="rounded-md border border-amber-400/25 bg-amber-400/10 px-2.5 py-1.5 text-amber-200">Initial AoE: {specialUltimateEntry.damageMultiplier * 100}%</span>
+                          </div>
+                        </div>
+                        <div className="space-y-3 p-4">
+                          <p className="text-[11px] leading-6 text-slate-300">{specialUltimateEntry.fullDescription}</p>
+                          <p className="border-l-2 border-amber-400/60 pl-3 text-[9px] font-bold uppercase leading-5 tracking-wider text-slate-400">
+                            {specialUltimateEntry.unlockRule}
+                          </p>
+                        </div>
+                      </div>
+                    </section>
+                  )}
 
                   {/* Relations Link */}
                   <div className="mt-6 border-t border-slate-900 pt-6 space-y-3">

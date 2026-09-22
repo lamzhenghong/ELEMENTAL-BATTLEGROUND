@@ -30,6 +30,8 @@ export interface ReactionFieldEffect extends TimedPartyEffectBase {
 
 export interface WhirlpoolEffect extends TimedPartyEffectBase {
   kind: 'whirlpool';
+  snapshotAtk?: number;
+  endDamageMultiplier?: number;
 }
 
 export interface DominionEffect extends TimedPartyEffectBase {
@@ -101,6 +103,17 @@ export const consumePartyShield = (state: CombatPartyEffectState, damage: number
   };
 };
 
+export const restorePartyShield = (state: CombatPartyEffectState, amount: number): CombatPartyEffectState => {
+  if (!state.shield || amount <= 0) return state;
+  return {
+    ...state,
+    shield: {
+      ...state.shield,
+      currentHp: Math.min(state.shield.maxHp, state.shield.currentHp + amount)
+    }
+  };
+};
+
 const appendEffect = <TEffect extends Omit<CombatPartyEffect, 'id'>>(
   state: CombatPartyEffectState,
   effect: TEffect
@@ -112,37 +125,49 @@ const appendEffect = <TEffect extends Omit<CombatPartyEffect, 'id'>>(
 
 export const addReactionField = (
   state: CombatPartyEffectState,
-  position: CombatPosition
+  position: CombatPosition,
+  options: Partial<Pick<ReactionFieldEffect,
+    'duration' | 'radius' | 'reactionMultiplier' | 'crowdControlDurationMultiplier' | 'enemyDamageMultiplier'>> = {}
 ): CombatPartyEffectState => appendEffect(state, {
   kind: 'reaction-field',
   sourceCharacterId: 'maelis',
-  duration: 15,
-  remainingDuration: 15,
+  duration: options.duration ?? 15,
+  remainingDuration: options.duration ?? 15,
   x: position.x,
   y: position.y,
-  radius: 420,
-  reactionMultiplier: 2,
-  crowdControlDurationMultiplier: 2,
-  enemyDamageMultiplier: 0.8
+  radius: options.radius ?? 420,
+  reactionMultiplier: options.reactionMultiplier ?? 2,
+  crowdControlDurationMultiplier: options.crowdControlDurationMultiplier ?? 2,
+  enemyDamageMultiplier: options.enemyDamageMultiplier ?? 0.8
 });
 
 export const addWhirlpool = (
   state: CombatPartyEffectState,
-  position: CombatPosition
+  position: CombatPosition,
+  options: { duration?: number; radius?: number; snapshotAtk?: number; endDamageMultiplier?: number } = {}
 ): CombatPartyEffectState => appendEffect(state, {
   kind: 'whirlpool',
   sourceCharacterId: 'kaelen',
-  duration: 1.8,
-  remainingDuration: 1.8,
+  duration: options.duration ?? 1.8,
+  remainingDuration: options.duration ?? 1.8,
   x: position.x,
   y: position.y,
-  radius: 460
+  radius: options.radius ?? 460,
+  snapshotAtk: options.snapshotAtk,
+  endDamageMultiplier: options.endDamageMultiplier
 });
 
 export const activateVeyraDominion = (
   state: CombatPartyEffectState,
-  options: CombatPosition & { snapshotAtk: number }
+  options: CombatPosition & {
+    snapshotAtk: number;
+    duration?: number;
+    fieldAttackMultiplier?: number;
+    fieldTickInterval?: number;
+  }
 ): CombatPartyEffectState => {
+  const duration = options.duration ?? 10;
+  const tickInterval = options.fieldTickInterval ?? 2;
   const withoutOldVeyraEffects = {
     ...state,
     effects: state.effects.filter(effect =>
@@ -152,8 +177,8 @@ export const activateVeyraDominion = (
   const dominion = appendEffect(withoutOldVeyraEffects, {
     kind: 'veyra-dominion',
     sourceCharacterId: 'veyra',
-    duration: 10,
-    remainingDuration: 10,
+    duration,
+    remainingDuration: duration,
     x: options.x,
     y: options.y,
     radius: 360,
@@ -163,16 +188,49 @@ export const activateVeyraDominion = (
   return appendEffect(dominion, {
     kind: 'electric-field',
     sourceCharacterId: 'veyra',
-    duration: 10,
-    remainingDuration: 10,
+    duration,
+    remainingDuration: duration,
     x: options.x,
     y: options.y,
     radius: 300,
-    snapshotAtk: Math.max(0, options.snapshotAtk),
-    tickInterval: 2,
-    timeUntilNextTick: 2
+    snapshotAtk: Math.max(0, options.snapshotAtk) * (options.fieldAttackMultiplier ?? 1),
+    tickInterval,
+    timeUntilNextTick: tickInterval
   });
 };
+
+export const addPeriodicField = (
+  state: CombatPartyEffectState,
+  options: CombatPosition & {
+    sourceCharacterId: string;
+    radius: number;
+    duration: number;
+    snapshotAtk: number;
+    attackMultiplier: number;
+    tickInterval: number;
+  }
+): CombatPartyEffectState => appendEffect(state, {
+  kind: 'electric-field',
+  sourceCharacterId: options.sourceCharacterId,
+  duration: options.duration,
+  remainingDuration: options.duration,
+  x: options.x,
+  y: options.y,
+  radius: options.radius,
+  snapshotAtk: Math.max(0, options.snapshotAtk * options.attackMultiplier),
+  tickInterval: options.tickInterval,
+  timeUntilNextTick: options.tickInterval
+});
+
+export const advanceVeyraFieldTick = (
+  state: CombatPartyEffectState,
+  seconds: number
+): CombatPartyEffectState => ({
+  ...state,
+  effects: state.effects.map(effect => effect.kind === 'electric-field' && effect.sourceCharacterId === 'veyra'
+    ? { ...effect, timeUntilNextTick: Math.max(0, effect.timeUntilNextTick - Math.max(0, seconds)) }
+    : effect)
+});
 
 export const getReactionFieldModifiers = (
   state: CombatPartyEffectState,
@@ -223,6 +281,24 @@ export const tickPartyEffects = (
         nextTick = effect.tickInterval;
       }
       effect.timeUntilNextTick = Math.max(0, nextTick - remainingWindow);
+    }
+
+    if (
+      effect.kind === 'whirlpool'
+      && effect.remainingDuration > 0
+      && effect.remainingDuration - delta <= 0
+      && effect.snapshotAtk
+      && effect.endDamageMultiplier
+    ) {
+      events.push({
+        kind: 'field-damage',
+        effectId: effect.id,
+        sourceCharacterId: effect.sourceCharacterId,
+        damage: Math.round(effect.snapshotAtk * effect.endDamageMultiplier),
+        position: { x: effect.x, y: effect.y },
+        radius: effect.radius,
+        reactionContext: createReactionContext('persistent-field', true, false)
+      });
     }
 
     const remainingDuration = Math.max(0, effect.remainingDuration - delta);

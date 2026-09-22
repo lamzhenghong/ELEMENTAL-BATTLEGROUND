@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { FIVE_STAR_PORTRAITS } from './fiveStarPortraits';
+
 export interface PortraitInfo {
   name: string;
   desc: string;
@@ -14,9 +16,12 @@ export interface PortraitBuffValues {
   atk?: number;
   critRate?: number;
   critDmg?: number;
+  elementalDamage?: number;
+  energyRecharge?: number;
+  elementalMastery?: number;
 }
 
-export const CHARACTER_PORTRAIT_BUFFS: Record<string, PortraitBuffValues[]> = {
+const LEGACY_CHARACTER_PORTRAIT_BUFFS: Record<string, PortraitBuffValues[]> = {
   aurelia: [
     { atk: 0.08 },
     { critRate: 0.04 },
@@ -275,8 +280,27 @@ export const CHARACTER_PORTRAIT_BUFFS: Record<string, PortraitBuffValues[]> = {
   ],
 };
 
+const fiveStarStatBuffs = Object.fromEntries(Object.entries(FIVE_STAR_PORTRAITS).map(([characterId, definition]) => [
+  characterId,
+  definition.tiers.map(tier => ({ ...(tier.statBuff ?? {}) }))
+]));
+
+export const CHARACTER_PORTRAIT_BUFFS: Record<string, PortraitBuffValues[]> = {
+  ...LEGACY_CHARACTER_PORTRAIT_BUFFS,
+  ...fiveStarStatBuffs
+};
+
 export function getAccumulatedPortraitBuffs(charId: string, level: number): Required<PortraitBuffValues> {
-  const accum = { hp: 0, def: 0, atk: 0, critRate: 0, critDmg: 0 };
+  const accum = {
+    hp: 0,
+    def: 0,
+    atk: 0,
+    critRate: 0,
+    critDmg: 0,
+    elementalDamage: 0,
+    energyRecharge: 0,
+    elementalMastery: 0
+  };
   const buffs = CHARACTER_PORTRAIT_BUFFS[charId];
   if (!buffs) return accum;
   
@@ -287,6 +311,9 @@ export function getAccumulatedPortraitBuffs(charId: string, level: number): Requ
     if (buff.atk !== undefined) accum.atk += buff.atk;
     if (buff.critRate !== undefined) accum.critRate += buff.critRate;
     if (buff.critDmg !== undefined) accum.critDmg += buff.critDmg;
+    if (buff.elementalDamage !== undefined) accum.elementalDamage += buff.elementalDamage;
+    if (buff.energyRecharge !== undefined) accum.energyRecharge += buff.energyRecharge;
+    if (buff.elementalMastery !== undefined) accum.elementalMastery += buff.elementalMastery;
   }
   return accum;
 }
@@ -691,10 +718,17 @@ const formatPortraitBuffDescription = (buff: PortraitBuffValues | undefined, tie
   if (buff.atk) parts.push(`ATK +${Math.round(buff.atk * 100)}%`);
   if (buff.critRate) parts.push(`Crit Rate +${Math.round(buff.critRate * 100)}%`);
   if (buff.critDmg) parts.push(`Crit DMG +${Math.round(buff.critDmg * 100)}%`);
+  if (buff.elementalDamage) parts.push(`Elemental DMG +${Math.round(buff.elementalDamage * 100)}%`);
+  if (buff.energyRecharge) parts.push(`Energy Recharge +${Math.round(buff.energyRecharge * 100)}%`);
+  if (buff.elementalMastery) parts.push(`Elemental Mastery +${Math.round(buff.elementalMastery)}`);
   return `Unlocked at P${tier}. This bonus remains active at every higher portrait tier: ${parts.join(', ')}.`;
 };
 
 export function getPortraitInfoList(element: string, charId: string): PortraitInfo[] {
+  const fiveStarDefinition = FIVE_STAR_PORTRAITS[charId];
+  if (fiveStarDefinition) {
+    return fiveStarDefinition.tiers.map(tier => ({ name: tier.name, desc: tier.description }));
+  }
   const loreEntries = getPortraitLoreInfoList(element, charId);
   const buffs = CHARACTER_PORTRAIT_BUFFS[charId] || [];
   return loreEntries.map((entry, index) => ({
