@@ -2,6 +2,7 @@ import { getArtifactMainStat } from '../data/artifacts';
 import { WEAPONS_DATABASE } from '../data/weapons';
 import type { Artifact, ArtifactSet, PlayableCharacter, Weapon } from '../types';
 import { getAccumulatedPortraitBuffs } from './portraits';
+import { getWeaponSecondaryStats, resolveWeaponEffect } from './weaponEffects';
 
 export const getUpgradedWeaponStats = (weapon: Weapon) => {
   const level = weapon.level || 1;
@@ -28,22 +29,13 @@ export const getUpgradedWeaponStats = (weapon: Weapon) => {
     : `${statBonus} (+${upgradeSteps * 12}%)`;
 
   const template = WEAPONS_DATABASE.find(candidate => candidate.name === weapon.name);
-  const baseFeatureDesc = template?.featureDesc
+  const baseFeatureDesc = resolveWeaponEffect(weapon)?.description ?? template?.featureDesc
     ?? 'Master tier armaments with scaled global combat potency.';
-  let calcFeatureDesc = baseFeatureDesc;
-  const percentMatches = baseFeatureDesc.match(/(\d+)%/g);
-  if (percentMatches) {
-    percentMatches.forEach(match => {
-      const originalValue = parseInt(match);
-      const upgradedValue = Math.round(originalValue * (1 + upgradeSteps * 0.08));
-      calcFeatureDesc = calcFeatureDesc.replace(match, `${upgradedValue}%`);
-    });
-  }
 
   return {
     calcBaseAtk,
     calcStatBonus,
-    calcFeatureDesc,
+    calcFeatureDesc: baseFeatureDesc,
     upgradeSteps
   };
 };
@@ -63,26 +55,10 @@ export const calculateCharacterBuildStats = ({
   equippedArtifacts,
   portraitLevel
 }: CharacterBuildStatsInput) => {
-  let weaponCritRate = 0;
-  let weaponCritDmg = 0;
-  let weaponAtkPercent = 0;
-
-  if (equippedWeapon) {
-    const upgradeSteps = Math.floor(equippedWeapon.level / 5);
-    const statBonus = equippedWeapon.statBonus || '';
-    const bonusNumberMatch = statBonus.match(/(\d+(\.\d+)?)/);
-    const baseBonusValue = bonusNumberMatch ? parseFloat(bonusNumberMatch[1]) : 0;
-    const upgradedBonusValue = baseBonusValue * (1 + upgradeSteps * 0.12);
-    const normalizedStat = statBonus.toLowerCase();
-
-    if (normalizedStat.includes('crit rate')) {
-      weaponCritRate = upgradedBonusValue / 100;
-    } else if (normalizedStat.includes('crit dmg') || normalizedStat.includes('crit damage')) {
-      weaponCritDmg = upgradedBonusValue / 100;
-    } else if (normalizedStat.includes('atk') || normalizedStat.includes('attack')) {
-      weaponAtkPercent = upgradedBonusValue / 100;
-    }
-  }
+  const weaponSecondaryStats = getWeaponSecondaryStats(equippedWeapon);
+  const weaponCritRate = weaponSecondaryStats.critRate;
+  const weaponCritDmg = weaponSecondaryStats.critDmg;
+  const weaponAtkPercent = weaponSecondaryStats.atkPercent;
 
   const charMultiplier = character.rarity === 5 ? 3 : character.rarity === 4 ? 1.5 : 1;
   const weaponMultiplier = equippedWeapon
@@ -144,7 +120,7 @@ export const calculateCharacterBuildStats = ({
   let critRate = character.baseStats.critRate + weaponCritRate + artifactCritRate;
   let critDmg = character.baseStats.critDmg + weaponCritDmg + artifactCritDmg;
 
-  hp = Math.round(hp * (1 + portraitBuffs.hp + artifactHpPercent));
+  hp = Math.round(hp * (1 + weaponSecondaryStats.hpPercent + portraitBuffs.hp + artifactHpPercent));
   def = Math.round(def * (1 + portraitBuffs.def));
   atk = Math.round(atk * (1 + portraitBuffs.atk));
   critRate += portraitBuffs.critRate;
@@ -158,6 +134,10 @@ export const calculateCharacterBuildStats = ({
     weaponCritRate,
     weaponCritDmg,
     weaponAtkPercent,
+    weaponHpPercent: weaponSecondaryStats.hpPercent,
+    weaponEnergyRecharge: weaponSecondaryStats.energyRecharge,
+    weaponElementalMastery: weaponSecondaryStats.elementalMastery,
+    weaponPhysicalDamagePercent: weaponSecondaryStats.physicalDamagePercent,
     artifactHpPercent,
     artifactDmgPercent,
     artifactCritRate,

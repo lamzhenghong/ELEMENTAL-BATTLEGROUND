@@ -28,16 +28,18 @@ export const getSpecialUltimateStatDamage = (
 export const getReactionDamageOutcome = (
   activeElements: readonly ElementType[],
   incomingElement: ElementType,
-  statScaledDamage: number
+  statScaledDamage: number,
+  elementalMastery: number = 0,
 ): ReactionDamageOutcome | null => {
   const has = (element: ElementType) => activeElements.includes(element);
   const base = Math.max(0, statScaledDamage);
   const outcome = (id: string, reactionName: string, damageColor: string): ReactionDamageOutcome => {
     const reaction = getElementalReactionById(id);
     const multiplier = reaction?.damageMultiplier ?? 1;
+    const masteryMultiplier = 1 + Math.min(0.30, Math.max(0, elementalMastery) / 500);
     return {
       reactionName,
-      finalDamage: Math.round(base * multiplier),
+      finalDamage: Math.round(base * multiplier * masteryMultiplier),
       damageColor,
       consumesElements: true
     };

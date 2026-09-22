@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { PLAYABLE_CHARACTERS } from '../data/characters';
 import { PlayableCharacter, Weapon, InventoryItem, ElementType, Artifact, ArtifactSlot, ArtifactSet } from '../types';
@@ -28,6 +28,8 @@ import {
 import CharacterRoleBadge from './CharacterRoleBadge';
 import ForgeFocusStage from './ForgeFocusStage';
 import WeaponForgePanel from './WeaponForgePanel';
+import PortraitEffectFrame from './PortraitEffectFrame';
+import CharacterProgressionPresentation, { type CharacterProgressionStats } from './CharacterProgressionPresentation';
 import ArtifactSetProgress from './artifacts/ArtifactSetProgress';
 import ArtifactSlotIcon from './artifacts/ArtifactSlotIcon';
 import {
@@ -41,6 +43,7 @@ import {
   type ForgeOperationResult,
   type ForgeVisualItem,
 } from '../utils/forgePresentation';
+import { createCharacterProgressionEvent, type CharacterProgressionEvent } from '../utils/characterProgression';
 
 export { getUpgradedWeaponStats };
 
@@ -129,6 +132,11 @@ export default function InventoryManager({
   const [showForgeNotes, setShowForgeNotes] = useState(false);
   const [showStatBreakdown, setShowStatBreakdown] = useState(false);
   const [showArtifactFusion, setShowArtifactFusion] = useState(false);
+  const [progressionPresentation, setProgressionPresentation] = useState<{
+    event: CharacterProgressionEvent;
+    before: CharacterProgressionStats;
+    after: CharacterProgressionStats;
+  } | null>(null);
   
   // Artifact filter states
   const [artSlotFilter, setArtSlotFilter] = useState<'all' | ArtifactSlot>('all');
@@ -217,6 +225,26 @@ export default function InventoryManager({
       return;
     }
 
+    const nextBuildStats = calculateCharacterBuildStats({
+      character: selectedChar,
+      level: charLevel + 1,
+      equippedWeapon: activeEquippedWeapon,
+      equippedArtifacts: equippedArts,
+      portraitLevel: pLvl,
+    });
+    setProgressionPresentation({
+      event: createCharacterProgressionEvent(charLevel, charLevel + 1),
+      before: {
+        hp: buildStats.finalHp,
+        atk: buildStats.finalAtk,
+        def: buildStats.finalDef,
+      },
+      after: {
+        hp: nextBuildStats.finalHp,
+        atk: nextBuildStats.finalAtk,
+        def: nextBuildStats.finalDef,
+      },
+    });
     onLevelUpCharacter(selectedChar.id, costSpecs.mora, costSpecs.materials);
     AetheriaAudioEngine.playSkill();
   };
@@ -288,6 +316,8 @@ export default function InventoryManager({
     finalCritDmg,
     finalCooldownReduction: finalCdReduction,
   } = buildStats;
+
+  const closeProgressionPresentation = useCallback(() => setProgressionPresentation(null), []);
 
   useEffect(() => {
     if (selectedWeaponId && inventoryWeapons.some(weapon => weapon.id === selectedWeaponId)) return;
@@ -871,9 +901,14 @@ export default function InventoryManager({
                         )}
 
                         <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <div className={`w-11 h-11 rounded-lg flex items-center justify-center text-slate-955 font-black text-base shrink-0 ${c.avatarPlaceholder}`}>
+                          <PortraitEffectFrame
+                            characterId={c.id}
+                            element={c.element}
+                            unlockedPortraits={characterPortraits}
+                            className={`w-11 h-11 rounded-lg flex items-center justify-center text-slate-950 font-black text-base shrink-0 ${c.avatarPlaceholder}`}
+                          >
                             {c.name.charAt(0)}
-                          </div>
+                          </PortraitEffectFrame>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="font-extrabold text-sm uppercase tracking-tight text-white truncate max-w-[125px] font-display">
@@ -1468,9 +1503,15 @@ export default function InventoryManager({
             
             {/* Header character profile details */}
             <div className="flex items-center gap-5 border-b border-white/15 pb-4">
-              <div className={`w-16 h-16 rounded-xl flex items-center justify-center text-3xl font-black text-slate-955 shadow-[0_0_20px_rgba(0,0,0,0.6)] ring-2 ring-white/10 ${selectedChar.avatarPlaceholder}`}>
+              <PortraitEffectFrame
+                characterId={selectedChar.id}
+                element={selectedChar.element}
+                unlockedPortraits={characterPortraits}
+                showTier
+                className={`w-16 h-16 rounded-xl flex items-center justify-center text-3xl font-black text-slate-950 shadow-[0_0_20px_rgba(0,0,0,0.6)] ring-2 ring-white/10 ${selectedChar.avatarPlaceholder}`}
+              >
                 {selectedChar.name.charAt(0)}
-              </div>
+              </PortraitEffectFrame>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <h3 className="text-xl font-black text-slate-100 uppercase tracking-widest font-display">{selectedChar.name}</h3>
@@ -1534,9 +1575,10 @@ export default function InventoryManager({
                     <p>ATK: base {Math.round(selectedChar.baseStats.atk * charMult)} + growth {Math.round(charLevel * 3.8 * charMult)} + weapon {finalWeaponBaseAtk}{totalArtDmgPercent > 0 ? ` (+${Math.round(totalArtDmgPercent * 100)}% artifact)` : ''}{pBuffs.atk > 0 ? ` (+${Math.round(pBuffs.atk * 100)}% portrait)` : ''} [mult: {charMult}x]</p>
                     <p>HP: base {Math.round(selectedChar.baseStats.hp * charMult)} + growth {Math.round(charLevel * 14 * charMult)}{totalArtHpPercent > 0 ? ` (+${Math.round(totalArtHpPercent * 100)}% artifact)` : ''}{pBuffs.hp > 0 ? ` (+${Math.round(pBuffs.hp * 100)}% portrait)` : ''}</p>
                     <p>DEF: base {Math.round(selectedChar.baseStats.def * charMult)} + growth {Math.round(charLevel * 2.4 * charMult)}{pBuffs.def > 0 ? ` (+${Math.round(pBuffs.def * 100)}% portrait)` : ''}</p>
-                    <p>CRIT: base {(selectedChar.baseStats.critRate * 100).toFixed(1)}% + weapon {(bonusCritRate * 100).toFixed(1)}%{totalArtCritRate > 0 ? ` + artifact +${(totalArtCritRate * 100).toFixed(1)}%` : ''}</p>
-                    <p>CRIT DMG: base {(selectedChar.baseStats.critDmg * 100).toFixed(1)}% + weapon {(bonusCritDmg * 100).toFixed(1)}%{totalArtCritDmg > 0 ? ` + artifact +${(totalArtCritDmg * 100).toFixed(1)}%` : ''}</p>
+                    <p>CRIT: base {(selectedChar.baseStats.critRate * 100).toFixed(1)}% + weapon {(bonusCritRate * 100).toFixed(1)}%{totalArtCritRate > 0 ? ` + artifact +${(totalArtCritRate * 100).toFixed(1)}%` : ''}{pBuffs.critRate > 0 ? ` + portrait +${(pBuffs.critRate * 100).toFixed(1)}%` : ''}</p>
+                    <p>CRIT DMG: base {(selectedChar.baseStats.critDmg * 100).toFixed(1)}% + weapon {(bonusCritDmg * 100).toFixed(1)}%{totalArtCritDmg > 0 ? ` + artifact +${(totalArtCritDmg * 100).toFixed(1)}%` : ''}{pBuffs.critDmg > 0 ? ` + portrait +${(pBuffs.critDmg * 100).toFixed(1)}%` : ''}</p>
                     <p>Cooldown: artifact chrono set bonus -{finalCdReduction.toFixed(0)}% skill cooldown duration</p>
+                    <p>{pLvl > 0 ? `Portrait: P0-P${pLvl} active (cumulative)` : 'Portrait: P0 base'}</p>
                   </div>
                 )}
 
@@ -1637,7 +1679,7 @@ export default function InventoryManager({
 
             <div className="p-4 bg-black/45 border border-white/10 rounded-xl flex flex-col md:flex-row justify-between items-center gap-4 relative overflow-hidden">
               <div className="space-y-1 text-center md:text-left">
-                <h5 className="text-xs font-black text-slate-300 uppercase tracking-widest">Ascend</h5>
+                <h5 className="text-xs font-black text-slate-300 uppercase tracking-widest">{charLevel === 50 ? 'Ascend' : 'Level Up'}</h5>
                 {charLevel >= 80 ? (
                   <p className="text-xs text-emerald-400 font-mono uppercase font-black">
                     Lv. {charLevel} maxed
@@ -1664,7 +1706,7 @@ export default function InventoryManager({
                 } font-black text-xs uppercase tracking-widest px-6 py-3 rounded-lg flex items-center gap-2 transition-all active:scale-95 cursor-pointer border`}
               >
                 <ArrowUpCircle className="w-5 h-5 text-slate-95" />
-                <span>Ascend</span>
+                {charLevel === 50 ? <span>Ascend</span> : <span>Level Up</span>}
                 <span className="text-[10px] opacity-75">{charLevel >= 80 ? 'Maxed' : `Lv. ${charLevel + 1}`}</span>
               </button>
             </div>
@@ -1931,6 +1973,15 @@ export default function InventoryManager({
       </div>
 
       {salvageConfirmModal && typeof document !== 'undefined' ? createPortal(salvageConfirmModal, document.body) : null}
+
+      <CharacterProgressionPresentation
+        event={progressionPresentation?.event || null}
+        character={selectedChar}
+        before={progressionPresentation?.before || { hp: 0, atk: 0, def: 0 }}
+        after={progressionPresentation?.after || { hp: 0, atk: 0, def: 0 }}
+        lowGraphics={lowGraphics}
+        onClose={closeProgressionPresentation}
+      />
 
     </div>
   );

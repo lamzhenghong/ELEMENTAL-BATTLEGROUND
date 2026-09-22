@@ -34,6 +34,11 @@ const rewardLabels: Record<RewardRevealEvent['kind'], string> = {
   gems: 'Gems',
   weapon: 'Weapon',
   artifact: 'Artifact',
+  material: 'Material',
+  item: 'Item',
+  skin: 'Damage Skin',
+  character: 'Hero',
+  progression: 'Level Reward',
 };
 
 const rewardColors: Record<RewardRevealEvent['kind'], string> = {
@@ -41,6 +46,11 @@ const rewardColors: Record<RewardRevealEvent['kind'], string> = {
   gems: '#2dd4bf',
   weapon: '#60a5fa',
   artifact: '#c084fc',
+  material: '#34d399',
+  item: '#a3e635',
+  skin: '#f472b6',
+  character: '#fbbf24',
+  progression: '#67e8f9',
 };
 
 const getViewportCenter = (): RevealPoint => ({

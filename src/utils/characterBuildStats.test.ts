@@ -103,4 +103,21 @@ assert.equal(
   Math.round(aureliaBase.finalAtk * 1.08)
 );
 
+const aureliaPortraitThree = calculateCharacterBuildStats({
+  character: aurelia,
+  level: 1,
+  equippedArtifacts: [],
+  portraitLevel: 3
+});
+assert.equal(aureliaPortraitThree.portraitBuffs.atk, 0.16);
+assert.equal(aureliaPortraitThree.portraitBuffs.critRate, 0.04);
+assert.equal(
+  aureliaPortraitThree.finalAtk,
+  Math.round(aureliaBase.finalAtk * 1.16)
+);
+assert.equal(
+  aureliaPortraitThree.finalCritRate,
+  aureliaBase.finalCritRate + 4
+);
+
 console.log('character build stat rules ok');

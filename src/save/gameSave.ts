@@ -2,6 +2,7 @@ import { INITIAL_50_QUESTS } from '../data/quests';
 import { createDefaultStoryProgress, normalizeStoryProgress } from '../data/story/progress';
 import type { SaveState } from '../types';
 import { normalizeUniqueEquippedWeapons } from '../utils/equipmentRules';
+import { normalizeArtifactEquipment } from '../utils/artifactEquipment';
 import { normalizeUiTheme } from '../utils/uiThemes';
 import { normalizeTeamBuilds } from '../utils/teamBuilds';
 
@@ -169,6 +170,12 @@ export const normalizeLoadedSaveState = (parsed: Partial<SaveState>): SaveState 
   }
 
   merged.characterEquippedWeapon = normalizeUniqueEquippedWeapons(merged.characterEquippedWeapon || {});
+  const normalizedArtifacts = normalizeArtifactEquipment(
+    merged.inventoryArtifacts || [],
+    merged.characterEquippedArtifacts || {},
+  );
+  merged.inventoryArtifacts = normalizedArtifacts.inventoryArtifacts;
+  merged.characterEquippedArtifacts = normalizedArtifacts.characterEquippedArtifacts;
   merged.activeUiTheme = normalizeUiTheme(merged.activeUiTheme, merged.playerLevel || 1);
   merged.lastShopRefreshHour ??= 0;
   merged.purchasedShopItemIds ||= [];

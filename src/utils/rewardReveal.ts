@@ -1,4 +1,4 @@
-export type RewardKind = 'mora' | 'gems' | 'weapon' | 'artifact';
+export type RewardKind = 'mora' | 'gems' | 'weapon' | 'artifact' | 'material' | 'item' | 'skin' | 'character' | 'progression';
 
 export type RewardRevealTarget =
   | '[data-reward-target="mora"]'
@@ -43,13 +43,26 @@ const REWARD_TARGETS: Record<RewardKind, RewardRevealTarget> = {
   gems: '[data-reward-target="gems"]',
   weapon: '[data-reward-target="forge"]',
   artifact: '[data-reward-target="forge"]',
+  material: '[data-reward-target="inventory-fallback"]',
+  item: '[data-reward-target="inventory-fallback"]',
+  skin: '[data-reward-target="inventory-fallback"]',
+  character: '[data-reward-target="inventory-fallback"]',
+  progression: '[data-reward-target="inventory-fallback"]',
 };
 
-const MAX_TRANSACTION_GROUPS = 4;
+const MAX_TRANSACTION_GROUPS = 9;
 const MAX_QUEUE_GROUPS = 12;
 
 const isRewardKind = (kind: unknown): kind is RewardKind => (
-  kind === 'mora' || kind === 'gems' || kind === 'weapon' || kind === 'artifact'
+  kind === 'mora'
+  || kind === 'gems'
+  || kind === 'weapon'
+  || kind === 'artifact'
+  || kind === 'material'
+  || kind === 'item'
+  || kind === 'skin'
+  || kind === 'character'
+  || kind === 'progression'
 );
 
 const isUsableRewardEvent = (event: RewardRevealEvent): boolean => (

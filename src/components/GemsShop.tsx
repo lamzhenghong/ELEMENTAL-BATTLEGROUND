@@ -68,6 +68,8 @@ interface PendingPurchase {
   baselineSaveState: SaveState;
   artifact?: Artifact;
   artifactId?: string;
+  rewardKind: 'artifact' | 'material' | 'skin';
+  rewardQuantity: number;
 }
 
 export default function GemsShop({ saveState, onUpdateSaveState, onShowAlert, onRewardReveal }: GemsShopProps) {
@@ -103,13 +105,11 @@ export default function GemsShop({ saveState, onUpdateSaveState, onShowAlert, on
       if (!purchaseCommitted || !artifactCommitted) return;
 
       onShowAlert(`Successfully purchased ${pending.itemName}!`, `Spent ${pending.price} Aether Gems.`, 'success');
-      if (pending.artifactId) {
-        onRewardReveal?.([{
-          id: `shop-reward-${currentHourBlock}-${pending.itemId}`,
-          kind: 'artifact',
-          quantity: 1,
-        }], pending.sourceAnchor);
-      }
+      onRewardReveal?.([{
+        id: `shop-reward-${currentHourBlock}-${pending.itemId}`,
+        kind: pending.rewardKind,
+        quantity: pending.rewardQuantity,
+      }], pending.sourceAnchor);
     });
   }, [currentHourBlock, onRewardReveal, onShowAlert, saveState]);
 
@@ -311,6 +311,8 @@ export default function GemsShop({ saveState, onUpdateSaveState, onShowAlert, on
       baselineSaveState: saveState,
       artifact,
       artifactId: artifact?.id,
+      rewardKind: item.type,
+      rewardQuantity: item.type === 'material' ? (item.materialCount || 1) : 1,
     };
     pendingPurchasesRef.current.set(item.id, pending);
 

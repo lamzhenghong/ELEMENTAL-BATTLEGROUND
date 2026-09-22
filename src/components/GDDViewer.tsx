@@ -19,6 +19,7 @@ import { ALL_STORY_MEMORIES } from '../data/story';
 import { getCharacterKit } from '../utils/characterKits';
 import CharacterRoleBadge from './CharacterRoleBadge';
 import EnemyArchiveTab from './wiki/EnemyArchiveTab';
+import PortraitEffectFrame from './PortraitEffectFrame';
 
 import aureliaBanner from '../../assets/aurelia_banner.jpg';
 import kaelenBanner from '../../assets/kaelen_banner.jpg';
@@ -176,6 +177,8 @@ export default function GDDViewer({
 
   const selectedChar = PLAYABLE_CHARACTERS.find(c => c.id === selectedCharacterId) || PLAYABLE_CHARACTERS[0];
   const selectedKit = getCharacterKit(selectedChar.id);
+  const selectedCharacterOwned = ownedCharacterIds.includes(selectedChar.id);
+  const selectedPortraitLevel = selectedCharacterOwned ? characterPortraits[selectedChar.id] || 0 : 0;
   const selectedNation = GDD_DATA.nations.find(n => n.name === selectedNationName) || GDD_DATA.nations[0];
   const unlockedCampaignMemories = ALL_STORY_MEMORIES.filter(
     (entry) => entry.category === 'campaign' && unlockedLoreEntries.includes(entry.id),
@@ -626,9 +629,15 @@ export default function GDDViewer({
                         }`}
                       >
                         <div className="flex items-center gap-2">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-slate-950 font-black text-xs ${char.avatarPlaceholder}`}>
+                          <PortraitEffectFrame
+                            characterId={char.id}
+                            element={char.element}
+                            unlockedPortraits={characterPortraits}
+                            characterIsUnlocked={isOwned}
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center text-slate-950 font-black text-xs ${char.avatarPlaceholder}`}
+                          >
                             {char.name.charAt(0)}
-                          </div>
+                          </PortraitEffectFrame>
                           <div className="min-w-0">
                             <div className="font-bold text-xs flex items-center gap-1">
                               {char.name}
@@ -668,9 +677,16 @@ export default function GDDViewer({
                   {/* Title Bar */}
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-900 pb-4 gap-4">
                     <div className="flex items-center gap-4">
-                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-3xl font-black text-slate-950 shadow-md ${selectedChar.avatarPlaceholder}`}>
+                      <PortraitEffectFrame
+                        characterId={selectedChar.id}
+                        element={selectedChar.element}
+                        unlockedPortraits={characterPortraits}
+                        characterIsUnlocked={ownedCharacterIds.includes(selectedChar.id)}
+                        showTier
+                        className={`w-14 h-14 rounded-2xl flex items-center justify-center text-3xl font-black text-slate-950 shadow-md ${selectedChar.avatarPlaceholder}`}
+                      >
                         {selectedChar.name.charAt(0)}
-                      </div>
+                      </PortraitEffectFrame>
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
                           <h3 className="text-xl font-bold text-slate-100">{selectedChar.name}</h3>
@@ -820,29 +836,39 @@ export default function GDDViewer({
 
                   {/* Portrait Attunement Matrix */}
                   <div className="mt-6 border-t border-slate-900 pt-6 space-y-3">
-                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Portrait Attunement Matrix</h4>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Portrait Attunement Matrix</h4>
+                      <span className="rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-cyan-300">
+                        {!selectedCharacterOwned
+                          ? 'Locked Character · Portrait effects unavailable'
+                          : selectedPortraitLevel > 0
+                            ? `P${selectedPortraitLevel} Active · P1-P${selectedPortraitLevel} included`
+                            : 'P0 Base'}
+                      </span>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {getPortraitInfoList(selectedChar.element, selectedChar.id).map((port, pIdx) => {
                         const portLvl = pIdx + 1;
-                        const currentPortraitLevel = characterPortraits?.[selectedChar.id] || 0;
-                        const isUnlocked = currentPortraitLevel >= portLvl;
+                        const currentPortraitLevel = selectedPortraitLevel;
+                        const isUnlocked = selectedCharacterOwned && currentPortraitLevel >= portLvl;
                         return (
-                          <div 
+                          <div
                             key={pIdx} 
-                            className={`p-3.5 rounded-xl border flex flex-col gap-1.5 transition-all ${
-                              isUnlocked 
-                                ? 'bg-slate-900/60 border-amber-500/35 text-slate-100 shadow-[0_0_12px_rgba(245,158,11,0.06)]' 
+                            className={`p-3.5 rounded-xl border flex flex-col gap-1.5 text-left transition-all ${
+                              isUnlocked
+                                ? 'bg-cyan-400/10 border-cyan-400/50 text-slate-100 shadow-[0_0_14px_rgba(34,211,238,0.08)]'
                                 : 'bg-slate-950/60 border-slate-800/80 text-slate-300'
                             }`}
                           >
                             <div className="flex justify-between items-center w-full">
                               <span className={`text-[9px] font-black px-2 py-0.5 rounded tracking-wide ${
-                                isUnlocked ? 'bg-amber-400 text-slate-955 text-slate-950' : 'bg-slate-800 text-slate-400'
+                                isUnlocked ? 'bg-cyan-300 text-slate-950' : 'bg-slate-800 text-slate-400'
                               }`}>
                                 PORTRAIT P{portLvl}
                               </span>
-                              <span className={`text-[8.5px] font-bold ${isUnlocked ? 'text-amber-400' : 'text-slate-400'}`}>
-                                {isUnlocked ? 'ACTIVATED' : 'LOCKED'}
+                              <span className={`flex items-center gap-1 text-[8.5px] font-bold ${isUnlocked ? 'text-cyan-300' : 'text-slate-400'}`}>
+                                {isUnlocked && <Check className="h-3 w-3" />}
+                                {isUnlocked ? 'ACTIVE' : 'LOCKED'}
                               </span>
                             </div>
                             <h5 className={`text-xs font-black uppercase tracking-wide mt-1 ${isUnlocked ? 'text-slate-200' : 'text-slate-350'}`}>

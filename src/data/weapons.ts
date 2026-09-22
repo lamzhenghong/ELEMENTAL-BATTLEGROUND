@@ -15,7 +15,7 @@ export const WEAPONS_DATABASE: WeaponTemplate[] = [
     weaponType: "Sword",
     baseAtk: 48,
     statBonus: "Crit Rate +10%",
-    featureDesc: "Searing Aura: Attacks have an extra fast cooldown (0.8x) and deal 10% more elemental damage."
+    featureDesc: "Searing Aura: Reduces Elemental Skill cooldown by 10% and increases elemental damage by 12%."
   },
   {
     name: "Sacrificial Sword",
@@ -23,7 +23,7 @@ export const WEAPONS_DATABASE: WeaponTemplate[] = [
     weaponType: "Sword",
     baseAtk: 32,
     statBonus: "Energy Recharge +8%",
-    featureDesc: "Composed: After dealing damage with an Elemental Skill, the skill has a 40% chance to end its own CD."
+    featureDesc: "Composed: Elemental Skill damage has a 40% chance to reset its cooldown. Can trigger once every 30s."
   },
   {
     name: "Favonius Sword",
@@ -31,7 +31,7 @@ export const WEAPONS_DATABASE: WeaponTemplate[] = [
     weaponType: "Sword",
     baseAtk: 30,
     statBonus: "Energy Recharge +10%",
-    featureDesc: "Windfall: Crits have a 60% chance to generate a small amount of elemental energy."
+    featureDesc: "Windfall: Critical hits have a 60% chance to restore 6 Energy. Can trigger once every 3s."
   },
   {
     name: "Cool Steel",
@@ -55,7 +55,7 @@ export const WEAPONS_DATABASE: WeaponTemplate[] = [
     weaponType: "Sword",
     baseAtk: 14,
     statBonus: "ATK +2%",
-    featureDesc: "Novice Steel: A simple iron sword with a solid grip."
+    featureDesc: "Novice Steel: Increases Normal Attack damage by 5%."
   },
 
   // Claymores
@@ -65,7 +65,7 @@ export const WEAPONS_DATABASE: WeaponTemplate[] = [
     weaponType: "Claymore",
     baseAtk: 54,
     statBonus: "ATK +12%",
-    featureDesc: "Exploding Sweep: Attacks have very wide reach (+50% range) and deal massive staggering damage."
+    featureDesc: "Exploding Sweep: Normal attacks gain 35% reach, deal 18% more damage, and push normal enemies back slightly."
   },
   {
     name: "Favonius Greatsword",
@@ -73,7 +73,7 @@ export const WEAPONS_DATABASE: WeaponTemplate[] = [
     weaponType: "Claymore",
     baseAtk: 34,
     statBonus: "Energy Recharge +8%",
-    featureDesc: "Windfall: Crits have a 60% chance to generate a small amount of elemental energy."
+    featureDesc: "Windfall: Critical hits have a 60% chance to restore 6 Energy. Can trigger once every 3s."
   },
   {
     name: "Royal Claymore",
@@ -81,7 +81,7 @@ export const WEAPONS_DATABASE: WeaponTemplate[] = [
     weaponType: "Claymore",
     baseAtk: 36,
     statBonus: "ATK +6%",
-    featureDesc: "Focus: Upon damaging an opponent, increases Crit Rate by 8%. Max 5 stacks."
+    featureDesc: "Focus: A non-critical normal hit grants 4% Crit Rate. Max 4 stacks; landing a critical hit clears all stacks."
   },
   {
     name: "Debate Club",
@@ -89,7 +89,7 @@ export const WEAPONS_DATABASE: WeaponTemplate[] = [
     weaponType: "Claymore",
     baseAtk: 20,
     statBonus: "ATK +4%",
-    featureDesc: "Blunt Conclusion: After using an Elemental Skill, basic attacks deal an additional 60% area DMG."
+    featureDesc: "Blunt Conclusion: For 6s after using an Elemental Skill, normal hits deal 12% area damage once every 2s."
   },
   {
     name: "Bloodtainted Greatsword",
@@ -105,7 +105,7 @@ export const WEAPONS_DATABASE: WeaponTemplate[] = [
     weaponType: "Claymore",
     baseAtk: 17,
     statBonus: "Physical DMG +3%",
-    featureDesc: "Heavy Cleave: Solid iron weights that easily crush heavy rock barriers."
+    featureDesc: "Heavy Cleave: Increases Normal Attack damage by 6%."
   },
 
   // Bows
@@ -115,7 +115,7 @@ export const WEAPONS_DATABASE: WeaponTemplate[] = [
     weaponType: "Bow",
     baseAtk: 46,
     statBonus: "Crit DMG +12%",
-    featureDesc: "Hurricane Snipe: Basic attacks shoot extremely long distance (+150% range) pierce arrows."
+    featureDesc: "Hurricane Snipe: Normal attacks gain 100% range, pierce enemies, and deal 18% more damage."
   },
   {
     name: "Rust",
@@ -123,7 +123,7 @@ export const WEAPONS_DATABASE: WeaponTemplate[] = [
     weaponType: "Bow",
     baseAtk: 34,
     statBonus: "ATK +6%",
-    featureDesc: "Rapid Fire: Increases Normal Attack DMG by 40% but decreases Charged Attack DMG by 10%."
+    featureDesc: "Rapid Fire: Increases Normal Attack damage by 16%."
   },
   {
     name: "Sacrificial Bow",
@@ -131,7 +131,7 @@ export const WEAPONS_DATABASE: WeaponTemplate[] = [
     weaponType: "Bow",
     baseAtk: 32,
     statBonus: "Energy Recharge +8%",
-    featureDesc: "Composed: After dealing damage with an Elemental Skill, the skill has a 40% chance to end its own CD."
+    featureDesc: "Composed: Elemental Skill damage has a 40% chance to reset its cooldown. Can trigger once every 30s."
   },
   {
     name: "Slingshot",
@@ -139,7 +139,7 @@ export const WEAPONS_DATABASE: WeaponTemplate[] = [
     weaponType: "Bow",
     baseAtk: 20,
     statBonus: "Crit Rate +5%",
-    featureDesc: "Sureshot: If a basic attack hits a target within 1.2s of firing, increases DMG by 36%."
+    featureDesc: "Sureshot: Normal attacks deal 8% more damage to nearby enemies."
   },
   {
     name: "Raven Bow",
@@ -155,7 +155,7 @@ export const WEAPONS_DATABASE: WeaponTemplate[] = [
     weaponType: "Bow",
     baseAtk: 14,
     statBonus: "ATK +2%",
-    featureDesc: "Wilds Tracker: Lightweight flexwood bow used of simple woodland game hunt."
+    featureDesc: "Wilds Tracker: Increases Normal Attack damage by 6%."
   },
 
   // Catalysts
@@ -165,7 +165,7 @@ export const WEAPONS_DATABASE: WeaponTemplate[] = [
     weaponType: "Catalyst",
     baseAtk: 45,
     statBonus: "Crit Rate +9%",
-    featureDesc: "Sea Whirlpool: Basic attacks create a heavy ocean swirling bubble dealing high area splash damage."
+    featureDesc: "Sea Whirlpool: Normal hits create a Hydro bubble dealing 28% ATK as area damage. Can trigger once every 1.25s."
   },
   {
     name: "Widsith",
@@ -173,7 +173,7 @@ export const WEAPONS_DATABASE: WeaponTemplate[] = [
     weaponType: "Catalyst",
     baseAtk: 33,
     statBonus: "Crit DMG +10%",
-    featureDesc: "Debut: When a character takes the field, obtain a random theme song, boosting ATK +60% or Elemental DMG +48%."
+    featureDesc: "Debut: On taking the field, gain either 30% ATK or 24% elemental damage for 10s. Can trigger once every 30s."
   },
   {
     name: "Favonius Codex",
@@ -181,7 +181,7 @@ export const WEAPONS_DATABASE: WeaponTemplate[] = [
     weaponType: "Catalyst",
     baseAtk: 30,
     statBonus: "Energy Recharge +10%",
-    featureDesc: "Windfall: Crits have a 60% chance to generate a small amount of elemental energy."
+    featureDesc: "Windfall: Critical hits have a 60% chance to restore 6 Energy. Can trigger once every 3s."
   },
   {
     name: "Thrilling Tales of Dragon Slayers",
@@ -189,7 +189,7 @@ export const WEAPONS_DATABASE: WeaponTemplate[] = [
     weaponType: "Catalyst",
     baseAtk: 19,
     statBonus: "HP +6%",
-    featureDesc: "Heritage: When switching characters, the new character taking the field has active ATK increased by 24% for 10s."
+    featureDesc: "Heritage: Switching out grants the incoming character 16% ATK for 8s. Can trigger once every 20s."
   },
   {
     name: "Magic Guide",
@@ -205,7 +205,7 @@ export const WEAPONS_DATABASE: WeaponTemplate[] = [
     weaponType: "Catalyst",
     baseAtk: 13,
     statBonus: "HP +3%",
-    featureDesc: "Fresh Insights: Contains standard diagrams on channeling natural mana flows."
+    featureDesc: "Fresh Insights: Increases Elemental Skill damage by 5%."
   },
 
   // Polearms
@@ -215,7 +215,7 @@ export const WEAPONS_DATABASE: WeaponTemplate[] = [
     weaponType: "Polearm",
     baseAtk: 47,
     statBonus: "Crit Rate +11%",
-    featureDesc: "Jade Stack: Attacks have incredibly high swing speed, striking twice per command click for swift combos."
+    featureDesc: "Jade Stack: Normal attacks deal 8% more damage and echo for 30% damage once every 1.2s."
   },
   {
     name: "Dragon's Bane",
@@ -231,7 +231,7 @@ export const WEAPONS_DATABASE: WeaponTemplate[] = [
     weaponType: "Polearm",
     baseAtk: 34,
     statBonus: "Physical DMG +5%",
-    featureDesc: "Infusion Needle: After picking up an Elemental Shard, basic attacks deal an extra 20% flat DMG."
+    featureDesc: "Infusion Needle: After collecting an Elemental Shard, normal attacks deal an extra 20% damage for 5s."
   },
   {
     name: "White Tassel",
@@ -239,7 +239,7 @@ export const WEAPONS_DATABASE: WeaponTemplate[] = [
     weaponType: "Polearm",
     baseAtk: 19,
     statBonus: "Crit Rate +4%",
-    featureDesc: "Sharp Spearhead: Increases Normal Attack damage by 24%."
+    featureDesc: "Sharp Spearhead: Increases Normal Attack damage by 8%."
   },
   {
     name: "Black Tassel",
@@ -247,7 +247,7 @@ export const WEAPONS_DATABASE: WeaponTemplate[] = [
     weaponType: "Polearm",
     baseAtk: 17,
     statBonus: "HP +5%",
-    featureDesc: "Bane of Soft Bodies: Increases DMG against slimes by 40%."
+    featureDesc: "Bane of Soft Bodies: Increases damage against slimes by 30%."
   },
   {
     name: "Beginner's Protector",
@@ -255,6 +255,6 @@ export const WEAPONS_DATABASE: WeaponTemplate[] = [
     weaponType: "Polearm",
     baseAtk: 13,
     statBonus: "ATK +2%",
-    featureDesc: "Novice Spike: A standard wooden polearm tipped with a bronze chisel point."
+    featureDesc: "Novice Spike: Increases Normal Attack damage by 5%."
   }
 ];

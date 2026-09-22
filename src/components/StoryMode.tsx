@@ -14,6 +14,7 @@ import { normalizeStoryProgress } from '../data/story/progress';
 import { applyStoryChoice } from '../storyChoiceRules';
 import StoryMemoryArchive from './StoryMemoryArchive';
 import CharacterRoleBadge from './CharacterRoleBadge';
+import PortraitEffectFrame from './PortraitEffectFrame';
 import { personalizeCampaignScene } from '../utils/storyDialoguePersonalization';
 
 interface StoryModeProps {
@@ -551,9 +552,15 @@ export default function StoryMode({
                       }`}
                     >
                       <div className="flex items-center gap-2">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-slate-950 font-black text-xs ${char.avatarPlaceholder}`}>
+                        <PortraitEffectFrame
+                          characterId={char.id}
+                          element={char.element}
+                          unlockedPortraits={saveState.characterPortraits || {}}
+                          characterIsUnlocked={saveState.unlockedCharacterIds.includes(char.id)}
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center text-slate-950 font-black text-xs ${char.avatarPlaceholder}`}
+                        >
                           {char.name.charAt(0)}
-                        </div>
+                        </PortraitEffectFrame>
                         <div>
                           <div className="font-extrabold text-xs block">{char.name}</div>
                           <CharacterRoleBadge role={char.role} compact className="mt-1" />

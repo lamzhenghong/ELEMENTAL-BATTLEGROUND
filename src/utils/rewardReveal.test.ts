@@ -21,6 +21,16 @@ assert.deepEqual(
   grouped.map((event) => event.target),
   ['[data-reward-target="gems"]', '[data-reward-target="mora"]'],
 );
+
+const inventoryRewards = normalizeRewardEvents([
+  { id: 'material-a', kind: 'material', quantity: 2 },
+  { id: 'material-b', kind: 'material', quantity: 3 },
+  { id: 'item-a', kind: 'item', quantity: 1 },
+]);
+assert.deepEqual(inventoryRewards.map(event => [event.kind, event.quantity]), [
+  ['material', 5],
+  ['item', 1],
+]);
 assert.deepEqual(grouped[0].constituentIds, ['a', 'b']);
 assert.deepEqual(
   appendRewardEvents(grouped, [{ id: 'b', kind: 'gems', quantity: 20 }]),

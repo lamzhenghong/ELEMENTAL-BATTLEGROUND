@@ -5,7 +5,7 @@
 
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { PLAYABLE_CHARACTERS } from '../data/characters';
-import { PlayableCharacter, ElementType, CombatCharacter, Weapon, Artifact, ArtifactSlot, ArtifactSet } from '../types';
+import { PlayableCharacter, ElementType, CombatCharacter, Weapon, Artifact, ArtifactSlot } from '../types';
 import { 
   Sword, Zap, ShieldAlert, Sparkles, HelpCircle, Trophy, RefreshCw, RefreshCcw, 
   Swords, Plus, Star, Pause, Play, Volume2, VolumeX, Save, Home, BookOpen,
@@ -15,9 +15,14 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AetheriaAudioEngine, SPECIAL_ULTIMATE_THEME_DURATION_MS } from '../utils/audio';
 import { getCombatBgmTrack } from '../utils/bgm';
 import { LanguageType, t } from '../utils/i18n';
-import { getAccumulatedPortraitBuffs } from '../utils/portraits';
-import { WEAPONS_DATABASE } from '../data/weapons';
-import { getArtifactMainStat, generateRandomArtifact } from '../data/artifacts';
+import { generateRandomArtifact } from '../data/artifacts';
+import { calculateCharacterBuildStats } from '../utils/characterBuildStats';
+import { getActivePartyResonances, getPartyResonanceModifiers } from '../utils/partyResonance';
+import {
+  getWeaponAttackRangeMultiplier,
+  getWeaponDamageMultiplier,
+  resolveWeaponEffect,
+} from '../utils/weaponEffects';
 import { AetherEchoState, rollAetherEcho } from '../utils/aetherEcho';
 import {
   SPECIAL_ULTIMATE_COOLDOWN_MS,
@@ -27,6 +32,7 @@ import {
 import MobileJoystick from './MobileJoystick';
 import MobileControls from './MobileControls';
 import CharacterRoleBadge from './CharacterRoleBadge';
+import PortraitEffectFrame from './PortraitEffectFrame';
 import { FloatingDamageTextDOM, type FloatingDamageTextEntry } from './combat/CombatVisuals';
 import ArtifactSetEmblem from './artifacts/ArtifactSetEmblem';
 import { DamageFeedbackManager } from './combat/DamageFeedbackManager';
@@ -339,40 +345,7 @@ export default function CombatArena({
   artifactProgressByCharacterRef.current = artifactProgressByCharacter;
 
   const activeResonances = useMemo(() => {
-    const elementCounts: Record<ElementType, number> = {} as any;
-    combatParty.forEach(c => {
-      elementCounts[c.element] = (elementCounts[c.element] || 0) + 1;
-    });
-
-    const uniqueElements = Object.keys(elementCounts).length;
-    const list: { name: string; desc: string; key: string }[] = [];
-
-    if ((elementCounts['Pyro'] || 0) >= 2) {
-      list.push({ name: 'Fervent Flames (2 Pyro)', desc: '+15% ATK boost', key: 'pyro' });
-    }
-    if ((elementCounts['Hydro'] || 0) >= 2) {
-      list.push({ name: 'Soothing Waters (2 Hydro)', desc: '+20% Energy Recharge rate boost', key: 'hydro' });
-    }
-    if ((elementCounts['Cryo'] || 0) >= 2) {
-      list.push({ name: 'Shattering Ice (2 Cryo)', desc: '+15% Crit Rate against Frozen/Cryo targets', key: 'cryo' });
-    }
-    if ((elementCounts['Electro'] || 0) >= 2) {
-      list.push({ name: 'High Voltage (2 Electro)', desc: '-20% Skill Cooldown reduction', key: 'electro' });
-    }
-    if ((elementCounts['Geo'] || 0) >= 2) {
-      list.push({ name: 'Enduring Rock (2 Geo)', desc: '+15% Shield Strength and +15% DMG when shielded', key: 'geo' });
-    }
-    if ((elementCounts['Anemo'] || 0) >= 2) {
-      list.push({ name: 'Impetuous Winds (2 Anemo)', desc: '+15% Move Speed and -15% Skill cooldown', key: 'anemo' });
-    }
-    if ((elementCounts['Dendro'] || 0) >= 2) {
-      list.push({ name: 'Sprawling Greenery (2 Dendro)', desc: '+50 Elemental Mastery', key: 'dendro' });
-    }
-    if (uniqueElements >= 4) {
-      list.push({ name: 'Protective Canopy (4 Unique)', desc: '+15% All Elemental/Physical DMG', key: 'unique' });
-    }
-
-    return list;
+    return getActivePartyResonances(combatParty.map(character => character.element));
   }, [combatParty]);
 
   // Level selector for test items
@@ -1349,11 +1322,6 @@ export default function CombatArena({
 
   // Convert templates dynamically
   useEffect(() => {
-    // Only re-initialize if the party IDs have actually changed (preventing infinite resets on every re-render)
-    const currentIds = combatParty.map(c => c.id);
-    const matches = partyIds.length === currentIds.length && partyIds.every((id, idx) => id === currentIds[idx]);
-    if (matches && combatParty.length > 0) return;
-
     const list: CombatCharacter[] = [];
     partyIds.forEach(id => {
       const charTemplate = PLAYABLE_CHARACTERS.find(c => c.id === id);
@@ -1361,61 +1329,8 @@ export default function CombatArena({
         const charLvl = characterLevels[id] || 1;
         const equippedWeaponUid = characterEquippedWeapon[id] || '';
         const equippedWeapon = inventoryWeapons.find(w => w.id === equippedWeaponUid);
-        
-        const weaponBaseAtk = equippedWeapon ? equippedWeapon.baseAtk : 10;
-        const weaponLevel = equippedWeapon ? equippedWeapon.level : 1;
-        
-        // Weapon rarity multiplier
-        const wpMult = equippedWeapon ? (equippedWeapon.rarity === 5 ? 3.0 : equippedWeapon.rarity === 4 ? 1.5 : 1.0) : 1.0;
-        // Weapon ATK grows +2.5 per level, shifted by wpMult
-        const weaponAtk = equippedWeapon ? Math.round((weaponBaseAtk + (weaponLevel * 2.5)) * wpMult) : 10;
 
-        // Hero rarity multiplier
-        const charMult = charTemplate.rarity === 5 ? 3.0 : charTemplate.rarity === 4 ? 1.5 : 1.0;
-
-        // Calculate dynamic customized stats (Matching InventoryManager exactly)
-        const calculatedAtk = (charTemplate.baseStats.atk + (charLvl * 3.8)) * charMult + weaponAtk;
-        const calculatedHp = (charTemplate.baseStats.hp + (charLvl * 14)) * charMult;
-        const calculatedDef = (charTemplate.baseStats.def + (charLvl * 2.4)) * charMult;
-
-        // Apply weapon statBonus (e.g. Crit Rate +10%, Crit DMG +8%, ATK +12%, etc.)
-        let bonusCritRate = 0;
-        let bonusCritDmg = 0;
-        let bonusAtkPercent = 0;
-
-        if (equippedWeapon) {
-          const upgradeSteps = Math.floor(weaponLevel / 5);
-          let statBonusStr = equippedWeapon.statBonus || "";
-          let baseBonusVal = 0;
-          const bonusNumMatch = statBonusStr.match(/(\d+(\.\d+)?)/);
-          if (bonusNumMatch) {
-            baseBonusVal = parseFloat(bonusNumMatch[1]);
-          }
-
-          // Upgraded bonus (+12% per 5-level upgrade step)
-          const upgradedBonusVal = baseBonusVal * (1 + upgradeSteps * 0.12);
-          const normalizedStr = statBonusStr.toLowerCase();
-
-          if (normalizedStr.includes("crit rate")) {
-            bonusCritRate = upgradedBonusVal / 100;
-          } else if (normalizedStr.includes("crit dmg") || normalizedStr.includes("crit damage")) {
-            bonusCritDmg = upgradedBonusVal / 100;
-          } else if (normalizedStr.includes("atk") || normalizedStr.includes("attack")) {
-            bonusAtkPercent = upgradedBonusVal / 100;
-          }
-        }
-
-        const elementCounts: Record<ElementType, number> = {} as any;
-        partyIds.forEach(pId => {
-          const tpl = PLAYABLE_CHARACTERS.find(c => c.id === pId);
-          if (tpl) {
-            elementCounts[tpl.element] = (elementCounts[tpl.element] || 0) + 1;
-          }
-        });
-        const has2Pyro = (elementCounts['Pyro'] || 0) >= 2;
-
-        const pLvl = characterPortraits?.[charTemplate.id] || 0;
-        const pBuffs = getAccumulatedPortraitBuffs(charTemplate.id, pLvl);
+        const pLvl = characterPortraits?.[charTemplate.id] ?? 0;
 
         // --- ARTIFACT STATS CALCULATION ---
         const equippedArtifactIds = characterEquippedArtifacts?.[charTemplate.id] || {};
@@ -1423,88 +1338,28 @@ export default function CombatArena({
           .map(([slot, artId]) => inventoryArtifacts.find(a => a.id === artId))
           .filter((a): a is Artifact => !!a);
 
-        const setCounts: Record<ArtifactSet, number> = {
-          Vanguard: 0,
-          Guardian: 0,
-          Celestial: 0,
-          Chrono: 0
-        };
-        equippedArts.forEach(art => {
-          if (art.set in setCounts) {
-            setCounts[art.set]++;
-          }
+        const sharedBuild = calculateCharacterBuildStats({
+          character: charTemplate,
+          level: charLvl,
+          equippedWeapon,
+          equippedArtifacts: equippedArts,
+          portraitLevel: pLvl,
         });
+        const partyResonanceModifiers = getPartyResonanceModifiers(
+          getActivePartyResonances(partyIds
+            .map(partyId => PLAYABLE_CHARACTERS.find(character => character.id === partyId)?.element)
+            .filter((element): element is ElementType => Boolean(element))),
+        );
 
-        let artBonusHpPercent = 0;
-        let artBonusDmgPercent = 0;
-        let artBonusCritRate = 0;
-        let artBonusCritDmg = 0;
-        let artBonusCdReduction = 0;
-
-        if (setCounts.Guardian >= 4) {
-          artBonusHpPercent += 0.55;
-        } else if (setCounts.Guardian >= 2) {
-          artBonusHpPercent += 0.20;
+        let baseHp = sharedBuild.finalHp;
+        let baseDef = sharedBuild.finalDef;
+        let baseAtk = sharedBuild.finalAtk;
+        if (partyResonanceModifiers.atkPercent > 0) {
+          baseAtk = Math.round(baseAtk * (1 + partyResonanceModifiers.atkPercent));
         }
-
-        if (setCounts.Vanguard >= 4) {
-          artBonusDmgPercent += 0.45;
-        } else if (setCounts.Vanguard >= 2) {
-          artBonusDmgPercent += 0.15;
-        }
-
-        if (setCounts.Celestial >= 4) {
-          artBonusCritRate += 0.25;
-          artBonusCritDmg += 0.55;
-        } else if (setCounts.Celestial >= 2) {
-          artBonusCritRate += 0.10;
-          artBonusCritDmg += 0.20;
-        }
-
-        if (setCounts.Chrono >= 4) {
-          artBonusCdReduction += 0.30;
-        } else if (setCounts.Chrono >= 2) {
-          artBonusCdReduction += 0.10;
-        }
-
-        let artSlotHpPercent = 0;
-        let artSlotDmgPercent = 0;
-        let artSlotCritRate = 0;
-        let artSlotCritDmg = 0;
-
-        equippedArts.forEach(art => {
-          const stat = getArtifactMainStat(art.slot, art.rarity);
-          if (art.slot === 'helmet') {
-            artSlotHpPercent += stat.value;
-          } else if (art.slot === 'hands') {
-            artSlotDmgPercent += stat.value;
-          } else if (art.slot === 'leg') {
-            artSlotCritRate += stat.value;
-          } else if (art.slot === 'shoe') {
-            artSlotCritDmg += stat.value;
-          }
-        });
-
-        const totalArtHpPercent = artBonusHpPercent + artSlotHpPercent;
-        const totalArtDmgPercent = artBonusDmgPercent + artSlotDmgPercent;
-        const totalArtCritRate = artBonusCritRate + artSlotCritRate;
-        const totalArtCritDmg = artBonusCritDmg + artSlotCritDmg;
-
-        let baseHp = calculatedHp;
-        let baseDef = calculatedDef;
-        let baseAtk = calculatedAtk * (1 + bonusAtkPercent + totalArtDmgPercent);
-        if (has2Pyro) {
-          baseAtk = Math.round(baseAtk * 1.15);
-        }
-        let baseCritRate = charTemplate.baseStats.critRate + bonusCritRate + totalArtCritRate;
-        let baseCritDmg = charTemplate.baseStats.critDmg + bonusCritDmg + totalArtCritDmg;
-
-        // Apply Portrait buffs
-        baseHp = Math.round(baseHp * (1 + pBuffs.hp + totalArtHpPercent));
-        baseDef = Math.round(baseDef * (1 + pBuffs.def));
-        baseAtk = Math.round(baseAtk * (1 + pBuffs.atk));
-        baseCritRate += pBuffs.critRate;
-        baseCritDmg += pBuffs.critDmg;
+        let baseCritRate = sharedBuild.finalCritRate / 100;
+        let baseCritDmg = sharedBuild.finalCritDmg / 100;
+        const artBonusCdReduction = sharedBuild.finalCooldownReduction / 100;
 
         // Apply Rogue-like dungeon buffs if active
         if (dungeonMode) {
@@ -1559,12 +1414,17 @@ export default function CombatArena({
           sacrificialCooldown: 0,
           swapBuffTimer: 0,
           swapBuffAtk: 0,
+          swapBuffCooldown: 0,
           crescentPikeTimer: 0,
           debateClubTimer: 0,
           debateClubCd: 0,
           scepterBubbleCd: 0,
           spearDoubleCd: 0,
-          cooldownReduction: artBonusCdReduction
+          favoniusCooldown: 0,
+          cooldownReduction: artBonusCdReduction,
+          energyRecharge: sharedBuild.weaponEnergyRecharge + partyResonanceModifiers.energyRecharge,
+          elementalMastery: sharedBuild.weaponElementalMastery + partyResonanceModifiers.elementalMastery,
+          physicalDamageBonus: sharedBuild.weaponPhysicalDamagePercent,
         });
       }
     });
@@ -1574,7 +1434,7 @@ export default function CombatArena({
       const firstAliveIdx = list.findIndex(c => c.currentHp > 0);
       setActivePartyIndex(firstAliveIdx !== -1 ? firstAliveIdx : 0);
     }
-  }, [partyIds, characterLevels, characterEquippedWeapon, inventoryWeapons, dungeonMode, dungeonBuffs, dungeonPartyHp, dungeonPartyUlt, characterPortraits]);
+  }, [partyIds, characterLevels, characterEquippedWeapon, inventoryWeapons, inventoryArtifacts, characterEquippedArtifacts, dungeonMode, dungeonBuffs, dungeonPartyHp, dungeonPartyUlt, characterPortraits]);
 
   // Handle resizing observer
   useEffect(() => {
@@ -1966,39 +1826,42 @@ export default function CombatArena({
       // If this is the incoming character
       if (i === idx) {
         // Widsith swap-in check
-        if (charObj.equippedWeaponName?.includes('Widsith')) {
+        const incomingWeaponEffect = resolveWeaponEffect(charObj.equippedWeaponName);
+        if (incomingWeaponEffect?.id === 'widsith') {
           if (!charObj.widsithCooldown || charObj.widsithCooldown <= 0) {
             const isAtkSong = Math.random() < 0.5;
-            charObj.widsithBuffTimer = 600; // 10s
-            charObj.widsithCooldown = 1800; // 30s
+            charObj.widsithBuffTimer = (incomingWeaponEffect.widsithDurationSeconds || 0) * 60;
+            charObj.widsithCooldown = (incomingWeaponEffect.widsithCooldownSeconds || 0) * 60;
             if (isAtkSong) {
-              charObj.widsithBuffAtk = 0.60;
+              charObj.widsithBuffAtk = incomingWeaponEffect.widsithAtkPercent || 0;
               charObj.widsithBuffEle = 0;
-              spawnFloatingDamageText(px, py - 55, '🎵 WIDSITH DEBUT: ATK +60%!', '#facc15', 12, true);
+              spawnFloatingDamageText(px, py - 55, `WIDSITH: ATK +${Math.round((incomingWeaponEffect.widsithAtkPercent || 0) * 100)}%`, '#facc15', 12, true);
             } else {
               charObj.widsithBuffAtk = 0;
-              charObj.widsithBuffEle = 0.48;
-              spawnFloatingDamageText(px, py - 55, '🎵 WIDSITH DEBUT: ELEMENTAL +48%!', '#c084fc', 12, true);
+              charObj.widsithBuffEle = incomingWeaponEffect.widsithElementalPercent || 0;
+              spawnFloatingDamageText(px, py - 55, `WIDSITH: ELEMENTAL +${Math.round((incomingWeaponEffect.widsithElementalPercent || 0) * 100)}%`, '#c084fc', 12, true);
             }
           }
         }
 
-        // Thrilling Tales swap-out bonus check: if outgoing had TTDS, grant incoming +24% ATK
+        // Thrilling Tales swap-out bonus: the centralized definition controls value and duration.
         const outgoing = pList[currentPartyIndex];
-        if (outgoing?.equippedWeaponName?.includes('Thrilling Tales')) {
-          if (!outgoing.widsithCooldown || outgoing.widsithCooldown <= 0) {
-            charObj.swapBuffTimer = 600; // 10s
-            charObj.swapBuffAtk = 0.24;
-            spawnFloatingDamageText(px, py - 65, '📖 HERITAGE: ATK +24%!', '#60a5fa', 11, true);
+        const outgoingWeaponEffect = resolveWeaponEffect(outgoing?.equippedWeaponName);
+        if (outgoingWeaponEffect?.id === 'thrilling-tales') {
+          if (!outgoing.swapBuffCooldown || outgoing.swapBuffCooldown <= 0) {
+            charObj.swapBuffTimer = (outgoingWeaponEffect.swapDurationSeconds || 0) * 60;
+            charObj.swapBuffAtk = outgoingWeaponEffect.swapAtkPercent || 0;
+            spawnFloatingDamageText(px, py - 65, `HERITAGE: ATK +${Math.round((outgoingWeaponEffect.swapAtkPercent || 0) * 100)}%`, '#60a5fa', 11, true);
           }
         }
       }
 
       // If this is the outgoing character
       if (i === currentPartyIndex) {
-        if (charObj.equippedWeaponName?.includes('Thrilling Tales')) {
-          if (!charObj.widsithCooldown || charObj.widsithCooldown <= 0) {
-            charObj.widsithCooldown = 1200; // 20s cooldown
+        const outgoingEffect = resolveWeaponEffect(charObj.equippedWeaponName);
+        if (outgoingEffect?.id === 'thrilling-tales') {
+          if (!charObj.swapBuffCooldown || charObj.swapBuffCooldown <= 0) {
+            charObj.swapBuffCooldown = (outgoingEffect.swapCooldownSeconds || 0) * 60;
           }
         }
       }
@@ -2280,26 +2143,25 @@ export default function CombatArena({
       if (i === currentPartyIndex) {
         const has2Electro = loopStateRef.current.activeResonances.some(r => r.key === 'electro');
         const has2Anemo = loopStateRef.current.activeResonances.some(r => r.key === 'anemo');
-        const hasSearingBlade = c.equippedWeaponName?.includes('Solar Searing Blade');
+        const weaponEffect = resolveWeaponEffect(c.equippedWeaponName);
 
         let cdMultiplier = 1.0;
         if (has2Electro) cdMultiplier *= 0.80;
         if (has2Anemo) cdMultiplier *= 0.85;
-        if (hasSearingBlade) cdMultiplier *= 0.80;
+        if (weaponEffect?.skillCooldownReduction) cdMultiplier *= (1 - weaponEffect.skillCooldownReduction);
         if (c.cooldownReduction) cdMultiplier *= (1 - c.cooldownReduction);
 
         const roleAdjustedCooldown = getRoleAdjustedCooldown(c.skills.skill.cooldown, c.role ?? 'sub-dps', 'skill');
         const skillCdMax = roleAdjustedCooldown * cdMultiplier;
 
-        const has2Hydro = loopStateRef.current.activeResonances.some(r => r.key === 'hydro');
-        const resonanceEnergyMult = has2Hydro ? 1.20 : 1.0;
+        const resonanceEnergyMult = 1 + (c.energyRecharge || 0);
         const energyMultiplier = (loopStateRef.current.dungeonMode && loopStateRef.current.dungeonBuffs.includes('Recharge Matrix') ? 1.5 : 1.0) *
           resonanceEnergyMult *
           getWeatherEnergyMultiplier(weatherRef.current);
 
         let debateTimerVal = c.debateClubTimer || 0;
-        if (c.equippedWeaponName?.includes('Debate Club')) {
-          debateTimerVal = 600; // 10s
+        if (weaponEffect?.id === 'debate-club') {
+          debateTimerVal = (weaponEffect.aoeProcDurationSeconds || 0) * 60;
         }
 
         return { 
@@ -2649,9 +2511,9 @@ export default function CombatArena({
 
     // Check hit collision
     let hitSomething = false;
-    const baseAttackRange = currentActiveChar.equippedWeaponName?.includes('Calamity Blaze') ? 60 :
-                            currentActiveChar.equippedWeaponName?.includes('Solar Wind Bow') ? 100 : 40;
-    const basicAttackRange = baseAttackRange
+    const activeWeaponEffect = resolveWeaponEffect(currentActiveChar.equippedWeaponName);
+    const basicAttackRange = 40
+      * getWeaponAttackRangeMultiplier(currentActiveChar.equippedWeaponName)
       * (normalAttackKit?.normalAttack.rangeMultiplier ?? 1)
       * (activeDominion?.kind === 'veyra-dominion' ? activeDominion.normalAttackRangeMultiplier : 1);
 
@@ -2669,15 +2531,16 @@ export default function CombatArena({
           charCritRate += 0.15;
         }
 
-        // Royal Claymore focus stacks: +8% Crit Rate per stack
-        if (currentActiveChar.equippedWeaponName?.includes('Royal Claymore')) {
+        // Royal Claymore focus stacks use the centralized per-stack value and cap.
+        if (activeWeaponEffect?.royalCritRatePerStack) {
           const stacks = currentActiveChar.royalStacks || 0;
-          charCritRate += stacks * 0.08;
+          charCritRate += stacks * activeWeaponEffect.royalCritRatePerStack;
         }
 
         // Vigorous (Harbinger of Dawn): when HP is above 90%, +14% Crit Rate
-        if (currentActiveChar.equippedWeaponName?.includes('Harbinger of Dawn') && (currentActiveChar.currentHp / currentActiveChar.maxHp >= 0.90)) {
-          charCritRate += 0.14;
+        if (activeWeaponEffect?.minimumHpRatio !== undefined
+          && currentActiveChar.currentHp / currentActiveChar.maxHp >= activeWeaponEffect.minimumHpRatio) {
+          charCritRate += activeWeaponEffect.conditionalCritRate || 0;
         }
 
         const crit = Math.random() < charCritRate;
@@ -2689,27 +2552,21 @@ export default function CombatArena({
         if (activeDominion?.kind === 'veyra-dominion') {
           baseDmg *= activeDominion.normalAttackDamageMultiplier;
         }
-
-        // White Tassel passive: +24% Normal Attack damage
-        if (currentActiveChar.equippedWeaponName?.includes('White Tassel')) {
-          baseDmg *= 1.24;
-        }
-
         // Crescent Pike infusion flat damage
-        if (currentActiveChar.equippedWeaponName?.includes('Crescent Pike') && currentActiveChar.crescentPikeTimer > 0) {
-          baseDmg += currentActiveChar.atk * 0.20;
+        if (activeWeaponEffect?.id === 'crescent-pike' && currentActiveChar.crescentPikeTimer > 0) {
+          baseDmg += currentActiveChar.atk * (activeWeaponEffect.echoDamagePercent || 0);
         }
 
         if (crit) {
           baseDmg *= (1 + currentActiveChar.critDmg);
           // Royal Claymore reset stacks on crit
-          if (currentActiveChar.equippedWeaponName?.includes('Royal Claymore')) {
+          if (activeWeaponEffect?.royalCritRatePerStack) {
             currentActiveChar.royalStacks = 0;
           }
         } else {
           // Royal Claymore add stack on non-crit hit
-          if (currentActiveChar.equippedWeaponName?.includes('Royal Claymore')) {
-            currentActiveChar.royalStacks = Math.min(5, (currentActiveChar.royalStacks || 0) + 1);
+          if (activeWeaponEffect?.royalCritRatePerStack) {
+            currentActiveChar.royalStacks = Math.min(activeWeaponEffect.royalMaxStacks || 0, (currentActiveChar.royalStacks || 0) + 1);
           }
         }
 
@@ -2726,37 +2583,37 @@ export default function CombatArena({
         }
 
         // Primordial Jade Spear double strike combo
-        if (currentActiveChar.equippedWeaponName?.includes('Primordial Jade') && (!currentActiveChar.spearDoubleCd || currentActiveChar.spearDoubleCd <= 0)) {
-          applySkillDamage(enemy, baseDmg * 0.75, currentActiveChar.element, normalAttackReactionContext, false, crit);
-          currentActiveChar.spearDoubleCd = 30; // 0.5s cd
+        if (activeWeaponEffect?.id === 'primordial-jade-winged-spear' && (!currentActiveChar.spearDoubleCd || currentActiveChar.spearDoubleCd <= 0)) {
+          applySkillDamage(enemy, baseDmg * (activeWeaponEffect.echoDamagePercent || 0), currentActiveChar.element, normalAttackReactionContext, false, crit);
+          currentActiveChar.spearDoubleCd = (activeWeaponEffect.echoCooldownSeconds || 0) * 60;
           spawnTextRef.current(enemy.x + 10, enemy.y - 20, '⚔️ Dual Strike!', '#eab308', 10);
         }
 
         // Abyssal Ocean Scepter Bubble Splash
-        if (currentActiveChar.equippedWeaponName?.includes('Abyssal Ocean Scepter') && (!currentActiveChar.scepterBubbleCd || currentActiveChar.scepterBubbleCd <= 0)) {
+        if (activeWeaponEffect?.id === 'abyssal-ocean-scepter' && (!currentActiveChar.scepterBubbleCd || currentActiveChar.scepterBubbleCd <= 0)) {
           enemiesRef.current.forEach(other => {
             if (other.hp > 0 && Math.hypot(other.x - enemy.x, other.y - enemy.y) < 90) {
-              applySkillDamage(other, currentActiveChar.atk * 0.40, 'Hydro', normalAttackReactionContext, false, false);
+              applySkillDamage(other, currentActiveChar.atk * (activeWeaponEffect.aoeProcDamagePercent || 0), 'Hydro', normalAttackReactionContext, false, false);
             }
           });
           for (let k = 0; k < 12; k++) {
             particlesRef.current.push(new CombatParticle(enemy.x, enemy.y, '#3b82f6', 4));
           }
-          currentActiveChar.scepterBubbleCd = 45; // 0.75s cd
+          currentActiveChar.scepterBubbleCd = (activeWeaponEffect.aoeProcCooldownSeconds || 0) * 60;
           spawnTextRef.current(enemy.x, enemy.y - 30, '🌊 Bubble Splash!', '#3b82f6', 10);
         }
 
         // Debate Club Blunt conclusion AoE explosion
-        if (currentActiveChar.equippedWeaponName?.includes('Debate Club') && currentActiveChar.debateClubTimer > 0 && (!currentActiveChar.debateClubCd || currentActiveChar.debateClubCd <= 0)) {
+        if (activeWeaponEffect?.id === 'debate-club' && currentActiveChar.debateClubTimer > 0 && (!currentActiveChar.debateClubCd || currentActiveChar.debateClubCd <= 0)) {
           enemiesRef.current.forEach(other => {
             if (other.hp > 0 && Math.hypot(other.x - enemy.x, other.y - enemy.y) < 75) {
-              applySkillDamage(other, currentActiveChar.atk * 0.60, currentActiveChar.element, normalAttackReactionContext, false, false);
+              applySkillDamage(other, currentActiveChar.atk * (activeWeaponEffect.aoeProcDamagePercent || 0), currentActiveChar.element, normalAttackReactionContext, false, false);
             }
           });
           for (let k = 0; k < 10; k++) {
             particlesRef.current.push(new CombatParticle(enemy.x, enemy.y, '#e2e8f0', 3.5));
           }
-          currentActiveChar.debateClubCd = 90; // 1.5s cd
+          currentActiveChar.debateClubCd = (activeWeaponEffect.aoeProcCooldownSeconds || 0) * 60;
           spawnTextRef.current(enemy.x, enemy.y - 25, '💥 Blunt conclusion!', '#e2e8f0', 10);
         }
 
@@ -2767,8 +2624,7 @@ export default function CombatArena({
     // Award energy build on every basic attack swing! Fills the gauge nicely
     setCombatParty(pList => pList.map((c, i) => {
       if (i === currentPartyIndex) {
-        const has2Hydro = loopStateRef.current.activeResonances.some(r => r.key === 'hydro');
-        const resonanceEnergyMult = has2Hydro ? 1.20 : 1.0;
+        const resonanceEnergyMult = 1 + (c.energyRecharge || 0);
         const energyMultiplier = (loopStateRef.current.dungeonMode && loopStateRef.current.dungeonBuffs.includes('Recharge Matrix') ? 1.5 : 1.0) *
           resonanceEnergyMult *
           getWeatherEnergyMultiplier(weatherRef.current);
@@ -2982,9 +2838,29 @@ export default function CombatArena({
       finalDmg *= (1 + currentActiveChar.swapBuffAtk);
     }
 
-    // Apply Solar Searing Blade (+10% elemental damage)
-    if (usesActiveAttackerModifiers && currentActiveChar.equippedWeaponName?.includes('Solar Searing Blade')) {
-      finalDmg *= 1.10;
+    const weaponEffect = resolveWeaponEffect(currentActiveChar.equippedWeaponName);
+    if (usesActiveAttackerModifiers) {
+      const weaponSource = source === 'normal-attack'
+        ? 'normal-attack'
+        : source === 'elemental-skill'
+          ? 'elemental-skill'
+          : source === 'elemental-burst'
+            ? 'ultimate'
+            : source === 'special-ultimate'
+              ? 'special-ultimate'
+              : 'other';
+      finalDmg *= getWeaponDamageMultiplier(currentActiveChar.equippedWeaponName, {
+        source: weaponSource,
+        targetElements: enemy.isFrozen > 0
+          ? [...(enemy.activeElements || []), 'Cryo']
+          : enemy.activeElements,
+        targetName: enemy.name,
+        distance: Math.hypot(enemy.x - playerRef.current.x, enemy.y - playerRef.current.y),
+        isElemental: true,
+      });
+      if (weaponSource === 'normal-attack') {
+        finalDmg *= 1 + (currentActiveChar.physicalDamageBonus || 0);
+      }
     }
 
     // Apply 4 Unique element resonance (+15% DMG)
@@ -3021,67 +2897,40 @@ export default function CombatArena({
     // Apply element reaction engine
     const activeDebuffs = (enemy.activeElements ??= []) as ElementType[];
 
-    // --- APPLY CONDITIONAL WEAPON DAMAGE MODIFIERS ---
-    // Cool Steel (+12% DMG against Hydro/Cryo affected targets)
-    if (usesActiveAttackerModifiers && currentActiveChar.equippedWeaponName?.includes('Cool Steel') &&
-        (activeDebuffs.includes('Hydro') || activeDebuffs.includes('Cryo') || enemy.isFrozen > 0)) {
-      finalDmg *= 1.12;
-    }
-
-    // Bloodtainted Greatsword (+16% DMG against Pyro/Electro affected targets)
-    if (usesActiveAttackerModifiers && currentActiveChar.equippedWeaponName?.includes('Bloodtainted Greatsword') &&
-        (activeDebuffs.includes('Pyro') || activeDebuffs.includes('Electro'))) {
-      finalDmg *= 1.16;
-    }
-
-    // Raven Bow (+12% DMG against Pyro/Hydro affected targets)
-    if (usesActiveAttackerModifiers && currentActiveChar.equippedWeaponName?.includes('Raven Bow') &&
-        (activeDebuffs.includes('Pyro') || activeDebuffs.includes('Hydro'))) {
-      finalDmg *= 1.12;
-    }
-
-    // Magic Guide (+12% DMG against Hydro/Electro affected targets)
-    if (usesActiveAttackerModifiers && currentActiveChar.equippedWeaponName?.includes('Magic Guide') &&
-        (activeDebuffs.includes('Hydro') || activeDebuffs.includes('Electro'))) {
-      finalDmg *= 1.12;
-    }
-
-    // Dragon's Bane (+20% DMG against Hydro/Pyro affected targets)
-    if (usesActiveAttackerModifiers && currentActiveChar.equippedWeaponName?.includes('Dragon\'s Bane') &&
-        (activeDebuffs.includes('Hydro') || activeDebuffs.includes('Pyro'))) {
-      finalDmg *= 1.20;
-    }
-
-    // Black Tassel (+40% DMG against slimes)
-    if (usesActiveAttackerModifiers && currentActiveChar.equippedWeaponName?.includes('Black Tassel') &&
-        enemy.name?.toLowerCase().includes('slime')) {
-      finalDmg *= 1.40;
-    }
-
-    // Calamity Blaze staggered knockback
-    if (usesActiveAttackerModifiers && currentActiveChar.equippedWeaponName?.includes('Calamity Blaze')) {
+    // Calamity Blaze applies its controlled stagger only to direct normal hits.
+    if (usesActiveAttackerModifiers && source === 'normal-attack' && weaponEffect?.knockbackDistance && enemy.type !== 'Boss') {
       const pushAngle = Math.atan2(enemy.y - playerRef.current.y, enemy.x - playerRef.current.x);
-      enemy.x = Math.max(50, Math.min(WORLD_WIDTH - 50, enemy.x + Math.cos(pushAngle) * 35));
-      enemy.y = Math.max(50, Math.min(WORLD_HEIGHT - 50, enemy.y + Math.sin(pushAngle) * 35));
+      enemy.x = Math.max(50, Math.min(WORLD_WIDTH - 50, enemy.x + Math.cos(pushAngle) * weaponEffect.knockbackDistance));
+      enemy.y = Math.max(50, Math.min(WORLD_HEIGHT - 50, enemy.y + Math.sin(pushAngle) * weaponEffect.knockbackDistance));
     }
 
-    // Favonius Windfall energy generation
-    if (usesActiveAttackerModifiers && isCrit && currentActiveChar.equippedWeaponName?.includes('Favonius') && Math.random() < 0.60) {
+    // Favonius Windfall energy generation uses an internal cooldown shared by rapid multi-hits.
+    if (usesActiveAttackerModifiers
+      && isCrit
+      && weaponEffect?.favoniusChance
+      && (!currentActiveChar.favoniusCooldown || currentActiveChar.favoniusCooldown <= 0)
+      && Math.random() < weaponEffect.favoniusChance) {
+      currentActiveChar.favoniusCooldown = (weaponEffect.favoniusCooldownSeconds || 0) * 60;
       setCombatParty(pList => pList.map((c, i) => {
         if (i === currentPartyIndex) {
-          return { ...c, ultimateEnergy: Math.min(c.ultimateMaxEnergy, c.ultimateEnergy + 6) };
+          return {
+            ...c,
+            ultimateEnergy: Math.min(c.ultimateMaxEnergy, c.ultimateEnergy + (weaponEffect.favoniusEnergy || 0)),
+            favoniusCooldown: (weaponEffect.favoniusCooldownSeconds || 0) * 60,
+          };
         }
         return c;
       }));
-      spawnTextRef.current(playerRef.current.x, playerRef.current.y - 30, '+6 ENERGY ⚡', '#a855f7', 10);
+      spawnTextRef.current(playerRef.current.x, playerRef.current.y - 30, `+${weaponEffect.favoniusEnergy || 0} ENERGY`, '#a855f7', 10);
     }
 
     // Sacrificial Cooldown Reset
-    if (usesActiveAttackerModifiers && source === 'elemental-skill' && currentActiveChar.equippedWeaponName?.includes('Sacrificial') && (!currentActiveChar.sacrificialCooldown || currentActiveChar.sacrificialCooldown <= 0)) {
-      if (Math.random() < 0.40) {
+    if (usesActiveAttackerModifiers && source === 'elemental-skill' && weaponEffect?.sacrificialChance && (!currentActiveChar.sacrificialCooldown || currentActiveChar.sacrificialCooldown <= 0)) {
+      if (Math.random() < weaponEffect.sacrificialChance) {
+        currentActiveChar.sacrificialCooldown = (weaponEffect.sacrificialCooldownSeconds || 0) * 60;
         setCombatParty(pList => pList.map((c, i) => {
           if (i === currentPartyIndex) {
-            return { ...c, skillCooldownRemaining: 0, sacrificialCooldown: 1800 }; // 30s cd
+            return { ...c, skillCooldownRemaining: 0, sacrificialCooldown: (weaponEffect.sacrificialCooldownSeconds || 0) * 60 };
           }
           return c;
         }));
@@ -3089,7 +2938,9 @@ export default function CombatArena({
       }
     }
     const index = activeDebuffs.indexOf(type);
-    const reactionOutcome = reactionEligible ? getReactionDamageOutcome(activeDebuffs, type, finalDmg) : null;
+    const reactionOutcome = reactionEligible
+      ? getReactionDamageOutcome(activeDebuffs, type, finalDmg, currentActiveChar.elementalMastery || 0)
+      : null;
     
     // Check Shatter Combo (Frozen State broken by heavy elemental strikes)
     if (reactionEligible && enemy.isFrozen > 0 && (type === 'Anemo' || type === 'Geo' || type === 'Pyro' || type === 'Electro')) {
@@ -3421,7 +3272,7 @@ export default function CombatArena({
     }
 
     const hasConfiguredKnockback = reactionName.includes('OVERLOADED')
-      || currentActiveChar.equippedWeaponName?.includes('Calamity Blaze');
+      || Boolean(weaponEffect?.knockbackDistance);
     if (finalDmg > 0 && impactProfile.knockbackDistance > 0 && !hasConfiguredKnockback) {
       const knockback = getDirectionalKnockback(playerRef.current, enemy, impactProfile.knockbackDistance);
       enemy.x = Math.max(enemy.radius, Math.min(WORLD_WIDTH - enemy.radius, enemy.x + knockback.x));
@@ -4189,6 +4040,10 @@ export default function CombatArena({
         if (swapBuffTimer > 0) {
           swapBuffTimer = Math.max(0, swapBuffTimer - 1 * combatSpeed);
         }
+        let swapBuffCooldown = c.swapBuffCooldown || 0;
+        if (swapBuffCooldown > 0) {
+          swapBuffCooldown = Math.max(0, swapBuffCooldown - 1 * combatSpeed);
+        }
         let crescentPikeTimer = c.crescentPikeTimer || 0;
         if (crescentPikeTimer > 0) {
           crescentPikeTimer = Math.max(0, crescentPikeTimer - 1 * combatSpeed);
@@ -4209,6 +4064,10 @@ export default function CombatArena({
         if (spearDoubleCd > 0) {
           spearDoubleCd = Math.max(0, spearDoubleCd - 1 * combatSpeed);
         }
+        let favoniusCooldown = c.favoniusCooldown || 0;
+        if (favoniusCooldown > 0) {
+          favoniusCooldown = Math.max(0, favoniusCooldown - 1 * combatSpeed);
+        }
 
         return {
           ...c,
@@ -4217,11 +4076,13 @@ export default function CombatArena({
           widsithCooldown: widsithCD,
           widsithBuffTimer: widsithTimer,
           swapBuffTimer: swapBuffTimer,
+          swapBuffCooldown,
           crescentPikeTimer: crescentPikeTimer,
           debateClubTimer: debateClubTimer,
           debateClubCd: debateClubCd,
           scepterBubbleCd: scepterBubbleCd,
-          spearDoubleCd: spearDoubleCd
+          spearDoubleCd: spearDoubleCd,
+          favoniusCooldown,
         };
       }));
 
@@ -4462,9 +4323,10 @@ export default function CombatArena({
 
           // Crescent Pike infusion needle trigger
           setCombatParty(pList => pList.map((c, idx) => {
-            if (idx === currentPartyIndex && c.equippedWeaponName?.includes('Crescent Pike')) {
+            const effect = resolveWeaponEffect(c.equippedWeaponName);
+            if (idx === currentPartyIndex && effect?.id === 'crescent-pike') {
               spawnFloatingDamageText(playerRef.current.x, playerRef.current.y - 45, '💉 INFUSION NEEDLE ACTIVE!', '#a78bfa', 11, true);
-              return { ...c, crescentPikeTimer: 300 }; // 5s
+              return { ...c, crescentPikeTimer: (effect.aoeProcDurationSeconds || 0) * 60 };
             }
             return c;
           }));
@@ -6347,16 +6209,16 @@ export default function CombatArena({
                       const badgeColor = getElementColorHex(c.element);
                       return (
                       <div key={c.id} className="flex items-center gap-1.5 text-[10px] md:text-xs text-slate-200 min-w-0">
-                        <span
+                        <PortraitEffectFrame
+                          characterId={c.id}
+                          element={c.element}
+                          unlockedPortraits={characterPortraits}
                           className="w-6 h-6 rounded-lg border flex items-center justify-center text-[8px] font-black font-mono shrink-0"
-                          style={{
-                            color: badgeColor,
-                            borderColor: `${badgeColor}66`,
-                            backgroundColor: `${badgeColor}18`
-                          }}
                         >
+                          <span style={{ color: badgeColor }}>
                           {getElementBadgeText(c.element)}
-                        </span>
+                          </span>
+                        </PortraitEffectFrame>
                         <span className="truncate max-w-[100px] md:max-w-[120px] font-bold uppercase tracking-tight text-slate-200">{c.name}</span>
                         <span className="font-mono text-[8px] md:text-[9px] text-slate-500">LV.{c.level}</span>
                       </div>
@@ -6966,7 +6828,17 @@ export default function CombatArena({
                 >
                   <div className="flex flex-col gap-1">
                     <div className="flex justify-between items-center text-[12px]">
-                      <span className="min-w-0 truncate font-extrabold text-slate-200 uppercase tracking-tight">{c.name.split(' ')[0]}</span>
+                      <div className="flex min-w-0 items-center gap-2">
+                        <PortraitEffectFrame
+                          characterId={c.id}
+                          element={c.element}
+                          unlockedPortraits={characterPortraits}
+                          className="h-6 w-6 shrink-0 rounded-md border border-white/10 bg-black/35 flex items-center justify-center text-[8px] font-black"
+                        >
+                          <span style={{ color: getElementColorHex(c.element) }}>{getElementBadgeText(c.element)}</span>
+                        </PortraitEffectFrame>
+                        <span className="min-w-0 truncate font-extrabold text-slate-200 uppercase tracking-tight">{c.name.split(' ')[0]}</span>
+                      </div>
                       <span className="font-black text-amber-400 font-mono text-[11px]">L.{c.level}</span>
                     </div>
                     <div className="flex items-center justify-between gap-2 select-none">
@@ -7114,6 +6986,14 @@ export default function CombatArena({
                   }}
                   onPointerDown={(e) => e.stopPropagation()} // Stop propagation to canvas
                 >
+                  <PortraitEffectFrame
+                    characterId={c.id}
+                    element={c.element}
+                    unlockedPortraits={characterPortraits}
+                    className="h-6 w-6 shrink-0 rounded-md border border-white/10 bg-black/35 flex items-center justify-center text-[7px] font-black"
+                  >
+                    <span style={{ color: getElementColorHex(c.element) }}>{getElementBadgeText(c.element)}</span>
+                  </PortraitEffectFrame>
                   <div className="flex flex-col justify-center leading-none">
                     <span className="text-[9px] font-black uppercase truncate max-w-[42px] text-slate-200">{c.name.substring(0, 4)}</span>
                     <span className="text-[8px] font-bold text-amber-500 font-mono mt-0.5">L.{c.level}</span>

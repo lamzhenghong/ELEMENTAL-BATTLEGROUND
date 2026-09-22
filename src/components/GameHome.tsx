@@ -1,10 +1,12 @@
 import { Compass, Hammer, Landmark, Sparkles, Sword, Trophy, Users } from 'lucide-react';
 import homeBg from '../../assets/home_bg.jpg';
+import type { ElementType } from '../types';
+import PortraitEffectFrame from './PortraitEffectFrame';
 
 interface GameHomePartyMember {
   id: string;
   name: string;
-  element: string;
+  element: ElementType;
   level: number;
   avatarPlaceholder: string;
 }
@@ -12,6 +14,7 @@ interface GameHomePartyMember {
 interface GameHomeProps {
   partyMembers: GameHomePartyMember[];
   readyQuestCount: number;
+  unlockedPortraits: Record<string, number>;
   isDungeonLocked: boolean;
   isWishLocked: boolean;
   onStory: () => void;
@@ -26,6 +29,7 @@ interface GameHomeProps {
 const GameHome = ({
   partyMembers,
   readyQuestCount,
+  unlockedPortraits,
   isDungeonLocked,
   isWishLocked,
   onStory,
@@ -92,7 +96,14 @@ const GameHome = ({
             <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto">
               {partyMembers.map(member => (
                 <div key={member.id} className="flex shrink-0 items-center gap-1.5 text-xs">
-                  <span className={`h-7 w-7 rounded-full border ${member.avatarPlaceholder}`} aria-hidden="true" />
+                  <PortraitEffectFrame
+                    characterId={member.id}
+                    element={member.element}
+                    unlockedPortraits={unlockedPortraits}
+                    className={`h-7 w-7 rounded-full border ${member.avatarPlaceholder}`}
+                  >
+                    <span className="sr-only">{member.name}</span>
+                  </PortraitEffectFrame>
                   <span className="max-w-20 truncate font-bold">{member.name}</span>
                   <span className="text-[10px] text-slate-400">Lv.{member.level}</span>
                 </div>

@@ -44,6 +44,37 @@ test('preserves the current starter save schema and defaults', () => {
   );
   assert.equal(save.activeUiTheme, 'Blue');
   assert.equal(save.storyProgress?.currentStage, '1-1');
+  assert.deepEqual(save.characterPortraits, { marina: 0 });
+});
+
+test('preserves portrait ownership as the single cumulative progression value', () => {
+  const normalized = normalizeLoadedSaveState({
+    unlockedCharacterIds: ['marina', 'aurelia'],
+    characterPortraits: { marina: 2, aurelia: 5, locked: 6 },
+  });
+
+  assert.deepEqual(normalized.characterPortraits, { marina: 2, aurelia: 5, locked: 6 });
+});
+
+test('repairs artifact ownership, missing ids, duplicate assignments, and wrong slots on load', () => {
+  const normalized = normalizeLoadedSaveState({
+    unlockedCharacterIds: ['marina', 'aurelia'],
+    inventoryArtifacts: [
+      { id: 'helmet-a', name: 'Helm', slot: 'helmet', set: 'Guardian', rarity: 4, equippedTo: 'wrong-owner' },
+      { id: 'hands-a', name: 'Hands', slot: 'hands', set: 'Vanguard', rarity: 3, equippedTo: 'aurelia' },
+    ],
+    characterEquippedArtifacts: {
+      marina: { helmet: 'helmet-a', hands: 'missing' },
+      aurelia: { helmet: 'helmet-a', leg: 'hands-a' },
+    },
+  });
+
+  assert.deepEqual(normalized.characterEquippedArtifacts, {
+    marina: { helmet: 'helmet-a' },
+    aurelia: {},
+  });
+  assert.equal(normalized.inventoryArtifacts?.find(artifact => artifact.id === 'helmet-a')?.equippedTo, 'marina');
+  assert.equal(normalized.inventoryArtifacts?.find(artifact => artifact.id === 'hands-a')?.equippedTo, undefined);
 });
 
 test('migrates removed damage skins and locked themes safely', () => {

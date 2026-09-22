@@ -8,6 +8,44 @@ export interface UnequipAllArtifactsResult {
   didUnequip: boolean;
 }
 
+const ARTIFACT_SLOTS = new Set(['helmet', 'hands', 'leg', 'shoe']);
+
+export function normalizeArtifactEquipment(
+  inventoryArtifacts: readonly Artifact[],
+  characterEquippedArtifacts: CharacterEquippedArtifacts,
+): Pick<UnequipAllArtifactsResult, 'inventoryArtifacts' | 'characterEquippedArtifacts'> {
+  const artifactsById = new Map(inventoryArtifacts.map(artifact => [artifact.id, artifact]));
+  const claimedArtifactIds = new Set<string>();
+  const normalizedEquipped: CharacterEquippedArtifacts = {};
+
+  for (const [characterId, slots] of Object.entries(characterEquippedArtifacts || {})) {
+    const normalizedSlots: Record<string, string> = {};
+    for (const [slot, artifactId] of Object.entries(slots || {})) {
+      const artifact = artifactsById.get(artifactId);
+      if (!ARTIFACT_SLOTS.has(slot) || !artifact || artifact.slot !== slot || claimedArtifactIds.has(artifactId)) continue;
+      claimedArtifactIds.add(artifactId);
+      normalizedSlots[slot] = artifactId;
+    }
+    normalizedEquipped[characterId] = normalizedSlots;
+  }
+
+  const ownerByArtifactId = new Map<string, string>();
+  for (const [characterId, slots] of Object.entries(normalizedEquipped)) {
+    Object.values(slots).forEach(artifactId => ownerByArtifactId.set(artifactId, characterId));
+  }
+
+  return {
+    inventoryArtifacts: inventoryArtifacts.map(artifact => {
+      const equippedTo = ownerByArtifactId.get(artifact.id);
+      if (equippedTo) return artifact.equippedTo === equippedTo ? artifact : { ...artifact, equippedTo };
+      if (!artifact.equippedTo) return artifact;
+      const { equippedTo: _equippedTo, ...unequipped } = artifact;
+      return unequipped;
+    }),
+    characterEquippedArtifacts: normalizedEquipped,
+  };
+}
+
 export function unequipAllArtifactsForCharacter(
   inventoryArtifacts: readonly Artifact[],
   characterEquippedArtifacts: CharacterEquippedArtifacts,

@@ -11,6 +11,7 @@ import CombatArena from './CombatArena';
 import { formatCombatDuration, getImprovedClearTime } from '../utils/combatSessionPresentation';
 import { LanguageType } from '../utils/i18n';
 import type { MobileControlLayout } from '../utils/mobileControlLayout';
+import { getAccumulatedPortraitBuffs } from '../utils/portraits';
 
 const MIN_PLAUSIBLE_RUN_STARTED_AT = 1_000_000_000_000;
 
@@ -252,11 +253,6 @@ export default function RogueDungeon({
     // Auto trigger first room check
     evaluateRoomEnter(0, map, initialHps);
   };
-
-  // Helper helper to fetch portrait buffs
-  function getAccumulatedPortraitBuffs(charId: string, level: number) {
-    return { hp: level * 0.05, atk: level * 0.05, def: level * 0.05, critRate: level * 0.01, critDmg: level * 0.02 };
-  }
 
   const evaluateRoomEnter = (
     idx: number, 

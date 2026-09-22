@@ -103,12 +103,17 @@ export interface CombatCharacter {
   sacrificialCooldown?: number;
   swapBuffTimer?: number;
   swapBuffAtk?: number;
+  swapBuffCooldown?: number;
   crescentPikeTimer?: number;
   debateClubTimer?: number;
   debateClubCd?: number;
   scepterBubbleCd?: number;
   spearDoubleCd?: number;
   cooldownReduction?: number;
+  energyRecharge?: number;
+  elementalMastery?: number;
+  physicalDamageBonus?: number;
+  favoniusCooldown?: number;
 }
 
 export interface Quest {

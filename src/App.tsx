@@ -24,6 +24,7 @@ import CharacterRoleBadge from './components/CharacterRoleBadge';
 import CloudAccountModal from './components/CloudAccountModal';
 import CloudSaveConflictModal from './components/CloudSaveConflictModal';
 import SavedTeamBuilds from './components/SavedTeamBuilds';
+import PortraitEffectFrame from './components/PortraitEffectFrame';
 import InGameSettingsModal from './components/InGameSettingsModal';
 import MobileControlEditor from './components/MobileControlEditor';
 import PlayerStatsModal from './components/PlayerStatsModal';
@@ -35,11 +36,13 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { AetheriaAudioEngine } from './utils/audio';
 import { getArtifactFusionRule, isSameArtifactPart } from './utils/artifactFusion';
-import { unequipAllArtifactsForCharacter } from './utils/artifactEquipment';
+import { normalizeArtifactEquipment, unequipAllArtifactsForCharacter } from './utils/artifactEquipment';
 import { UI_THEME_UNLOCK_LEVEL, getUiTheme, isUiThemeUnlocked, normalizeUiTheme } from './utils/uiThemes';
 import { getStandardFiveStarCharacters } from './utils/limitedBanners';
 import { SPECIAL_ULTIMATE_UNLOCK_LEVEL } from './utils/specialUltimates';
 import { assignUniqueWeaponOwner, normalizeUniqueEquippedWeapons } from './utils/equipmentRules';
+import { getActivePartyResonances } from './utils/partyResonance';
+import { unlockNextPortraitTier } from './utils/portraitEffects';
 import mainMenuVideo from '../assets/main_menu_bg.mp4';
 import gameLogoImg from '../assets/game_logo_256.png';
 import StoryCutscene from './components/StoryCutscene';
@@ -481,40 +484,7 @@ export default function App() {
 
   const partyResonances = React.useMemo(() => {
     const activeChars = PLAYABLE_CHARACTERS.filter(c => saveState.partyIds.includes(c.id));
-    const elementCounts: Record<ElementType, number> = {} as any;
-    activeChars.forEach(c => {
-      elementCounts[c.element] = (elementCounts[c.element] || 0) + 1;
-    });
-
-    const uniqueElements = Object.keys(elementCounts).length;
-    const list: { name: string; desc: string; key: string }[] = [];
-
-    if ((elementCounts['Pyro'] || 0) >= 2) {
-      list.push({ name: 'Fervent Flames (2 Pyro)', desc: '+15% ATK boost', key: 'pyro' });
-    }
-    if ((elementCounts['Hydro'] || 0) >= 2) {
-      list.push({ name: 'Soothing Waters (2 Hydro)', desc: '+20% Energy Recharge rate boost', key: 'hydro' });
-    }
-    if ((elementCounts['Cryo'] || 0) >= 2) {
-      list.push({ name: 'Shattering Ice (2 Cryo)', desc: '+15% Crit Rate against Frozen/Cryo targets', key: 'cryo' });
-    }
-    if ((elementCounts['Electro'] || 0) >= 2) {
-      list.push({ name: 'High Voltage (2 Electro)', desc: '-20% Skill Cooldown reduction', key: 'electro' });
-    }
-    if ((elementCounts['Geo'] || 0) >= 2) {
-      list.push({ name: 'Enduring Rock (2 Geo)', desc: '+15% Shield Strength and +15% DMG when shielded', key: 'geo' });
-    }
-    if ((elementCounts['Anemo'] || 0) >= 2) {
-      list.push({ name: 'Impetuous Winds (2 Anemo)', desc: '+15% Move Speed and -15% Skill cooldown', key: 'anemo' });
-    }
-    if ((elementCounts['Dendro'] || 0) >= 2) {
-      list.push({ name: 'Sprawling Greenery (2 Dendro)', desc: '+50 Elemental Mastery', key: 'dendro' });
-    }
-    if (uniqueElements >= 4) {
-      list.push({ name: 'Protective Canopy (4 Unique)', desc: '+15% All Elemental/Physical DMG', key: 'unique' });
-    }
-
-    return list;
+    return getActivePartyResonances(activeChars.map(character => character.element));
   }, [saveState.partyIds]);
 
   const activePartyArtifactSets = React.useMemo(() => {
@@ -1068,6 +1038,22 @@ export default function App() {
     const rewardEvents: RewardRevealEvent[] = [];
     if (gemsDiff > 0) rewardEvents.push(createRewardRevealEvent('gems', gemsDiff));
     if (moraDiff > 0) rewardEvents.push(createRewardRevealEvent('mora', moraDiff));
+    if (expDiff > 0) {
+      let projectedLevel = saveState.playerLevel !== undefined ? saveState.playerLevel : 1;
+      let projectedExp = (saveState.playerExp !== undefined ? saveState.playerExp : 0) + expDiff;
+      let projectedExpMax = saveState.playerExpMax !== undefined ? saveState.playerExpMax : 100;
+      let levelRewardGems = 0;
+      let levelRewardMora = 0;
+      while (projectedExp >= projectedExpMax && projectedLevel < 80) {
+        projectedExp -= projectedExpMax;
+        projectedLevel += 1;
+        projectedExpMax = projectedLevel * 100;
+        levelRewardGems += projectedLevel * 200;
+        levelRewardMora += projectedLevel * 2500;
+      }
+      if (levelRewardGems > 0) rewardEvents.push(createRewardRevealEvent('gems', levelRewardGems));
+      if (levelRewardMora > 0) rewardEvents.push(createRewardRevealEvent('mora', levelRewardMora));
+    }
 
     triggerSaveUpdate(prev => {
       let currentLevel = prev.playerLevel !== undefined ? prev.playerLevel : 1;
@@ -1151,7 +1137,7 @@ export default function App() {
     triggerSaveUpdate(prev => {
       const currentPortraits = prev.characterPortraits || {};
       if (prev.unlockedCharacterIds.includes(id)) {
-        const nextLvl = Math.min(6, (currentPortraits[id] || 0) + 1);
+        const nextLvl = unlockNextPortraitTier(currentPortraits, id);
         const charTemplate = PLAYABLE_CHARACTERS.find(c => c.id === id);
         const charName = charTemplate?.name || "Hero";
 
@@ -1205,13 +1191,16 @@ export default function App() {
   };
 
   // Add inventory items (Hero's Wit / Myconid Spore Catalyst)
-  const handleAddItems = (itemType: 'char_xp' | 'ascension', amount: number) => {
+  const handleAddItems = (itemType: 'char_xp' | 'ascension', amount: number, animateReward = true) => {
     triggerSaveUpdate(prev => ({
       ...prev,
       inventoryItems: prev.inventoryItems.map(item =>
         item.type === itemType ? { ...item, count: item.count + amount } : item
       )
     }));
+    if (animateReward && amount > 0) {
+      enqueueRewardReveal([createRewardRevealEvent('material', amount)]);
+    }
   };
 
   const handleLevelUpCharacter = (id: string, costMora: number, costItems: number) => {
@@ -1379,6 +1368,7 @@ export default function App() {
         const artIdx = currentArtifacts.findIndex(a => a.id === artifactId);
         if (artIdx !== -1) {
           const artifact = currentArtifacts[artIdx];
+          if (artifact.slot !== slot) return prev;
           const prevEquippedCharId = artifact.equippedTo;
 
           // 1. Unequip from previous owner if any
@@ -1410,10 +1400,11 @@ export default function App() {
         }
       }
 
+      const normalized = normalizeArtifactEquipment(currentArtifacts, currentEquipped);
       return {
         ...prev,
-        inventoryArtifacts: currentArtifacts,
-        characterEquippedArtifacts: currentEquipped
+        inventoryArtifacts: normalized.inventoryArtifacts,
+        characterEquippedArtifacts: normalized.characterEquippedArtifacts
       };
     });
   };
@@ -1496,6 +1487,13 @@ export default function App() {
       inventoryArtifacts: [...(prev.inventoryArtifacts || []), newArt]
     }));
     enqueueRewardReveal([createRewardRevealEvent('artifact', 1)]);
+  };
+
+  const handleAwardCombatArtifact = (newArt: Artifact) => {
+    triggerSaveUpdate(prev => ({
+      ...prev,
+      inventoryArtifacts: [...(prev.inventoryArtifacts || []), newArt]
+    }));
   };
 
   const handleAwardArtifacts = (newArtifacts: Artifact[]) => {
@@ -1959,7 +1957,7 @@ export default function App() {
       if (quest.rewardCharacterId) {
         const id = quest.rewardCharacterId;
         if (nextUnlockedCharacterIds.includes(id)) {
-          nextCharacterPortraits[id] = Math.min(6, (nextCharacterPortraits[id] || 0) + 1);
+          nextCharacterPortraits[id] = unlockNextPortraitTier(nextCharacterPortraits, id);
           nextInventoryItems = nextInventoryItems.map(i => i.type === 'char_xp' ? { ...i, count: i.count + 5 } : i);
           nextMora += 2000;
         } else {
@@ -2024,7 +2022,9 @@ export default function App() {
         { kind: 'gems', quantity: quest.rewardTokens },
         { kind: 'mora', quantity: nextMora - prev.mora },
       ];
+      if (witBonus > 0) transaction.rewards.push({ kind: 'material', quantity: witBonus });
       if (quest.rewardWeaponName) transaction.rewards.push({ kind: 'weapon', quantity: 1 });
+      if (quest.rewardCharacterId) transaction.rewards.push({ kind: 'character', quantity: 1 });
       const witBonusMessage = witBonus > 0 ? ` and +${witBonus} Hero's Wit` : '';
       transaction.notifications = [{
         message: 'Claimed Quest Reward Successfully!',
@@ -2160,8 +2160,9 @@ export default function App() {
 
         const isOwned = prev.unlockedCharacterIds.includes(chosen.id);
         const currentPortraits = prev.characterPortraits || {};
-        const currentLvl = currentPortraits[chosen.id] || 0;
-        const nextLvl = isOwned ? Math.min(6, currentLvl + 1) : 0;
+        const nextLvl = isOwned
+          ? unlockNextPortraitTier(currentPortraits, chosen.id)
+          : 0;
 
         const newUnlockedIds = isOwned 
           ? prev.unlockedCharacterIds 
@@ -2183,6 +2184,7 @@ export default function App() {
         const withProg = checkQuestProgress(updated, 'own_chars', updated.unlockedCharacterIds.length);
         transaction.status = 'accepted';
         transaction.commit = { type: 'login', day };
+        transaction.rewards = [{ kind: isOwned ? 'progression' : 'character', quantity: 1 }];
         transaction.notifications = [
           ...(isOwned ? [{
             message: `✨ LOGIN REWARD DUPLICATE: ${chosen.name.toUpperCase()} PORTRAIT UPGRADED!`,
@@ -2269,8 +2271,9 @@ export default function App() {
 
         const isOwned = prev.unlockedCharacterIds.includes(chosen.id);
         const currentPortraits = prev.characterPortraits || {};
-        const currentLvl = currentPortraits[chosen.id] || 0;
-        const nextLvl = isOwned ? Math.min(6, currentLvl + 1) : 0;
+        const nextLvl = isOwned
+          ? unlockNextPortraitTier(currentPortraits, chosen.id)
+          : 0;
 
         const newUnlockedIds = isOwned 
           ? prev.unlockedCharacterIds 
@@ -2292,6 +2295,7 @@ export default function App() {
         const withProg = checkQuestProgress(updated, 'own_chars', updated.unlockedCharacterIds.length);
         transaction.status = 'accepted';
         transaction.commit = { type: 'login', day };
+        transaction.rewards = [{ kind: isOwned ? 'progression' : 'character', quantity: 1 }];
         transaction.notifications = [
           ...(isOwned ? [{
             message: `✨ LOGIN REWARD DUPLICATE: ${chosen.name.toUpperCase()} PORTRAIT UPGRADED!`,
@@ -3294,6 +3298,7 @@ export default function App() {
                       avatarPlaceholder: character.avatarPlaceholder,
                     }))}
                   readyQuestCount={saveState.activeQuests.filter(quest => quest.completed).length}
+                  unlockedPortraits={saveState.characterPortraits || {}}
                   isDungeonLocked={isDungeonLocked}
                   isWishLocked={isWishLocked}
                   onStory={() => { navigateWithTransition('story'); AetheriaAudioEngine.playClick(); }}
@@ -3394,7 +3399,7 @@ export default function App() {
                     }}
                     onBackToMenu={() => navigateWithTransition('home')}
                     onExitToWiki={() => navigateWithTransition('home')}
-                    onAddItems={handleAddItems}
+                    onAddItems={(itemType, amount) => handleAddItems(itemType, amount, false)}
                     devCheatsEnabled={devCheatsEnabled}
                     playerLevel={saveState.playerLevel || 1}
                     screenShakeEnabled={screenShakeEnabled}
@@ -3403,7 +3408,7 @@ export default function App() {
                     combatSpeed={combatSpeed}
                     fpsLimit={fpsLimit}
                     language={language}
-                    onAwardArtifact={handleAwardArtifact}
+                    onAwardArtifact={handleAwardCombatArtifact}
                     activeDamageSkin={saveState.activeDamageSkin || 'Default'}
                     disableGameplayCutscenes={saveState.disableGameplayCutscenes || false}
                     mobileControlLayout={mobileControlLayout}
@@ -3436,7 +3441,7 @@ export default function App() {
                     onCompleteRun={handleCompleteRogueRun}
                     onBackToMenu={() => navigateWithTransition('home')}
                     onExitToWiki={() => navigateWithTransition('home')}
-                    onAddItems={handleAddItems}
+                    onAddItems={(itemType, amount) => handleAddItems(itemType, amount, false)}
                     devCheatsEnabled={devCheatsEnabled}
                     playerLevel={saveState.playerLevel || 1}
                     screenShakeEnabled={screenShakeEnabled}
@@ -4095,8 +4100,17 @@ export default function App() {
                                 </span>
                               )}
                               <div>
-                                <div className="flex items-center gap-1.5 w-full justify-between pr-10">
-                                  <span className="font-black text-[12px] truncate uppercase tracking-tight text-slate-100">{c.name}</span>
+                                <div className="flex items-center gap-2 w-full pr-10">
+                                  <PortraitEffectFrame
+                                    characterId={c.id}
+                                    element={c.element}
+                                    unlockedPortraits={saveState.characterPortraits || {}}
+                                    showTier
+                                    className={`h-9 w-9 shrink-0 rounded-lg border flex items-center justify-center text-xs font-black text-slate-950 ${c.avatarPlaceholder}`}
+                                  >
+                                    {c.name.charAt(0)}
+                                  </PortraitEffectFrame>
+                                  <span className="min-w-0 flex-1 font-black text-[12px] truncate uppercase tracking-tight text-slate-100">{c.name}</span>
                                   <span className="bg-slate-800 border border-slate-700 text-amber-500 font-mono text-[8px] px-1.5 py-0.5 rounded leading-none shrink-0">LV.{charLvl}</span>
                                 </div>
                                 <div className="flex shrink-0 gap-0.5 mt-1 select-none">
@@ -4238,8 +4252,16 @@ export default function App() {
                       }`}
                     >
                       <div>
-                        <div className="flex flex-wrap items-center gap-1 w-full justify-between pr-8">
-                          <span className="font-black text-[11px] truncate uppercase tracking-tighter text-slate-100">{c.name}</span>
+                        <div className="flex items-center gap-1.5 w-full pr-8">
+                          <PortraitEffectFrame
+                            characterId={c.id}
+                            element={c.element}
+                            unlockedPortraits={saveState.characterPortraits || {}}
+                            className={`h-7 w-7 shrink-0 rounded-md border flex items-center justify-center text-[9px] font-black text-slate-950 ${c.avatarPlaceholder}`}
+                          >
+                            {c.name.charAt(0)}
+                          </PortraitEffectFrame>
+                          <span className="min-w-0 flex-1 font-black text-[11px] truncate uppercase tracking-tighter text-slate-100">{c.name}</span>
                           <span className="bg-slate-800 border border-slate-700 text-amber-500 font-mono text-[8px] px-1 rounded-sm leading-none h-3.5 flex items-center shrink-0">LV.{charLvl}</span>
                         </div>
                         <div className="flex shrink-0 gap-0.5 mt-1 select-none">
@@ -4431,7 +4453,7 @@ export default function App() {
               characterPortraits={saveState.characterPortraits || {}}
               onBackToMenu={handleExitStoryBattle}
               onExitToWiki={handleExitStoryBattle}
-              onAddItems={handleAddItems}
+              onAddItems={(itemType, amount) => handleAddItems(itemType, amount, false)}
               devCheatsEnabled={devCheatsEnabled}
               playerLevel={saveState.playerLevel || 1}
               screenShakeEnabled={screenShakeEnabled}
@@ -4452,7 +4474,7 @@ export default function App() {
               onStoryBattleEnd={handleStoryBattleEnd}
               inventoryArtifacts={saveState.inventoryArtifacts || []}
               characterEquippedArtifacts={saveState.characterEquippedArtifacts || {}}
-              onAwardArtifact={handleAwardArtifact}
+              onAwardArtifact={handleAwardCombatArtifact}
               activeDamageSkin={saveState.activeDamageSkin || 'Default'}
               disableGameplayCutscenes={saveState.disableGameplayCutscenes || false}
               mobileControlLayout={mobileControlLayout}

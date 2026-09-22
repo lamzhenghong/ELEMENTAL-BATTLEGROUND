@@ -291,7 +291,7 @@ export function getAccumulatedPortraitBuffs(charId: string, level: number): Requ
   return accum;
 }
 
-export function getPortraitInfoList(element: string, charId: string): PortraitInfo[] {
+function getPortraitLoreInfoList(element: string, charId: string): PortraitInfo[] {
   switch (charId) {
     case 'aurelia':
       return [
@@ -681,4 +681,24 @@ export function getPortraitInfoList(element: string, charId: string): PortraitIn
           ];
       }
   }
+}
+
+const formatPortraitBuffDescription = (buff: PortraitBuffValues | undefined, tier: number): string => {
+  if (!buff) return 'No combat stat bonus.';
+  const parts: string[] = [];
+  if (buff.hp) parts.push(`Max HP +${Math.round(buff.hp * 100)}%`);
+  if (buff.def) parts.push(`DEF +${Math.round(buff.def * 100)}%`);
+  if (buff.atk) parts.push(`ATK +${Math.round(buff.atk * 100)}%`);
+  if (buff.critRate) parts.push(`Crit Rate +${Math.round(buff.critRate * 100)}%`);
+  if (buff.critDmg) parts.push(`Crit DMG +${Math.round(buff.critDmg * 100)}%`);
+  return `Unlocked at P${tier}. This bonus remains active at every higher portrait tier: ${parts.join(', ')}.`;
+};
+
+export function getPortraitInfoList(element: string, charId: string): PortraitInfo[] {
+  const loreEntries = getPortraitLoreInfoList(element, charId);
+  const buffs = CHARACTER_PORTRAIT_BUFFS[charId] || [];
+  return loreEntries.map((entry, index) => ({
+    ...entry,
+    desc: formatPortraitBuffDescription(buffs[index], index + 1),
+  }));
 }
