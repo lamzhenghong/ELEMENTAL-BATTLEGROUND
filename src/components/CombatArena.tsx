@@ -218,8 +218,17 @@ import {
   worldToScreen,
   type CameraFrame,
 } from '../utils/cinematicCamera';
+import { resolveActivePartyIndex } from '../utils/combatPartySelection';
 
 const EMPTY_STORY_CHOICE_SELECTIONS: StoryChoiceSelections = {};
+const EMPTY_CHARACTER_LEVELS: Record<string, number> = {};
+const EMPTY_CHARACTER_WEAPONS: Record<string, string> = {};
+const EMPTY_WEAPON_INVENTORY: Weapon[] = [];
+const EMPTY_ARTIFACT_INVENTORY: Artifact[] = [];
+const EMPTY_CHARACTER_ARTIFACTS: Record<string, Record<string, string>> = {};
+const EMPTY_CHARACTER_PORTRAITS: Record<string, number> = {};
+const EMPTY_DUNGEON_BUFFS: string[] = [];
+const EMPTY_DUNGEON_PARTY_STATE: Record<string, number> = {};
 
 interface DamageTextMeta {
   targetId: string;
@@ -292,13 +301,13 @@ export default function CombatArena({
   highScoreArtifactWave = 1,
   onUpdateWaveRecord,
   onBackToMenu,
-  characterLevels = {},
-  characterEquippedWeapon = {},
-  inventoryWeapons = [],
-  inventoryArtifacts = [],
-  characterEquippedArtifacts = {},
+  characterLevels = EMPTY_CHARACTER_LEVELS,
+  characterEquippedWeapon = EMPTY_CHARACTER_WEAPONS,
+  inventoryWeapons = EMPTY_WEAPON_INVENTORY,
+  inventoryArtifacts = EMPTY_ARTIFACT_INVENTORY,
+  characterEquippedArtifacts = EMPTY_CHARACTER_ARTIFACTS,
   onAwardArtifact,
-  characterPortraits = {},
+  characterPortraits = EMPTY_CHARACTER_PORTRAITS,
   devCheatsEnabled = true,
   playerLevel = 1,
   screenShakeEnabled = true,
@@ -308,9 +317,9 @@ export default function CombatArena({
   fpsLimit = '60',
   language = 'en',
   dungeonMode = false,
-  dungeonBuffs = [],
-  dungeonPartyHp = {},
-  dungeonPartyUlt = {},
+  dungeonBuffs = EMPTY_DUNGEON_BUFFS,
+  dungeonPartyHp = EMPTY_DUNGEON_PARTY_STATE,
+  dungeonPartyUlt = EMPTY_DUNGEON_PARTY_STATE,
   dungeonRoomType,
   dungeonRoomIdx = 0,
   onDungeonBattleEnd,
@@ -1407,6 +1416,8 @@ export default function CombatArena({
 
   // Convert templates dynamically
   useEffect(() => {
+    const previousActiveCharacterId =
+      loopStateRef.current.combatParty[loopStateRef.current.activePartyIndex]?.id;
     const list: CombatCharacter[] = [];
     partyIds.forEach(id => {
       const charTemplate = PLAYABLE_CHARACTERS.find(c => c.id === id);
@@ -1520,8 +1531,7 @@ export default function CombatArena({
 
     if (list.length > 0) {
       setCombatParty(list);
-      const firstAliveIdx = list.findIndex(c => c.currentHp > 0);
-      setActivePartyIndex(firstAliveIdx !== -1 ? firstAliveIdx : 0);
+      setActivePartyIndex(resolveActivePartyIndex(list, previousActiveCharacterId));
     }
   }, [partyIds, characterLevels, characterEquippedWeapon, inventoryWeapons, inventoryArtifacts, characterEquippedArtifacts, dungeonMode, dungeonBuffs, dungeonPartyHp, dungeonPartyUlt, characterPortraits]);
 
