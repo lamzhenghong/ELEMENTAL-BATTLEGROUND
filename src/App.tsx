@@ -25,6 +25,7 @@ import CloudAccountModal from './components/CloudAccountModal';
 import CloudSaveConflictModal from './components/CloudSaveConflictModal';
 import SavedTeamBuilds from './components/SavedTeamBuilds';
 import PortraitEffectFrame from './components/PortraitEffectFrame';
+import ElementSigil from './components/ElementSigil';
 import InGameSettingsModal from './components/InGameSettingsModal';
 import MobileControlEditor from './components/MobileControlEditor';
 import PlayerStatsModal from './components/PlayerStatsModal';
@@ -3589,8 +3590,9 @@ export default function App() {
                                   AetheriaAudioEngine.playClick();
                                   setPartyElementFilter(el as any);
                                 }}
-                                className={`px-3 py-1.5 text-[10px] font-black uppercase rounded-lg border transition-all cursor-pointer select-none active:scale-95 ${colorClass}`}
+                                className={`flex items-center gap-1 px-3 py-1.5 text-[10px] font-black uppercase rounded-lg border transition-all cursor-pointer select-none active:scale-95 ${colorClass}`}
                               >
+                                {el !== 'All' && <ElementSigil element={el as ElementType} className="h-3 w-3" />}
                                 {el}
                               </button>
                             );

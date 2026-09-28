@@ -36,6 +36,11 @@ import PortraitEffectFrame from './PortraitEffectFrame';
 import { FloatingDamageTextDOM, type FloatingDamageTextEntry } from './combat/CombatVisuals';
 import ArtifactSetEmblem from './artifacts/ArtifactSetEmblem';
 import { DamageFeedbackManager } from './combat/DamageFeedbackManager';
+import { ElementalChoreography } from './combat/ElementalChoreography';
+import { ArenaFloor } from './combat/ArenaFloor';
+import { getArenaLocation } from '../utils/arenaLocation';
+import { arrangeEnemyFormation } from '../utils/enemyFormation';
+import { ELEMENT_VISUALS } from '../utils/elementVisualLanguage';
 import { drawEnemyDamageVisualState } from './combat/EnemyDamageVisualState';
 import { drawArtifactResonanceAura } from './combat/ArtifactResonanceAura';
 import { drawEnemyArchetypeEnemy } from './combat/enemyArchetypeVfx';
@@ -532,6 +537,8 @@ export default function CombatArena({
   const damageFeedbackRef = useRef(new DamageFeedbackManager(
     /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ? 12 : 24,
   ));
+  const elementalChoreographyRef = useRef(new ElementalChoreography());
+  const arenaFloorRef = useRef(new ArenaFloor());
   const cameraDirectorRef = useRef(new CinematicCameraDirector());
   const cameraFrameRef = useRef<CameraFrame>(createNeutralCameraFrame({
     playerX: 1000,
@@ -1049,6 +1056,16 @@ export default function CombatArena({
   // Refs for keyboard controls to prevent scope-binding loss in standard fast loops
   const keyboardState = useRef<Record<string, boolean>>({});
   const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const arenaLocationRef = useRef(getArenaLocation({
+    storyStageId: storyMode ? storyStageId : null,
+    rogueRoom: dungeonMode ? dungeonRoomType : undefined,
+    artifactGrind: isArtifactGrindMode,
+  }));
+  arenaLocationRef.current = getArenaLocation({
+    storyStageId: storyMode ? storyStageId : null,
+    rogueRoom: dungeonMode ? dungeonRoomType : undefined,
+    artifactGrind: isArtifactGrindMode,
+  });
   const feedbackQuality: FeedbackQuality = isMobile ? 'low' : fpsLimit === 'none' ? 'high' : 'medium';
   useEffect(() => {
     HapticManager.setEnabled(hapticsEnabled);
@@ -1324,18 +1341,7 @@ export default function CombatArena({
     }
   };
 
-  // Get color details relative to elements
-  const getElementColorHex = (element: ElementType) => {
-    switch (element) {
-      case 'Pyro': return '#ef4444';
-      case 'Hydro': return '#3b82f6';
-      case 'Cryo': return '#60a5fa';
-      case 'Electro': return '#a855f7';
-      case 'Anemo': return '#10b981';
-      case 'Geo': return '#f59e0b';
-      case 'Dendro': return '#22c55e';
-    }
-  };
+  const getElementColorHex = (element: ElementType) => ELEMENT_VISUALS[element].color;
 
   const getElementBadgeText = (element: ElementType) => {
     switch (element) {
@@ -1564,6 +1570,7 @@ export default function CombatArena({
     waveResolvingRef.current = false;
     bossPhaseMilestonesRef.current.clear();
     damageFeedbackRef.current.clear();
+    elementalChoreographyRef.current.clear();
     specialUltimateEffectsRef.current = clearSpecialUltimateEffects(specialUltimateEffectsRef.current);
     specialUltimateDamageEventsRef.current = [];
     HapticManager.stop();
@@ -1865,7 +1872,13 @@ export default function CombatArena({
       }));
     }
 
-    enemiesRef.current = list.map(enemy => ({ ...enemy, statusEffects: [] as CombatStatusEffect[] }));
+    enemiesRef.current = arrangeEnemyFormation(list, WORLD_WIDTH, WORLD_HEIGHT)
+      .map(enemy => ({ ...enemy, statusEffects: [] as CombatStatusEffect[] }));
+    enemiesRef.current.forEach(enemy => {
+      if (enemy.type !== 'Boss' && enemy.archetypeId !== 'relic-carrier') {
+        elementalChoreographyRef.current.entrance(enemy.x, enemy.y, enemy.color);
+      }
+    });
     const spawnedBoss = enemiesRef.current.find(enemy => enemy.type === 'Boss');
     if (spawnedBoss) {
       const bossIdentity = getBossIdentityForEnemy(spawnedBoss.name, spawnedBoss.bossType);
@@ -1910,12 +1923,9 @@ export default function CombatArena({
       spawnAetherEchoPulse(`Echo Swap: ${swapped.name}`, nextEcho, 10);
     }
 
-    // Spawn burst effects at player position
     const px = playerRef.current.x;
     const py = playerRef.current.y;
-    for (let i = 0; i < 15; i++) {
-      particlesRef.current.push(new CombatParticle(px, py, getElementColorHex(swapped.element), 4));
-    }
+    elementalChoreographyRef.current.handoff(currentParty[currentPartyIndex].element, swapped.element, px, py);
 
     // Swapping trigger Resonance reaction check
     spawnFloatingDamageText(px, py - 40, `SWAP: ${swapped.name}!`, getElementColorHex(swapped.element), 13);
@@ -3255,8 +3265,8 @@ export default function CombatArena({
       damageColor = '#bae6fd';
       onIncrementStat('reactions');
 
-      // Blast gorgeous ice particles
-      for (let i = 0; i < 28; i++) {
+      // A few motes support the shared fracture sequence without covering the target.
+      for (let i = 0; i < (isMobile ? 2 : 4); i++) {
         particlesRef.current.push(new CombatParticle(enemy.x, enemy.y, '#bae6fd', 4.5));
         particlesRef.current.push(new CombatParticle(enemy.x, enemy.y, '#38bdf8', 3));
       }
@@ -3302,8 +3312,7 @@ export default function CombatArena({
         onIncrementStat('reactions');
         enemy.activeElements = [];
 
-        // Spawn glorious core bloom green/hydro explosion particles
-        for(let i = 0; i < 15; i++) {
+        for(let i = 0; i < (isMobile ? 2 : 4); i++) {
           particlesRef.current.push(new CombatParticle(enemy.x, enemy.y, '#22c55e', 4.5));
           particlesRef.current.push(new CombatParticle(enemy.x, enemy.y, '#3b82f6', 3.5));
         }
@@ -3341,7 +3350,7 @@ export default function CombatArena({
               other.hp = Math.max(0, other.hp - shockDmg);
               registerComboHit(other.x, other.y);
               spawnTextRef.current(other.x, other.y - 12, `${shockDmg} ⚡`, '#a855f7', 10, false);
-              for(let j = 0; j < 6; j++) {
+              for(let j = 0; j < (isMobile ? 1 : 3); j++) {
                 particlesRef.current.push(new CombatParticle(other.x, other.y, '#a855f7', 3));
               }
             }
@@ -3453,6 +3462,11 @@ export default function CombatArena({
     }
 
     if (reactionName) {
+      elementalChoreographyRef.current.reaction(
+        reactionName.includes('SHATTER') ? 'hyper-shatter' : reactionOutcome?.reactionId ?? 'unknown',
+        enemy.x,
+        enemy.y,
+      );
       const fieldModifiers = getReactionFieldModifiers(partyEffectsRef.current, enemy.x, enemy.y);
       finalDmg *= fieldModifiers.reactionMultiplier;
       if (portraitCombatRef.current.maelisReactionBuffDuration > 0) finalDmg *= 1.18;
@@ -4220,22 +4234,7 @@ export default function CombatArena({
       ctx.scale(cameraFrame.zoom, cameraFrame.zoom);
       ctx.translate(-cameraFrame.centerX, -cameraFrame.centerY);
 
-      // Draw background board grid in world coordinates
-      ctx.strokeStyle = '#1e293b';
-      ctx.lineWidth = 1;
-      const gridSize = 40;
-      for (let x = 0; x <= WORLD_WIDTH; x += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, WORLD_HEIGHT);
-        ctx.stroke();
-      }
-      for (let y = 0; y <= WORLD_HEIGHT; y += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(WORLD_WIDTH, y);
-        ctx.stroke();
-      }
+      arenaFloorRef.current.draw(ctx, arenaLocationRef.current, WORLD_WIDTH, WORLD_HEIGHT);
 
       // Draw bounding arena wall in world coordinates
       ctx.strokeStyle = '#334155';
@@ -5515,6 +5514,10 @@ export default function CombatArena({
       }
 
       // --- DRAW TEXTS AND EFFECTS PARTICLES (World Space) ---
+      elementalChoreographyRef.current.step(delta);
+      if (motionIntensityRef.current > 0) {
+        elementalChoreographyRef.current.draw(ctx, isMobile || motionIntensityRef.current < 30);
+      }
       particlesRef.current.forEach((p) => {
         p.update();
         p.draw(ctx);
@@ -5728,6 +5731,8 @@ export default function CombatArena({
       damageTextBucketsRef.current.clear();
       damageTextGenerationRef.current.clear();
       damageFeedbackRef.current.clear();
+      elementalChoreographyRef.current.clear();
+      arenaFloorRef.current.clear();
       cameraDirectorRef.current.reset();
       HapticManager.stop();
       AetheriaAudioEngine.setBossFightActive(false);

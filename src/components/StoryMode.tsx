@@ -16,6 +16,9 @@ import StoryMemoryArchive from './StoryMemoryArchive';
 import CharacterRoleBadge from './CharacterRoleBadge';
 import PortraitEffectFrame from './PortraitEffectFrame';
 import { personalizeCampaignScene } from '../utils/storyDialoguePersonalization';
+import { getStoryArtwork } from '../data/story/artwork';
+import { getArenaLocation } from '../utils/arenaLocation';
+import type { StoryBackgroundId } from '../data/story/types';
 
 interface StoryModeProps {
   saveState: SaveState;
@@ -364,11 +367,13 @@ export default function StoryMode({
                         setSelectedChapter(chap.id);
                         AetheriaAudioEngine.playClick();
                       }}
-                      className={`w-[250px] sm:w-[260px] shrink-0 snap-center p-4 rounded-xl border flex flex-col text-left justify-between gap-3 transition-all select-none ${blockClass} ${
+                      className={`relative isolate w-[250px] sm:w-[260px] shrink-0 snap-center overflow-hidden p-4 rounded-xl border flex flex-col text-left justify-between gap-3 transition-all select-none ${blockClass} ${
                         unlocked ? 'cursor-pointer active:scale-95' : 'cursor-not-allowed opacity-50'
                       }`}
                     >
-                      <div className="space-y-1">
+                      <img src={getStoryArtwork(`chapter-${chap.id}` as StoryBackgroundId).src} alt="" loading="lazy" className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-35" />
+                      <span className="pointer-events-none absolute inset-0 bg-[#050b15]/70" />
+                      <div className="relative space-y-1">
                         <div className="flex justify-between items-center text-[9px] font-mono">
                           <span>CHAPTER {String(chap.id).padStart(2, '0')}</span>
                           {!unlocked && <Lock className="w-3 h-3 text-red-500" />}
@@ -379,7 +384,7 @@ export default function StoryMode({
                       </div>
 
                       {unlocked && (
-                        <div className="space-y-2">
+                        <div className="relative space-y-2">
                           <div className="flex justify-between items-center text-[9px] font-mono text-slate-400">
                             <span>Stars: {stars}/15</span>
                             <span>{completionPct}% Complete</span>
@@ -387,8 +392,8 @@ export default function StoryMode({
                           {/* Mini Progress Bar */}
                           <div className="w-full bg-slate-950 rounded-full h-1 overflow-hidden">
                             <div 
-                              className="bg-indigo-500 h-full transition-all duration-350"
-                              style={{ width: `${completionPct}%` }}
+                              className="h-full transition-all duration-350"
+                              style={{ width: `${completionPct}%`, backgroundColor: getArenaLocation({ storyStageId: `${chap.id}-1` }).accent }}
                             />
                           </div>
                         </div>

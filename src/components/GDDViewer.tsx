@@ -10,7 +10,7 @@ import { PLAYABLE_CHARACTERS } from '../data/characters';
 import { WEAPONS_DATABASE } from '../data/weapons';
 import { AetheriaAudioEngine } from '../utils/audio';
 import { getPortraitInfoList } from '../utils/portraits';
-import { Shield, Sparkles, BookOpen, Compass, Sword, Landmark, Hammer, Coins, Trophy, DollarSign, Image, User, Star, Flame, Droplet, Snowflake, Zap, Wind, Mountain, Leaf, Check, Layers } from 'lucide-react';
+import { Shield, Sparkles, BookOpen, Compass, Sword, Landmark, Hammer, Coins, Trophy, DollarSign, Image, User, Star, Zap, Check, Layers } from 'lucide-react';
 import { ElementType, WeaponType, Weapon, Artifact, ArtifactSlot, ArtifactSet, CharacterRole } from '../types';
 import { ARTIFACT_SETS, ARTIFACT_NAMES, getArtifactMainStat } from '../data/artifacts';
 import { LanguageType, t } from '../utils/i18n';
@@ -21,6 +21,7 @@ import { getSpecialUltimateCharacterEntry } from '../utils/specialUltimates';
 import CharacterRoleBadge from './CharacterRoleBadge';
 import EnemyArchiveTab from './wiki/EnemyArchiveTab';
 import PortraitEffectFrame from './PortraitEffectFrame';
+import ElementSigil from './ElementSigil';
 
 import aureliaBanner from '../../assets/aurelia_banner.jpg';
 import kaelenBanner from '../../assets/kaelen_banner.jpg';
@@ -150,17 +151,7 @@ export default function GDDViewer({
     }
   };
 
-  const getElementIcon = (element: ElementType) => {
-    switch (element) {
-      case 'Pyro': return <Flame className="w-4 h-4 text-orange-500" />;
-      case 'Hydro': return <Droplet className="w-4 h-4 text-blue-400" />;
-      case 'Cryo': return <Snowflake className="w-4 h-4 text-sky-300" />;
-      case 'Electro': return <Zap className="w-4 h-4 text-purple-400" />;
-      case 'Anemo': return <Wind className="w-4 h-4 text-emerald-400" />;
-      case 'Geo': return <Mountain className="w-4 h-4 text-amber-500" />;
-      case 'Dendro': return <Leaf className="w-4 h-4 text-green-400" />;
-    }
-  };
+  const getElementIcon = (element: ElementType) => <ElementSigil element={element} className="w-4 h-4" />;
 
   const getSystemIcon = (iconName: string) => {
     switch (iconName) {

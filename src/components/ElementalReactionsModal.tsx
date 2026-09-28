@@ -1,7 +1,9 @@
 import React from 'react';
-import { X, Sparkles, Flame, Droplet, Snowflake, Zap, Wind, ShieldAlert, Leaf } from 'lucide-react';
+import { X, Sparkles } from 'lucide-react';
 import { ElementType } from '../types';
 import { ELEMENTAL_REACTIONS } from '../data/elementalReactions';
+import ElementSigil from './ElementSigil';
+import { ELEMENT_VISUALS } from '../utils/elementVisualLanguage';
 
 interface ElementalReactionsModalProps {
   isOpen: boolean;
@@ -10,32 +12,6 @@ interface ElementalReactionsModalProps {
 
 export default function ElementalReactionsModal({ isOpen, onClose }: ElementalReactionsModalProps) {
   if (!isOpen) return null;
-
-  const getElementIcon = (element: ElementType) => {
-    switch (element) {
-      case 'Pyro': return <Flame className="w-3.5 h-3.5 text-red-400 shrink-0" />;
-      case 'Hydro': return <Droplet className="w-3.5 h-3.5 text-blue-400 shrink-0" />;
-      case 'Cryo': return <Snowflake className="w-3.5 h-3.5 text-sky-300 shrink-0" />;
-      case 'Electro': return <Zap className="w-3.5 h-3.5 text-purple-400 shrink-0" />;
-      case 'Anemo': return <Wind className="w-3.5 h-3.5 text-emerald-300 shrink-0" />;
-      case 'Geo': return <ShieldAlert className="w-3.5 h-3.5 text-amber-400 shrink-0" />;
-      case 'Dendro': return <Leaf className="w-3.5 h-3.5 text-green-400 shrink-0" />;
-      default: return null;
-    }
-  };
-
-  const getElementBadgeColor = (element: ElementType) => {
-    switch (element) {
-      case 'Pyro': return 'bg-red-950/40 text-red-400 border border-red-500/20';
-      case 'Hydro': return 'bg-blue-950/40 text-blue-400 border border-blue-500/20';
-      case 'Cryo': return 'bg-sky-950/40 text-sky-300 border border-sky-400/25';
-      case 'Electro': return 'bg-purple-950/40 text-purple-400 border border-purple-500/20';
-      case 'Anemo': return 'bg-emerald-950/40 text-emerald-300 border border-emerald-400/25';
-      case 'Geo': return 'bg-amber-950/40 text-amber-400 border border-amber-500/20';
-      case 'Dendro': return 'bg-green-950/40 text-green-400 border border-green-500/20';
-      default: return 'bg-white/5 text-slate-350';
-    }
-  };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
@@ -97,9 +73,10 @@ export default function ElementalReactionsModal({ isOpen, onClose }: ElementalRe
                         <div 
                           key={i} 
                           title={el}
-                          className={`flex items-center gap-1 text-[10px] uppercase font-black font-mono px-1.5 py-0.5 rounded-md ${getElementBadgeColor(el)}`}
+                          className="flex items-center gap-1 text-[10px] uppercase font-black font-mono px-1.5 py-0.5 rounded-md border bg-black/35"
+                          style={{ color: ELEMENT_VISUALS[el].pale, borderColor: `${ELEMENT_VISUALS[el].color}55` }}
                         >
-                          {getElementIcon(el)}
+                          <ElementSigil element={el} className="w-3.5 h-3.5 shrink-0" />
                           <span className="hidden sm:inline text-[9px]">{el}</span>
                         </div>
                       ))}

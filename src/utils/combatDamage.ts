@@ -2,6 +2,7 @@ import { ElementType } from '../types';
 import { getElementalReactionById } from '../data/elementalReactions';
 
 export interface ReactionDamageOutcome {
+  reactionId: string;
   reactionName: string;
   finalDamage: number;
   damageColor: string;
@@ -38,6 +39,7 @@ export const getReactionDamageOutcome = (
     const multiplier = reaction?.damageMultiplier ?? 1;
     const masteryMultiplier = 1 + Math.min(0.30, Math.max(0, elementalMastery) / 500);
     return {
+      reactionId: id,
       reactionName,
       finalDamage: Math.round(base * multiplier * masteryMultiplier),
       damageColor,
