@@ -137,9 +137,12 @@ export default function StoryMap({
             </span>
 
             {/* Clickable Node Sphere */}
-            <div
-              onClick={() => unlocked && onSelectStage(stageId)}
-              className={`w-12 h-12 md:w-16 md:h-16 rounded-full border-2 flex flex-col items-center justify-center transition-all duration-150 ${borderClass} ${hoverClass} ${glowClass}`}
+            <button
+              type="button"
+              disabled={!unlocked}
+              onClick={() => onSelectStage(stageId)}
+              aria-label={`${spec.name}, ${completed ? `${stars} of 3 stars` : unlocked ? 'available' : 'locked'}`}
+              className={`w-12 h-12 md:w-16 md:h-16 rounded-full border-2 flex flex-col items-center justify-center transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-amber-300 ${borderClass} ${hoverClass} ${glowClass}`}
             >
               {unlocked ? (
                 isBoss ? (
@@ -150,7 +153,7 @@ export default function StoryMap({
               ) : (
                 <Lock className="w-4 h-4 md:w-5 md:h-5 text-slate-650" />
               )}
-            </div>
+            </button>
 
             {/* Star ratings details below the node */}
             {unlocked && (

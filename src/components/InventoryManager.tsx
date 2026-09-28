@@ -43,7 +43,7 @@ import {
   type ForgeOperationResult,
   type ForgeVisualItem,
 } from '../utils/forgePresentation';
-import { createCharacterProgressionEvent, type CharacterProgressionEvent } from '../utils/characterProgression';
+import { createCharacterProgressionEvent, getCharacterLevelUpCost, type CharacterProgressionEvent } from '../utils/characterProgression';
 
 export { getUpgradedWeaponStats };
 
@@ -72,7 +72,7 @@ interface InventoryManagerProps {
   characterLevels: Record<string, number>;
   characterEquippedWeapon: Record<string, string>; // characterId -> weaponUid
   ownedCharacterIds: string[];
-  onLevelUpCharacter: (id: string, costMora: number, costItems: number) => void;
+  onLevelUpCharacter: (id: string) => void;
   onEquipWeapon: (charId: string, weaponUid: string) => void;
   onEquipArtifact?: (charId: string, slot: ArtifactSlot, artifactId: string | null) => void;
   onUnequipAllArtifacts?: (charId: string) => void;
@@ -173,14 +173,7 @@ export default function InventoryManager({
 
   // Level Up requirement calculation
   // Level 1-50: uses Hero's Wit (char_xp); Level 50-80: uses Myconid Spore Catalyst (ascension)
-  const getLevelUpCost = (currentLvl: number) => {
-    return {
-      mora: currentLvl * 800,
-      materials: Math.ceil(currentLvl / 5)
-    };
-  };
-
-  const costSpecs = getLevelUpCost(charLevel);
+  const costSpecs = getCharacterLevelUpCost(charLevel);
   const usesWit = charLevel < 50; // true = Hero's Wit, false = Myconid Spore Catalyst
   const xpBooksItem = inventoryItems.find(i => i.type === 'char_xp');
   const catalystItem = inventoryItems.find(i => i.type === 'ascension');
@@ -245,7 +238,7 @@ export default function InventoryManager({
         def: nextBuildStats.finalDef,
       },
     });
-    onLevelUpCharacter(selectedChar.id, costSpecs.mora, costSpecs.materials);
+    onLevelUpCharacter(selectedChar.id);
     AetheriaAudioEngine.playSkill();
   };
 

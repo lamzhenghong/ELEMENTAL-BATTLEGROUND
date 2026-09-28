@@ -3,6 +3,8 @@ export const FOUR_STAR_BASE_RATE = 0.051;
 export const FIVE_STAR_HARD_PITY = 90;
 export const FOUR_STAR_HARD_PITY = 10;
 
+export const getWishCost = (pullCount: 1 | 10) => pullCount === 10 ? 1440 : 160;
+
 const DUPLICATE_WEAPON_MORA_REFUNDS: Record<3 | 4 | 5, number> = {
   3: 20_000,
   4: 50_000,

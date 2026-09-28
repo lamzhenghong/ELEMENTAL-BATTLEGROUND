@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { PLAYABLE_CHARACTERS } from '../data/characters';
 import { WEAPONS_DATABASE } from '../data/weapons';
@@ -25,6 +25,7 @@ import {
   FIVE_STAR_BASE_RATE,
   FOUR_STAR_BASE_RATE,
   getDuplicateWeaponMoraRefund,
+  getWishCost,
   isFiveStarRoll,
   isFourStarRoll
 } from '../utils/gachaEconomy';
@@ -75,6 +76,8 @@ export default function GachaSimulator({
 }: GachaSimulatorProps) {
   const [selectedBannerIdx, setSelectedBannerIdx] = useState(0);
   const [pulling, setPulling] = useState(false);
+  const pullingRef = useRef(false);
+  const [lastPullCount, setLastPullCount] = useState<1 | 10>(10);
   const [currentPullResults, setCurrentPullResults] = useState<{ id: string; name: string; rarity: number; isCharacter: boolean; element?: ElementType; isNew?: boolean; nextPortrait?: number | null }[]>([]);
   const [showSplashItem, setShowSplashItem] = useState<{ id: string; name: string; rarity: number; isCharacter: boolean; element?: ElementType } | null>(null);
   const [showHistory, setShowHistory] = useState(false);
@@ -169,9 +172,9 @@ export default function GachaSimulator({
     };
   };
 
-  const executeWishPulls = (pullCount: number) => {
-    // 10 Pull gets a nice discount: only 1440 Gems instead of 1600!
-    const cost = pullCount === 10 ? 1440 : pullCount * 160;
+  const executeWishPulls = (pullCount: 1 | 10) => {
+    if (pullingRef.current) return;
+    const cost = getWishCost(pullCount);
     if (aetherGems < cost) {
       onShowAlert(
         "Insufficient Aether Gems to perform celestial wishes.",
@@ -183,6 +186,8 @@ export default function GachaSimulator({
       return;
     }
 
+    pullingRef.current = true;
+    setLastPullCount(pullCount);
     onModifyCurrencies(-cost, 0);
     setPulling(true);
     setAnimationPhase('radar');
@@ -391,6 +396,7 @@ export default function GachaSimulator({
       AetheriaAudioEngine.playWaveClear();
     }
     setPulling(false);
+    pullingRef.current = false;
   };
 
   return (
@@ -675,12 +681,13 @@ export default function GachaSimulator({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.5 }}
                   onClick={() => {
-                    executeWishPulls(10);
+                    executeWishPulls(lastPullCount);
                   }}
+                  disabled={pulling}
                   className="bg-amber-500 hover:bg-amber-400 hover:scale-[1.02] active:scale-95 text-slate-950 font-black text-[10px] sm:text-xs uppercase tracking-widest px-4 sm:px-6 py-2 sm:py-3 rounded-lg cursor-pointer transition-all shadow-[0_0_20px_rgba(245,158,11,0.35)] flex items-center gap-1"
                 >
-                  <span>🔄 Summon x10 More</span>
-                  <span className="text-[8px] sm:text-[10px] opacity-75 font-mono">(1440 Gems)</span>
+                  <span>🔄 Summon x{lastPullCount} More</span>
+                  <span className="text-[8px] sm:text-[10px] opacity-75 font-mono">({getWishCost(lastPullCount)} Gems)</span>
                 </motion.button>
 
                 <motion.button
@@ -1153,7 +1160,7 @@ export default function GachaSimulator({
                   </div>
                   <div className="flex justify-between border-b border-white/5 pb-1">
                     <span className="font-semibold text-slate-500">3-Star Hero</span>
-                    <span className="text-slate-500">94.3% Base</span>
+                    <span className="text-slate-500">{((1 - FIVE_STAR_BASE_RATE - FOUR_STAR_BASE_RATE) * 100).toFixed(1)}% Base</span>
                   </div>
                 </>
               ) : (
@@ -1168,7 +1175,7 @@ export default function GachaSimulator({
                   </div>
                   <div className="flex justify-between">
                     <span className="font-semibold text-slate-500">3-Star Armament items</span>
-                    <span className="text-slate-500">94.3% Base</span>
+                    <span className="text-slate-500">{((1 - FIVE_STAR_BASE_RATE - FOUR_STAR_BASE_RATE) * 100).toFixed(1)}% Base</span>
                   </div>
                 </>
               )}

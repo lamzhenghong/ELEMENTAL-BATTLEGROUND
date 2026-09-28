@@ -219,6 +219,7 @@ import {
   type CameraFrame,
 } from '../utils/cinematicCamera';
 import { resolveActivePartyIndex } from '../utils/combatPartySelection';
+import { tickCombatPartyTimers } from '../utils/combatPartyTimers';
 
 const EMPTY_STORY_CHOICE_SELECTIONS: StoryChoiceSelections = {};
 const EMPTY_CHARACTER_LEVELS: Record<string, number> = {};
@@ -3911,6 +3912,9 @@ export default function CombatArena({
         hitStopRenderPendingRef.current = false;
       }
 
+      const elapsedFrames = getElapsedCombatFrames(delta, combatSpeed);
+      const frameSeconds = elapsedFrames / 60;
+
       if (visualRecoilRef.current.remainingMs > 0) {
         const previousRemaining = visualRecoilRef.current.remainingMs;
         const nextRemaining = Math.max(0, previousRemaining - delta);
@@ -3955,16 +3959,16 @@ export default function CombatArena({
       }
 
       if (comboCountRef.current > 0) {
-        comboTimeoutRef.current += 1 * combatSpeed;
+        comboTimeoutRef.current += elapsedFrames;
         if (comboTimeoutRef.current >= COMBO_TIMEOUT_FRAMES) {
           resetComboState();
         }
       }
       if (perfectDodgeWindowRef.current > 0) {
-        perfectDodgeWindowRef.current = Math.max(0, perfectDodgeWindowRef.current - 1 * combatSpeed);
+        perfectDodgeWindowRef.current = Math.max(0, perfectDodgeWindowRef.current - elapsedFrames);
       }
       if (perfectDodgeCooldownRef.current > 0) {
-        perfectDodgeCooldownRef.current = Math.max(0, perfectDodgeCooldownRef.current - 1 * combatSpeed);
+        perfectDodgeCooldownRef.current = Math.max(0, perfectDodgeCooldownRef.current - elapsedFrames);
       }
 
       // Keep bossHp and bossMaxHp in sync with the boss in enemiesRef.current
@@ -3984,7 +3988,7 @@ export default function CombatArena({
       }
 
       // Weather Rotation timer (60fps * 20s = 1200 frames)
-      weatherTimerRef.current -= 1 * combatSpeed;
+      weatherTimerRef.current -= elapsedFrames;
       if (weatherTimerRef.current <= 0) {
         weatherTimerRef.current = 1200; // 20s
         advanceCombatWeather();
@@ -3993,14 +3997,14 @@ export default function CombatArena({
       // Apply Thunderstorm lightning strikes
       if (weatherRef.current === 'Thunderstorm') {
         if (lightningStrikeVisualRef.current) {
-          lightningStrikeVisualRef.current.duration -= 1 * combatSpeed;
+          lightningStrikeVisualRef.current.duration -= elapsedFrames;
           if (lightningStrikeVisualRef.current.duration <= 0) {
             lightningStrikeVisualRef.current = null;
           }
         }
 
         if (lightningWarningRef.current === null) {
-          lightningTimerRef.current += 1 * combatSpeed;
+          lightningTimerRef.current += elapsedFrames;
           if (lightningTimerRef.current >= 210) { // every 3.5s
             lightningTimerRef.current = 0;
             let tx = Math.random() * WORLD_WIDTH;
@@ -4019,7 +4023,7 @@ export default function CombatArena({
           }
         } else {
           const warning = lightningWarningRef.current;
-          warning.timer -= 1 * combatSpeed;
+          warning.timer -= elapsedFrames;
           
           if (warning.timer <= 0) {
             // Set lightning strike visual bolt duration (e.g. 6 frames)
@@ -4061,7 +4065,7 @@ export default function CombatArena({
       }
 
       if (weatherRef.current === 'Meteor Shower') {
-        weatherMeteorTimerRef.current += 1 * combatSpeed;
+        weatherMeteorTimerRef.current += elapsedFrames;
         if (weatherMeteorTimerRef.current >= 165) {
           weatherMeteorTimerRef.current = 0;
           const aliveEnemies = enemiesRef.current.filter(e => e.hp > 0);
@@ -4088,22 +4092,21 @@ export default function CombatArena({
       // Local slow down factor for bullet frames
       const isBulletTime = currentTimeDisordered > 0;
       const speedModifier = isBulletTime ? 0.35 : 1.0;
-      if (isBulletTime) setTimeDisordered(t => t - 1);
+      if (isBulletTime) setTimeDisordered(t => Math.max(0, t - elapsedFrames));
 
       // Decrement dodge and parry cooldowns (scaled by combatSpeed)
       if (dodgeCdRef.current > 0) {
-        dodgeCdRef.current = Math.max(0, dodgeCdRef.current - 0.016 * combatSpeed);
+        dodgeCdRef.current = Math.max(0, dodgeCdRef.current - frameSeconds);
         setDodgeCd(dodgeCdRef.current);
       }
       if (parryCdRef.current > 0) {
-        parryCdRef.current = Math.max(0, parryCdRef.current - 0.016 * combatSpeed);
+        parryCdRef.current = Math.max(0, parryCdRef.current - frameSeconds);
         setParryCd(parryCdRef.current);
       }
       if (basicAttackCooldownRef.current > 0) {
-        basicAttackCooldownRef.current = Math.max(0, basicAttackCooldownRef.current - 0.016 * combatSpeed);
+        basicAttackCooldownRef.current = Math.max(0, basicAttackCooldownRef.current - frameSeconds);
       }
 
-      const frameSeconds = Math.min(0.05, Math.max(0.001, delta / 1000)) * combatSpeed;
       portraitCombatRef.current = tickPortraitCombatState(portraitCombatRef.current, frameSeconds);
       const specialUltimateTick = tickSpecialUltimateEffects(specialUltimateEffectsRef.current, frameSeconds);
       specialUltimateEffectsRef.current = specialUltimateTick.state;
@@ -4314,11 +4317,11 @@ export default function CombatArena({
       if (isMoving && isShiftHeld && staminaRef.current > 0) {
         const sprintRate = loopStateRef.current.dungeonMode && loopStateRef.current.dungeonBuffs.includes('Zephyr Pace') ? 3.8 * 1.15 : 3.8;
         runningSpeed = sprintRate;
-        const baseDrain = (15 / 60) * combatSpeed;
+        const baseDrain = (15 / 60) * elapsedFrames;
         const drainRate = activeWeather === 'Snow' ? baseDrain * 2.5 : baseDrain;
         staminaRef.current = Math.max(0, staminaRef.current - drainRate);
       } else {
-        const baseRegen = (25 / 60) * combatSpeed;
+        const baseRegen = (25 / 60) * elapsedFrames;
         staminaRef.current = Math.min(100, staminaRef.current + baseRegen);
       }
 
@@ -4340,8 +4343,8 @@ export default function CombatArena({
           finalPlayerSpeed *= 0.5;
         }
         const currentSpeed = finalPlayerSpeed * speedModifier * resonanceSpeedMultiplier;
-        playerRef.current.x = Math.max(25, Math.min(WORLD_WIDTH - 25, playerRef.current.x + (dx / mag) * currentSpeed));
-        playerRef.current.y = Math.max(25, Math.min(WORLD_HEIGHT - 25, playerRef.current.y + (dy / mag) * currentSpeed));
+        playerRef.current.x = Math.max(25, Math.min(WORLD_WIDTH - 25, playerRef.current.x + (dx / mag) * currentSpeed * elapsedFrames));
+        playerRef.current.y = Math.max(25, Math.min(WORLD_HEIGHT - 25, playerRef.current.y + (dy / mag) * currentSpeed * elapsedFrames));
 
         // Save last directional vectors
         playerRef.current.lastDirX = dx / mag;
@@ -4373,85 +4376,16 @@ export default function CombatArena({
         ctx.restore();
       }
 
-      // Automatically tick down character skill cooldowns (scaled by combatSpeed)
-      // Automatically tick down character skill cooldowns and buff timers (scaled by combatSpeed)
-      setCombatParty(pList => pList.map((c) => {
-        let skillCD = c.skillCooldownRemaining;
-        if (skillCD > 0) {
-          skillCD = Math.max(0, skillCD - 0.016 * combatSpeed);
-        }
-        let sacCD = c.sacrificialCooldown || 0;
-        if (sacCD > 0) {
-          sacCD = Math.max(0, sacCD - 1 * combatSpeed);
-        }
-        let widsithCD = c.widsithCooldown || 0;
-        if (widsithCD > 0) {
-          widsithCD = Math.max(0, widsithCD - 1 * combatSpeed);
-        }
-        let widsithTimer = c.widsithBuffTimer || 0;
-        if (widsithTimer > 0) {
-          widsithTimer = Math.max(0, widsithTimer - 1 * combatSpeed);
-        }
-        let swapBuffTimer = c.swapBuffTimer || 0;
-        if (swapBuffTimer > 0) {
-          swapBuffTimer = Math.max(0, swapBuffTimer - 1 * combatSpeed);
-        }
-        let swapBuffCooldown = c.swapBuffCooldown || 0;
-        if (swapBuffCooldown > 0) {
-          swapBuffCooldown = Math.max(0, swapBuffCooldown - 1 * combatSpeed);
-        }
-        let crescentPikeTimer = c.crescentPikeTimer || 0;
-        if (crescentPikeTimer > 0) {
-          crescentPikeTimer = Math.max(0, crescentPikeTimer - 1 * combatSpeed);
-        }
-        let debateClubTimer = c.debateClubTimer || 0;
-        if (debateClubTimer > 0) {
-          debateClubTimer = Math.max(0, debateClubTimer - 1 * combatSpeed);
-        }
-        let debateClubCd = c.debateClubCd || 0;
-        if (debateClubCd > 0) {
-          debateClubCd = Math.max(0, debateClubCd - 1 * combatSpeed);
-        }
-        let scepterBubbleCd = c.scepterBubbleCd || 0;
-        if (scepterBubbleCd > 0) {
-          scepterBubbleCd = Math.max(0, scepterBubbleCd - 1 * combatSpeed);
-        }
-        let spearDoubleCd = c.spearDoubleCd || 0;
-        if (spearDoubleCd > 0) {
-          spearDoubleCd = Math.max(0, spearDoubleCd - 1 * combatSpeed);
-        }
-        let favoniusCooldown = c.favoniusCooldown || 0;
-        if (favoniusCooldown > 0) {
-          favoniusCooldown = Math.max(0, favoniusCooldown - 1 * combatSpeed);
-        }
-        const portraitUltimateTimer = Math.max(0, (c.portraitUltimateTimer || 0) - frameSeconds);
-
-        return {
-          ...c,
-          skillCooldownRemaining: skillCD,
-          sacrificialCooldown: sacCD,
-          widsithCooldown: widsithCD,
-          widsithBuffTimer: widsithTimer,
-          swapBuffTimer: swapBuffTimer,
-          swapBuffCooldown,
-          crescentPikeTimer: crescentPikeTimer,
-          debateClubTimer: debateClubTimer,
-          debateClubCd: debateClubCd,
-          scepterBubbleCd: scepterBubbleCd,
-          spearDoubleCd: spearDoubleCd,
-          favoniusCooldown,
-          portraitUltimateTimer,
-        };
-      }));
+      setCombatParty(pList => tickCombatPartyTimers(pList, elapsedFrames));
 
       // --- UPDATE & DRAW BOSS PROJECTILES/HAZARDS ---
       const activeProjectiles: any[] = [];
       bossProjectilesRef.current.forEach(proj => {
-        proj.timer -= 1 * combatSpeed;
+        proj.timer -= elapsedFrames;
 
         if (proj.vx !== undefined && proj.vy !== undefined) {
-          proj.x += proj.vx * speedModifier * combatSpeed;
-          proj.y += proj.vy * speedModifier * combatSpeed;
+          proj.x += proj.vx * speedModifier * elapsedFrames;
+          proj.y += proj.vy * speedModifier * elapsedFrames;
         }
 
         let isExpired = proj.timer <= 0;
@@ -4724,7 +4658,7 @@ export default function CombatArena({
           const dy = effect.y - enemy.y;
           const distance = Math.hypot(dx, dy);
           if (distance <= 34 || distance > effect.radius) return;
-          const pullDistance = Math.min(distance - 34, 3.2 * combatSpeed);
+          const pullDistance = Math.min(distance - 34, 3.2 * elapsedFrames);
           enemy.x += (dx / distance) * pullDistance;
           enemy.y += (dy / distance) * pullDistance;
         });
@@ -4737,7 +4671,7 @@ export default function CombatArena({
         const archetypeState = archetypeId ? enemy.archetypeState : null;
 
         if (enemy.archetypeBuffFrames > 0) {
-          enemy.archetypeBuffFrames = Math.max(0, enemy.archetypeBuffFrames - combatSpeed);
+          enemy.archetypeBuffFrames = Math.max(0, enemy.archetypeBuffFrames - elapsedFrames);
         }
 
         if (archetypeId && archetypeState) {
@@ -4745,7 +4679,7 @@ export default function CombatArena({
           if (!targetStunned && archetypeState.abilityCooldownFrames > 0) {
             archetypeState.abilityCooldownFrames = Math.max(
               0,
-              archetypeState.abilityCooldownFrames - combatSpeed
+              archetypeState.abilityCooldownFrames - elapsedFrames
             );
           }
 
@@ -4803,7 +4737,7 @@ export default function CombatArena({
               } else {
                 const drainTimer = tickSiphonDrainTimer(
                   archetypeState.beamFrames ?? SIPHON_DRAIN_INTERVAL_FRAMES,
-                  getElapsedCombatFrames(delta, combatSpeed)
+                  elapsedFrames
                 );
                 archetypeState.beamFrames = drainTimer.remainingFrames;
                 if (drainTimer.shouldDrain) {
@@ -4894,7 +4828,7 @@ export default function CombatArena({
             usesGenericTelegraph = false;
             suppressGenericMovement = true;
             if ((archetypeState.vanishFrames ?? 0) > 0) {
-              archetypeState.vanishFrames = Math.max(0, (archetypeState.vanishFrames ?? 0) - combatSpeed);
+              archetypeState.vanishFrames = Math.max(0, (archetypeState.vanishFrames ?? 0) - elapsedFrames);
               if ((archetypeState.vanishFrames ?? 0) <= 0) {
                 const ambush = getStalkerAmbushPosition(playerRef.current, enemy.type === 'Elite' ? 78 : 92);
                 enemy.x = Math.max(35, Math.min(WORLD_WIDTH - 35, ambush.x));
@@ -4903,7 +4837,7 @@ export default function CombatArena({
                 spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 26, 'BACK ATTACK', '#fca5a5', 10, true);
               }
             } else if ((archetypeState.strikeFrames ?? 0) > 0) {
-              archetypeState.strikeFrames = Math.max(0, (archetypeState.strikeFrames ?? 0) - combatSpeed);
+              archetypeState.strikeFrames = Math.max(0, (archetypeState.strikeFrames ?? 0) - elapsedFrames);
               if ((archetypeState.strikeFrames ?? 0) <= 0) {
                 if (Math.hypot(playerRef.current.x - enemy.x, playerRef.current.y - enemy.y) < 105) {
                   handlePlayerHit(enemy, enemy.type === 'Elite' ? 290 : 190);
@@ -4961,7 +4895,7 @@ export default function CombatArena({
             enemy.attackCooldown = 0;
           }
           if (enemy.attackCooldown > 0) {
-            enemy.attackCooldown -= 1 * combatSpeed;
+            enemy.attackCooldown -= elapsedFrames;
           }
 
           const targetX = playerRef.current.x;
@@ -4974,7 +4908,7 @@ export default function CombatArena({
               {
                 mechanicId: enemy.campaignMechanicId,
                 phase: enemy.phase as 1 | 2 | 3,
-                combatSpeed,
+                combatSpeed: elapsedFrames,
                 bossX: enemy.x,
                 bossY: enemy.y,
                 targetX,
@@ -5010,7 +4944,7 @@ export default function CombatArena({
             // Phase 2+: Arena burns - spawn random fire patches
             if (enemy.phase >= 2) {
               if (enemy.firePatchTimer === undefined) enemy.firePatchTimer = 0;
-              enemy.firePatchTimer += 1 * combatSpeed;
+              enemy.firePatchTimer += elapsedFrames;
               if (enemy.firePatchTimer > 180) {
                 enemy.firePatchTimer = 0;
                 for (let k = 0; k < 3; k++) {
@@ -5035,7 +4969,7 @@ export default function CombatArena({
             // Phase 3: Meteor attack - falling meteors
             if (enemy.phase === 3) {
               if (enemy.meteorTimer === undefined) enemy.meteorTimer = 0;
-              enemy.meteorTimer += 1 * combatSpeed;
+              enemy.meteorTimer += elapsedFrames;
               if (enemy.meteorTimer > 90) {
                 enemy.meteorTimer = 0;
                 bossProjectilesRef.current.push({
@@ -5082,7 +5016,7 @@ export default function CombatArena({
             // Phase 2+: Blizzard - spawn cold ice patches
             if (enemy.phase >= 2) {
               if (enemy.icePatchTimer === undefined) enemy.icePatchTimer = 0;
-              enemy.icePatchTimer += 1 * combatSpeed;
+              enemy.icePatchTimer += elapsedFrames;
               if (enemy.icePatchTimer > 200) {
                 enemy.icePatchTimer = 0;
                 for (let k = 0; k < 2; k++) {
@@ -5149,7 +5083,7 @@ export default function CombatArena({
             // Phase 2+: Lightning walls
             if (enemy.phase >= 2) {
               if (enemy.lightningWallTimer === undefined) enemy.lightningWallTimer = 0;
-              enemy.lightningWallTimer += 1 * combatSpeed;
+              enemy.lightningWallTimer += elapsedFrames;
               if (enemy.lightningWallTimer > 210) {
                 enemy.lightningWallTimer = 0;
                 const offsets = [
@@ -5178,7 +5112,7 @@ export default function CombatArena({
             // Phase 3: Continuous thunderstorm strikes
             if (enemy.phase === 3) {
               if (enemy.thunderstormTimer === undefined) enemy.thunderstormTimer = 0;
-              enemy.thunderstormTimer += 1 * combatSpeed;
+              enemy.thunderstormTimer += elapsedFrames;
               if (enemy.thunderstormTimer > 45) {
                 enemy.thunderstormTimer = 0;
                 bossProjectilesRef.current.push({
@@ -5200,7 +5134,7 @@ export default function CombatArena({
 
         // Apply Superconduct DEF Shred timer checks
         if (enemy.defShredTimer && enemy.defShredTimer > 0) {
-          enemy.defShredTimer -= 1 * combatSpeed;
+          enemy.defShredTimer -= elapsedFrames;
           // Draw a dotted purple ring around shred-debuffed enemies
           ctx.save();
           ctx.strokeStyle = '#c084fc';
@@ -5214,7 +5148,7 @@ export default function CombatArena({
 
         // Check freeze status bypass
         if (enemy.isFrozen > 0) {
-          enemy.isFrozen -= 1;
+          enemy.isFrozen = Math.max(0, enemy.isFrozen - elapsedFrames);
           // Draw frozen visual overlay iceblock cube
           ctx.save();
           ctx.fillStyle = 'rgba(186, 230, 253, 0.4)';
@@ -5234,8 +5168,9 @@ export default function CombatArena({
 
         // Apply burning continuous tick damage checks
         if (enemy.burningTicks > 0) {
-          enemy.burningTicks -= 1;
-          if (enemy.burningTicks % 20 === 0) {
+          const previousBurningTicks = enemy.burningTicks;
+          enemy.burningTicks = Math.max(0, previousBurningTicks - elapsedFrames);
+          if (Math.ceil(previousBurningTicks / 20) > Math.ceil(enemy.burningTicks / 20)) {
             const burnTickDamage = enemy.burningTickDamage || 20;
             enemy.hp = Math.max(0, enemy.hp - burnTickDamage);
             registerComboHit(enemy.x, enemy.y);
@@ -5258,14 +5193,15 @@ export default function CombatArena({
             * globalWaveEnemySlowerMultiplier
             * statusMovementMultiplier
             * archetypeBuffSpeed
-            * combatSpeed
+            * elapsedFrames
             * archetypeMoveDirection;
           enemy.x = Math.max(20, Math.min(WORLD_WIDTH - 20, enemy.x + Math.cos(angleToPlayer) * movementStep));
           enemy.y = Math.max(20, Math.min(WORLD_HEIGHT - 20, enemy.y + Math.sin(angleToPlayer) * movementStep));
         }
 
         // Increase Telegraph Attack counter metrics
-        if (!targetStunned && usesGenericTelegraph) enemy.telegraphTimer++;
+        const previousTelegraphTimer = enemy.telegraphTimer;
+        if (!targetStunned && usesGenericTelegraph) enemy.telegraphTimer += elapsedFrames;
         if (enemy.telegraphTimer > 120) {
           enemy.telegraphTimer = 0; // reset
         }
@@ -5287,7 +5223,7 @@ export default function CombatArena({
           ctx.restore();
 
           // Telegraph detonates/swipes exactly at 115 frames — tighter detonation radius
-          if (enemy.telegraphTimer === 115) {
+          if (previousTelegraphTimer < 115 && enemy.telegraphTimer >= 115) {
             const dmgDist = Math.hypot(playerRef.current.x - enemy.x, playerRef.current.y - enemy.y);
             if (dmgDist < 60) {
               handlePlayerHit(enemy);
@@ -5299,7 +5235,7 @@ export default function CombatArena({
         const physDist = Math.hypot(playerRef.current.x - enemy.x, playerRef.current.y - enemy.y);
         if (!targetStunned && physDist < playerRef.current.radius + enemy.radius) {
           // Continuous micro collision damage ticks
-          if (Math.random() < 0.05) {
+          if (Math.random() < 1 - Math.pow(0.95, elapsedFrames)) {
             handlePlayerHit(enemy, 35);
           }
         }
@@ -5848,9 +5784,12 @@ export default function CombatArena({
       
       // Detonate counter-strike damage reflected back on enemy
       const reflect = 750;
-      applySkillDamage(enemy, reflect, currentActiveChar.element, createReactionContext('environment', true, false), false, true);
-      
-      spawnFloatingDamageText(px, py - 40, '🛡️ PERFECT PARRY COUNTER! 🛡️', '#06b6d4', 15, true);
+      if (enemy?.hp > 0) {
+        applySkillDamage(enemy, reflect, currentActiveChar.element, createReactionContext('environment', true, false), false, true);
+        spawnFloatingDamageText(px, py - 40, '🛡️ PERFECT PARRY COUNTER! 🛡️', '#06b6d4', 15, true);
+      } else {
+        spawnFloatingDamageText(px, py - 40, '🛡️ PERFECT PARRY! 🛡️', '#06b6d4', 15, true);
+      }
       for (let i = 0; i < 20; i++) {
         particlesRef.current.push(new CombatParticle(px, py, '#06b6d4', 3.5));
       }

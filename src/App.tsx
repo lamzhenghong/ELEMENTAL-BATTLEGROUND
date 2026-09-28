@@ -70,6 +70,7 @@ import type { ForgeOperationResult, ForgeVisualItem } from './utils/forgePresent
 import { useCloudAccount } from './cloud/useCloudAccount';
 import { createInitialSaveState, formatPlayTime, normalizeLoadedSaveState } from './save/gameSave';
 import { GAME_VERSION } from './config/gameVersion';
+import { tryLevelUpCharacter } from './utils/characterProgression';
 import {
   loadMobileControlLayout,
   persistMobileControlLayout,
@@ -1203,43 +1204,10 @@ export default function App() {
     }
   };
 
-  const handleLevelUpCharacter = (id: string, costMora: number, costItems: number) => {
+  const handleLevelUpCharacter = (id: string) => {
     triggerSaveUpdate(prev => {
-      const currentLevel = prev.characterLevels[id] || 1;
-      const nextLevel = currentLevel + 1;
-
-      // Character max level cap strictly 80
-      if (nextLevel > 80) {
-        showInGameAlert(
-          "Character has reached the absolute level cap of 80!",
-          "Upgrade weapons to match combat force, try deploying other event characters, or form powerful element reactions in the Combat Arena!",
-          "error"
-        );
-        return prev;
-      }
-
-      const newLevels = { ...prev.characterLevels, [id]: nextLevel };
-      const newMora = Math.max(0, prev.mora - costMora);
-      // Level 1-50: consume Hero's Wit (char_xp); Level 50-80: consume Myconid Spore Catalyst (ascension)
-      const consumeType = currentLevel < 50 ? 'char_xp' : 'ascension';
-      const newItems = prev.inventoryItems.map(item => {
-        if (item.type === consumeType) {
-          return { ...item, count: Math.max(0, item.count - costItems) };
-        }
-        return item;
-      });
-
-      let updatedState = {
-        ...prev,
-        characterLevels: newLevels,
-        mora: newMora,
-        inventoryItems: newItems
-      };
-
-      // Check quest progress
-      updatedState = checkQuestProgress(updatedState, 'level_up', nextLevel);
-
-      return updatedState;
+      const updated = tryLevelUpCharacter(prev, id);
+      return updated === prev ? prev : checkQuestProgress(updated, 'level_up', updated.characterLevels[id]);
     });
   };
 
