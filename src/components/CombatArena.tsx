@@ -128,6 +128,7 @@ import {
   applyCombatStatus,
   getStatusMovementMultiplier,
   getStatusOutgoingDamageMultiplier,
+  isTargetRooted,
   isTargetStunned,
   tickCombatStatuses,
   type CombatStatusEffect,
@@ -2637,7 +2638,7 @@ export default function CombatArena({
 
       enemiesRef.current.forEach(enemy => {
         if (enemy.hp <= 0) return;
-        applySkillDamage(enemy, specialDamage, combo.damageElement, specialUltimateReactionContext, true, true);
+        applySkillDamage(enemy, specialDamage, combo.damageElement, specialUltimateReactionContext, true, false);
         spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 58, combo.impactText, impactColor, 13, true);
       });
 
@@ -3083,7 +3084,8 @@ export default function CombatArena({
     type: ElementType,
     reactionContext: ReactionTriggerContext,
     isUlt: boolean = false,
-    isCrit: boolean = false
+    isCrit: boolean = false,
+    maxFinalDamage?: number,
   ) => {
     const { combatParty: currentParty, activePartyIndex: currentPartyIndex, shieldWeight: currentShieldWeight } = loopStateRef.current;
     const currentActiveChar = currentParty[currentPartyIndex] || null;
@@ -3523,9 +3525,7 @@ export default function CombatArena({
       finalDmg = Math.round(finalDmg * 1.4);
     }
 
-    if (usesActiveAttackerModifiers) {
-      finalDmg *= getSpecialUltimateDamageMultiplier(specialUltimateEffectsRef.current, String(enemy.id));
-    }
+    finalDmg *= getSpecialUltimateDamageMultiplier(specialUltimateEffectsRef.current, String(enemy.id));
 
     if (enemy.type !== 'Boss' && enemy.archetypeId === 'siphon' && (enemy.archetypeState?.beamFrames ?? 0) > 0 && finalDmg > 0) {
       restoreSiphonedEnergy(enemy);
@@ -3571,7 +3571,7 @@ export default function CombatArena({
     }
 
     // Visual feedback reads the result after combat math has finished; it never changes damage.
-    finalDmg = Math.round(finalDmg);
+    finalDmg = Math.round(Math.min(finalDmg, maxFinalDamage ?? Number.POSITIVE_INFINITY));
     const enemyWasAlive = enemy.hp > 0;
     enemy.hp = Math.max(0, enemy.hp - finalDmg);
     const premiumHitIndex = damageHitIndexRef.current++;
@@ -4148,7 +4148,7 @@ export default function CombatArena({
         if (event.kind === 'root') {
           const rootStatus: CombatStatusEffect = {
             id: 'special-ultimate:living-storm-root',
-            type: 'stun',
+            type: 'root',
             sourceCharacterId: 'special-ultimate',
             sourceAbility: 'worldstorm-genesis',
             duration: event.duration,
@@ -4173,6 +4173,7 @@ export default function CombatArena({
           createReactionContext('persistent-field', true, false),
           false,
           false,
+          event.maxFinalDamage,
         );
         spawnTextRef.current(target.x, target.y - target.radius - 45, event.label, getElementColorHex(event.element), 10, true);
       });
@@ -4650,6 +4651,7 @@ export default function CombatArena({
         if (enemy.hp <= 0) return;
 
         const targetStunned = isTargetStunned(enemy.statusEffects);
+        const targetRooted = isTargetRooted(enemy.statusEffects);
         const statusMovementMultiplier = getStatusMovementMultiplier(enemy.statusEffects);
         partyEffectsRef.current.effects.forEach(effect => {
           if (effect.kind !== 'whirlpool' || enemy.type === 'Boss') return;
@@ -4826,7 +4828,7 @@ export default function CombatArena({
           if (archetypeId === 'stalker') {
             usesGenericTelegraph = false;
             suppressGenericMovement = true;
-            if ((archetypeState.vanishFrames ?? 0) > 0) {
+            if ((archetypeState.vanishFrames ?? 0) > 0 && !targetRooted) {
               archetypeState.vanishFrames = Math.max(0, (archetypeState.vanishFrames ?? 0) - elapsedFrames);
               if ((archetypeState.vanishFrames ?? 0) <= 0) {
                 const ambush = getStalkerAmbushPosition(playerRef.current, enemy.type === 'Elite' ? 78 : 92);
@@ -4843,7 +4845,7 @@ export default function CombatArena({
                 }
                 archetypeState.abilityCooldownFrames = enemy.type === 'Elite' ? 225 : 285;
               }
-            } else if (!targetStunned && archetypeState.abilityCooldownFrames <= 0) {
+            } else if (!targetStunned && !targetRooted && archetypeState.abilityCooldownFrames <= 0) {
               archetypeState.vanishFrames = enemy.type === 'Elite' ? 36 : 48;
               spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 25, 'STALKER VANISHED', '#94a3b8', 10);
             } else {
@@ -4853,7 +4855,7 @@ export default function CombatArena({
 
           if (archetypeId === 'relic-carrier') {
             usesGenericTelegraph = false;
-            if (!archetypeState.escaped && isRelicCarrierAtExit(enemy.x, enemy.y)) {
+            if (!archetypeState.escaped && !targetRooted && isRelicCarrierAtExit(enemy.x, enemy.y)) {
               archetypeState.escaped = true;
               enemy.hp = 0;
               spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 26, 'RELIC CARRIER ESCAPED', '#fde68a', 12, true);

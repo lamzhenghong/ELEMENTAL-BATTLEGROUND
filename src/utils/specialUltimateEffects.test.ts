@@ -43,6 +43,24 @@ test('Boiling Point expires after ten seconds', () => {
   assert.equal(tickSpecialUltimateEffects(state, 10).state.boilingPoint, null);
 });
 
+test('late Boiling Point detonation keeps its full four-second boss vulnerability', () => {
+  let state = activateBoilingPoint(createSpecialUltimateEffectState(), [boss], 1000);
+  state = tickSpecialUltimateEffects(state, 9).state;
+  for (let hit = 0; hit < 5; hit += 1) {
+    state = registerSpecialUltimateDirectHit(state, boss.id, 300).state;
+  }
+
+  state = tickSpecialUltimateEffects(state, 1).state;
+  assert.equal(getSpecialUltimateDamageMultiplier(state, boss.id), 1.1);
+  assert.equal(registerSpecialUltimateDirectHit(state, boss.id, 300).events.length, 0, 'Pressure cannot stack after ten seconds');
+
+  state = tickSpecialUltimateEffects(state, 2.9).state;
+  assert.equal(getSpecialUltimateDamageMultiplier(state, boss.id), 1.1);
+  state = tickSpecialUltimateEffects(state, 0.1).state;
+  assert.equal(getSpecialUltimateDamageMultiplier(state, boss.id), 1);
+  assert.equal(state.boilingPoint, null);
+});
+
 test('Living Storm links five priority targets and caps echoed damage', () => {
   const targets = [
     { id: 'normal-1', targetClass: 'normal' as const },
@@ -60,6 +78,7 @@ test('Living Storm links five priority targets and caps echoed damage', () => {
   state = firstHit.state;
   assert.equal(firstHit.events.length, 4);
   assert.ok(firstHit.events.every(event => event.kind === 'damage' && event.damage === 1000));
+  assert.ok(firstHit.events.every(event => event.kind === 'damage' && event.maxFinalDamage === 1000));
 
   const throttledHit = registerSpecialUltimateDirectHit(state, 'normal-1', 10_000);
   assert.equal(throttledHit.events.length, 0);
@@ -81,6 +100,22 @@ test('Living Storm roots non-bosses and strikes bosses every three seconds', () 
   ]);
   assert.equal(state.livingStorm?.remainingDuration, 9);
   assert.equal(tickSpecialUltimateEffects(state, 9).state.livingStorm, null);
+});
+
+test('Living Storm emits exactly four pulses during its twelve-second window', () => {
+  let state = activateLivingStormNetwork(createSpecialUltimateEffectState(), [normal, elite, boss], 1000);
+  let strikeCount = 0;
+  let rootCount = 0;
+  for (const delta of [2.9, 0.1, 6.2, 2.8, 5]) {
+    const result = tickSpecialUltimateEffects(state, delta);
+    state = result.state;
+    strikeCount += result.events.filter(event => event.kind === 'damage').length;
+    rootCount += result.events.filter(event => event.kind === 'root').length;
+  }
+  assert.equal(strikeCount, 4);
+  assert.equal(rootCount, 8);
+  assert.equal(state.livingStorm, null);
+  assert.equal(registerSpecialUltimateDirectHit(state, normal.id, 500).events.length, 0);
 });
 
 test('clearing Special Ultimate effects is idempotent', () => {

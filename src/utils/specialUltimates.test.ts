@@ -89,6 +89,16 @@ assert.equal(getAvailableSpecialUltimate({
 }), null);
 
 assert.equal(getAvailableSpecialUltimate({
+  partyIds: ['aurelia', 'kaelen'],
+  combatParty: [makeCombatCharacter('aurelia'), { ...makeCombatCharacter('kaelen'), currentHp: 0 }],
+  activeCharacterId: 'aurelia',
+  playerLevel: 40,
+  devCheatsEnabled: false,
+  cooldownReadyAt: 0,
+  now: 1000
+}), null);
+
+assert.equal(getAvailableSpecialUltimate({
   partyIds: ['maelis', 'veyra'],
   combatParty: [makeCombatCharacter('maelis'), makeCombatCharacter('veyra')],
   activeCharacterId: 'maelis',

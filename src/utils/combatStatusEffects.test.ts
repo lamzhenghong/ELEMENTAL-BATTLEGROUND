@@ -3,6 +3,7 @@ import {
   applyCombatStatus,
   getStatusMovementMultiplier,
   getStatusOutgoingDamageMultiplier,
+  isTargetRooted,
   isTargetStunned,
   tickCombatStatuses,
   type CombatStatusEffect
@@ -96,6 +97,23 @@ const stun: CombatStatusEffect = {
 };
 assert.equal(isTargetStunned(applyCombatStatus([], stun, 'normal').statuses), true);
 assert.equal(applyCombatStatus([], stun, 'boss').immune, true);
+
+const root: CombatStatusEffect = {
+  ...stun,
+  id: 'root:worldstorm',
+  type: 'root',
+  sourceAbility: 'worldstorm-genesis',
+  duration: 1.2,
+  remainingDuration: 1.2,
+  visualKind: 'rooted'
+};
+const rooted = applyCombatStatus([], root, 'normal');
+assert.equal(rooted.applied, true);
+assert.equal(getStatusMovementMultiplier(rooted.statuses), 0);
+assert.equal(isTargetRooted(rooted.statuses), true);
+assert.equal(isTargetStunned(rooted.statuses), false);
+assert.equal(applyCombatStatus([], root, 'boss').immune, true);
+assert.equal(isTargetRooted(tickCombatStatuses(rooted.statuses, 1.2).statuses), false);
 
 const damageDown = (strength: number): CombatStatusEffect => ({
   id: `damage-down:maelis:${strength}`,

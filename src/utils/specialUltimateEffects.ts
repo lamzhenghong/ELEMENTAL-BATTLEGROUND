@@ -37,6 +37,7 @@ export type SpecialUltimateEffectEvent =
       kind: 'damage';
       targetId: string;
       damage: number;
+      maxFinalDamage?: number;
       element: ElementType;
       label: string;
     }
@@ -155,7 +156,7 @@ export const registerSpecialUltimateDirectHit = (
   let nextState = state;
 
   const boilingTarget = state.boilingPoint?.targets[targetId];
-  if (state.boilingPoint && boilingTarget && damage > 0) {
+  if (state.boilingPoint && state.boilingPoint.remainingDuration > 0 && boilingTarget && damage > 0) {
     const stacks = boilingTarget.stacks + 1;
     const detonated = stacks >= BOILING_POINT_STACKS;
     const nextTarget: BoilingPointTargetState = {
@@ -205,6 +206,7 @@ export const registerSpecialUltimateDirectHit = (
           kind: 'damage',
           targetId: linkedTargetId,
           damage: echoDamage,
+          maxFinalDamage: roundDamage(livingStorm.snapshotAtk),
           element: 'Electro',
           label: 'LIVING STORM ECHO',
         });
@@ -240,7 +242,12 @@ export const tickSpecialUltimateEffects = (
         },
       ]),
     );
-    boilingPoint = remainingDuration > 0 ? { ...boilingPoint, remainingDuration, targets } : null;
+    const bossVulnerabilityActive = Object.values(targets).some(
+      target => target.targetClass === 'boss' && target.vulnerabilityRemaining > 0,
+    );
+    boilingPoint = remainingDuration > 0 || bossVulnerabilityActive
+      ? { ...boilingPoint, remainingDuration, targets }
+      : null;
   }
 
   if (livingStorm) {

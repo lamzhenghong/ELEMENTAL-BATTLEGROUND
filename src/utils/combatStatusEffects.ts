@@ -4,6 +4,7 @@ export type CombatTargetClass = 'normal' | 'elite' | 'boss';
 export type StatusEffectType =
   | 'burn'
   | 'slow'
+  | 'root'
   | 'stun'
   | 'damage-down'
   | 'shield'
@@ -46,7 +47,7 @@ export interface CombatStatusTickResult {
   events: CombatStatusTickEvent[];
 }
 
-const isCrowdControl = (type: StatusEffectType) => type === 'slow' || type === 'stun';
+const isCrowdControl = (type: StatusEffectType) => type === 'slow' || type === 'root' || type === 'stun';
 
 export const applyCombatStatus = (
   statuses: readonly CombatStatusEffect[],
@@ -133,6 +134,7 @@ export const tickCombatStatuses = (
 };
 
 export const getStatusMovementMultiplier = (statuses: readonly CombatStatusEffect[]) => {
+  if (isTargetRooted(statuses)) return 0;
   const strongestSlow = Math.max(0, ...statuses
     .filter(status => status.type === 'slow' && status.remainingDuration > 0)
     .map(status => status.strength));
@@ -148,3 +150,6 @@ export const getStatusOutgoingDamageMultiplier = (statuses: readonly CombatStatu
 
 export const isTargetStunned = (statuses: readonly CombatStatusEffect[]) =>
   statuses.some(status => status.type === 'stun' && status.remainingDuration > 0);
+
+export const isTargetRooted = (statuses: readonly CombatStatusEffect[]) =>
+  statuses.some(status => status.type === 'root' && status.remainingDuration > 0);
