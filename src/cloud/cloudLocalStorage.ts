@@ -1,5 +1,6 @@
 import type { CloudLocalMetadata, CloudSaveBundle } from './cloudSaveModel';
 import { isCloudSaveBundle } from './cloudSaveModel';
+import { writeTrackedLocalJson } from '../save/localSaveFeedback';
 
 export const LOCAL_GAME_SAVE_KEY = 'aetheria_rpg_save_v3';
 export const LOCAL_PULL_HISTORY_KEY = 'aetheria_pull_history';
@@ -42,8 +43,8 @@ export const readLocalCloudBundle = <TSave>(storage: Storage): CloudSaveBundle<T
 };
 
 export const writeLocalCloudBundle = <TSave>(storage: Storage, bundle: CloudSaveBundle<TSave>) => {
-  storage.setItem(LOCAL_GAME_SAVE_KEY, JSON.stringify(bundle.saveState));
-  storage.setItem(LOCAL_PULL_HISTORY_KEY, JSON.stringify(bundle.pullHistory.slice(0, 100)));
+  writeTrackedLocalJson(storage, LOCAL_GAME_SAVE_KEY, bundle.saveState);
+  writeTrackedLocalJson(storage, LOCAL_PULL_HISTORY_KEY, bundle.pullHistory.slice(0, 100));
 };
 
 const isCloudLocalMetadata = (value: unknown): value is CloudLocalMetadata => {

@@ -9,6 +9,9 @@ import {
   VolumeX,
 } from 'lucide-react';
 import { GAME_VERSION } from '../config/gameVersion';
+import type { ReactNode } from 'react';
+import { AetheriaAudioEngine } from '../utils/audio';
+import { isMenuClickTarget } from '../utils/menuPresentation';
 
 interface MainMenuProps {
   backgroundVideo: string;
@@ -17,6 +20,7 @@ interface MainMenuProps {
   email: string | null;
   signedIn: boolean;
   syncLabel: string;
+  saveStatus?: ReactNode;
   bgmEnabled: boolean;
   onStart: () => void;
   onAccount: () => void;
@@ -33,6 +37,7 @@ export default function MainMenu({
   email,
   signedIn,
   syncLabel,
+  saveStatus,
   bgmEnabled,
   onStart,
   onAccount,
@@ -42,7 +47,10 @@ export default function MainMenu({
   onToggleBgm,
 }: MainMenuProps) {
   return (
-    <div className="aether-main-menu">
+    <div className="aether-main-menu" onClickCapture={event => {
+      const button = (event.target as Element).closest<HTMLButtonElement>('button');
+      if (isMenuClickTarget(Boolean(button), button?.disabled ?? false, button?.getAttribute('aria-disabled') ?? null)) AetheriaAudioEngine.playClick();
+    }}>
       <video
         className="aether-main-menu__video"
         src={backgroundVideo}
@@ -61,6 +69,7 @@ export default function MainMenu({
         </div>
         <div className="aether-main-menu__header-actions">
           <span>V{GAME_VERSION} Live</span>
+          {saveStatus}
           <button type="button" onClick={onToggleBgm} aria-label="Toggle background music">
             {bgmEnabled ? <Volume2 /> : <VolumeX />}
             <span>BGM {bgmEnabled ? 'On' : 'Off'}</span>
@@ -100,8 +109,7 @@ export default function MainMenu({
       </main>
 
       <footer className="aether-main-menu__footer">
-        <i />
-        {signedIn ? 'Aetheria Cloud Connected' : 'Local Save Ready'}
+        {!saveStatus && <><i />{signedIn ? 'Aetheria Cloud Connected' : 'Local Save Ready'}</>}
       </footer>
     </div>
   );

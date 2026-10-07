@@ -18,6 +18,9 @@ import {
 import { getBossIdentityGroups } from '../../utils/bossIdentities';
 import BossModelPreview from '../BossModelPreview';
 import EnemyArchetypeModelPreview from '../EnemyArchetypeModelPreview';
+import MechanicDemonstration from './MechanicDemonstration';
+import { getBossMechanicDemo, getDemoEnemyColor, getEnemyMechanicDemo } from './mechanicDemonstrations';
+import './MechanicDemonstration.css';
 
 const BOSS_IDENTITY_GROUPS = getBossIdentityGroups();
 
@@ -112,6 +115,11 @@ export default function EnemyArchiveTab() {
                 <p className="mt-4 text-[11px] leading-relaxed text-slate-300">
                   {archetype.mechanic}
                 </p>
+                <MechanicDemonstration
+                  demo={getEnemyMechanicDemo(archetype.id)}
+                  subject={archetype.name}
+                  enemyColor={getDemoEnemyColor(archetype.id)}
+                />
                 <div className="mt-3 border-t border-slate-800/80 pt-3">
                   <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">
                     Counter
@@ -215,6 +223,12 @@ export default function EnemyArchiveTab() {
                         {identity.mechanic}
                       </p>
                     </div>
+
+                    <MechanicDemonstration
+                      demo={getBossMechanicDemo(identity)}
+                      subject={identity.name}
+                      enemyColor={identity.secondaryColor}
+                    />
 
                     <div className="mt-3 border-t border-slate-800/80 pt-3">
                       <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">

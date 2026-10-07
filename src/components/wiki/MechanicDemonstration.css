@@ -1,0 +1,173 @@
+.wiki-mechanic-demo {
+  margin: 12px 0 0;
+  padding: 8px 0 0;
+  border-top: 1px solid #33415580;
+  min-width: 0;
+  color: #cbd5e1;
+  font-family: inherit;
+  letter-spacing: 0;
+}
+
+.wiki-mechanic-demo .wiki-demo-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.wiki-mechanic-demo .wiki-demo-heading {
+  min-width: 0;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.wiki-mechanic-demo .wiki-demo-phase {
+  display: block;
+  color: #94a3b8;
+  font-size: 9px;
+  font-weight: 400;
+}
+
+.wiki-mechanic-demo .wiki-demo-controls {
+  display: flex;
+  flex-shrink: 0;
+  gap: 2px;
+}
+
+.wiki-mechanic-demo .wiki-demo-controls button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.wiki-mechanic-demo .wiki-demo-controls button:hover {
+  color: #f8fafc;
+  background: #1e293b;
+}
+
+.wiki-mechanic-demo .wiki-demo-controls button:focus-visible {
+  outline: 2px solid #67e8f9;
+  outline-offset: -2px;
+}
+
+.wiki-mechanic-demo .wiki-demo-controls svg {
+  width: 14px;
+  height: 14px;
+}
+
+.wiki-mechanic-demo .wiki-demo-sequence {
+  background: #070b13;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.wiki-mechanic-demo .wiki-demo-sequence > svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2;
+}
+
+.wiki-mechanic-demo .wiki-demo-sequence text {
+  font-family: inherit;
+  font-size: 9px;
+  fill: currentColor;
+}
+
+.wiki-mechanic-demo .wiki-demo-steps {
+  display: grid;
+  min-height: 34px;
+  padding: 4px 8px 8px;
+  font-size: 10px;
+  line-height: 1.4;
+  color: #e2e8f0;
+}
+
+.wiki-mechanic-demo .wiki-demo-steps > span {
+  grid-area: 1 / 1;
+  overflow-wrap: anywhere;
+}
+
+.wiki-mechanic-demo .wiki-demo-legend {
+  display: flex;
+  gap: 12px;
+  margin-top: 7px;
+  font-size: 9px;
+  color: #94a3b8;
+}
+
+.wiki-mechanic-demo .wiki-demo-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.wiki-mechanic-demo .wiki-demo-legend i {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+}
+
+.wiki-mechanic-demo .wiki-demo-player-key {
+  background: #67e8f9;
+  border-radius: 50%;
+}
+
+.wiki-mechanic-demo .wiki-demo-enemy-key { transform: rotate(45deg); }
+
+.wiki-mechanic-demo .wiki-demo-caption {
+  margin-top: 7px;
+  font-size: 10px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.wiki-mechanic-demo .wiki-demo-scope {
+  margin-top: 5px;
+  font-size: 9px;
+  line-height: 1.5;
+  color: #94a3b8;
+}
+
+.wiki-mechanic-demo .wiki-demo-visible {
+  opacity: var(--v-2, 1);
+  animation: wiki-demo-visibility 9s step-end infinite;
+}
+
+.wiki-mechanic-demo .wiki-demo-actor {
+  transform: translate(var(--x-2, 0px), var(--y-2, 0px));
+  animation: wiki-demo-visibility 9s step-end infinite, wiki-demo-route 9s linear infinite;
+}
+
+.wiki-mechanic-demo[data-running="false"] .wiki-demo-motion { animation-play-state: paused; }
+
+@keyframes wiki-demo-visibility {
+  0%, 32% { opacity: var(--v-0, 1); }
+  33%, 65% { opacity: var(--v-1, 1); }
+  66%, 100% { opacity: var(--v-2, 1); }
+}
+
+@keyframes wiki-demo-route {
+  0%, 27% { transform: translate(var(--x-0, 0px), var(--y-0, 0px)); }
+  48%, 65% { transform: translate(var(--x-1, 0px), var(--y-1, 0px)); }
+  84%, 100% { transform: translate(var(--x-2, 0px), var(--y-2, 0px)); }
+}
+
+.wiki-mechanic-demo[data-reduced="true"] .wiki-demo-motion { animation: none; }
+.wiki-mechanic-demo[data-reduced="true"][data-step="0"] .wiki-demo-visible { opacity: var(--v-0, 1); }
+.wiki-mechanic-demo[data-reduced="true"][data-step="1"] .wiki-demo-visible { opacity: var(--v-1, 1); }
+.wiki-mechanic-demo[data-reduced="true"][data-step="0"] .wiki-demo-actor { transform: translate(var(--x-0, 0px), var(--y-0, 0px)); }
+.wiki-mechanic-demo[data-reduced="true"][data-step="1"] .wiki-demo-actor { transform: translate(var(--x-1, 0px), var(--y-1, 0px)); }
+
+@media (prefers-reduced-motion: reduce) {
+  .wiki-mechanic-demo .wiki-demo-motion { animation: none !important; }
+}

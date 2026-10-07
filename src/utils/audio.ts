@@ -10,6 +10,7 @@ import {
 } from './bgm';
 import { AetheriaSpecialUltimateBgmPlayer } from './specialUltimateBgm';
 import type { ImpactSoundTier } from './combatImpact';
+import { shouldPlayMenuClick } from './menuPresentation';
 
 export { getBgmVolumeMultiplierForDevice } from './bgm';
 
@@ -25,6 +26,7 @@ class AudioEngine {
   private impactNoiseBuffer: AudioBuffer | null = null;
   private lastImpactAt = -Infinity;
   private lastImpactPriority = -1;
+  private lastMenuClickAt = -Infinity;
   private isMuted: boolean = false;
   private isMusicPlaying: boolean = false;
   private bgmVolScale: number = 1.0;
@@ -236,6 +238,9 @@ class AudioEngine {
   }
 
   public playClick() {
+    const now = performance.now();
+    if (!shouldPlayMenuClick(now, this.lastMenuClickAt)) return;
+    this.lastMenuClickAt = now;
     this.resume();
     if (!this.ctx || this.isMuted) return;
 
@@ -246,7 +251,7 @@ class AudioEngine {
     osc.frequency.setValueAtTime(800, this.ctx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(1200, this.ctx.currentTime + 0.08);
 
-    gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+    gain.gain.setValueAtTime(0.06, this.ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.08);
 
     osc.connect(gain);

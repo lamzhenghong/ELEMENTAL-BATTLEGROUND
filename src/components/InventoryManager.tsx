@@ -9,6 +9,7 @@ import { PLAYABLE_CHARACTERS } from '../data/characters';
 import { PlayableCharacter, Weapon, InventoryItem, ElementType, Artifact, ArtifactSlot, ArtifactSet } from '../types';
 import { Shield, Sparkles, Coins, Star, StarOff, ArrowUpCircle, BookOpen, Smile, User, Flame, Droplet, Snowflake, Zap, Wind, Leaf, Search, Layers, Lock, Unlock, Trash2, Heart, Clock, Sword } from 'lucide-react';
 import { AetheriaAudioEngine } from '../utils/audio';
+import SlidingTabMarker from './ui/SlidingTabMarker';
 import { LanguageType, t } from '../utils/i18n';
 import { ARTIFACT_SETS, ARTIFACT_NAMES, getArtifactMainStat } from '../data/artifacts';
 import {
@@ -587,8 +588,10 @@ export default function InventoryManager({
         {/* Left column selection list (Roster and Filters) */}
         <div className="bg-[#060811]/45 border border-white/10 rounded-xl p-5 space-y-5 flex flex-col justify-between">
           <div className="space-y-5">
-            <div className="w-full grid grid-cols-2 gap-1 rounded-lg border border-white/10 bg-black/45 p-1">
+            <div className="menu-tab-rail w-full grid grid-cols-2 gap-1 rounded-lg border border-white/10 bg-black/45 p-1">
+              <SlidingTabMarker selection={activeTab} />
               <button
+                aria-pressed={activeTab === 'characters'}
                 onClick={() => {
                   setActiveTab('characters');
                   AetheriaAudioEngine.playClick();
@@ -600,6 +603,7 @@ export default function InventoryManager({
                 Roster
               </button>
               <button
+                aria-pressed={activeTab === 'weapons'}
                 onClick={() => {
                   setActiveTab('weapons');
                   AetheriaAudioEngine.playClick();
@@ -611,6 +615,7 @@ export default function InventoryManager({
                 Armaments
               </button>
               <button
+                aria-pressed={activeTab === 'artifacts'}
                 onClick={() => {
                   setActiveTab('artifacts');
                   AetheriaAudioEngine.playClick();
@@ -622,6 +627,7 @@ export default function InventoryManager({
                 Artifacts
               </button>
               <button
+                aria-pressed={activeTab === 'items'}
                 onClick={() => {
                   setActiveTab('items');
                   AetheriaAudioEngine.playClick();

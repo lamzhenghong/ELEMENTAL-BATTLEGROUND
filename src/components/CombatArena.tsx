@@ -45,6 +45,13 @@ import { drawEnemyDamageVisualState } from './combat/EnemyDamageVisualState';
 import { drawArtifactResonanceAura } from './combat/ArtifactResonanceAura';
 import { drawEnemyArchetypeEnemy } from './combat/enemyArchetypeVfx';
 import { drawBossModel } from './combat/bossModelRenderer';
+import { drawCombatTelegraph, type CombatTelegraphGeometry } from './combat/CombatTelegraphRenderer';
+import {
+  getCountdownTelegraphProgress,
+  getGenericTelegraphProgress,
+  getStalkerTelegraphProgress,
+  getWarningCounterCue,
+} from './combat/combatTelegraphs';
 import {
   BOSS_TEMPLATES,
   CombatParticle,
@@ -3767,6 +3774,9 @@ export default function CombatArena({
     let animationId: number;
     let lastFrameTime = performance.now();
     const ctx = canvasRef.current?.getContext('2d');
+    const genericTelegraphShape: CombatTelegraphGeometry = { x: 0, y: 0, radius: 60 };
+    const stalkerTelegraphShape: CombatTelegraphGeometry = { x: 0, y: 0, radius: 105 };
+    const weatherTelegraphShape: CombatTelegraphGeometry = { x: 0, y: 0, radius: 45, color: '#c084fc' };
 
     const applyCampaignBossActions = (enemy: any, actions: CampaignBossAction[]) => {
       actions.forEach((action, actionIndex) => {
@@ -4552,33 +4562,14 @@ export default function CombatArena({
           || proj.type === 'archetype_mimic_warning'
           || proj.type === 'campaign_boss_warning'
         ) {
-          const warningColor = proj.color ?? '#ef4444';
-          ctx.globalAlpha = 0.25;
-          ctx.fillStyle = warningColor;
-          ctx.strokeStyle = warningColor;
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.arc(proj.x, proj.y, proj.radius, 0, Math.PI * 2);
-          if (proj.innerRadius !== undefined) {
-            ctx.arc(proj.x, proj.y, proj.innerRadius, 0, Math.PI * 2, true);
-            ctx.fill('evenodd');
-          } else {
-            ctx.fill();
-          }
-          ctx.stroke();
-
-          // expanding progress ring
-          const pct = 1 - (proj.timer / proj.maxTimer);
-          ctx.globalAlpha = 0.28;
-          ctx.fillStyle = warningColor;
-          ctx.beginPath();
-          ctx.arc(proj.x, proj.y, proj.radius * pct, 0, Math.PI * 2);
-          if (proj.innerRadius !== undefined) {
-            ctx.arc(proj.x, proj.y, proj.innerRadius * pct, 0, Math.PI * 2, true);
-            ctx.fill('evenodd');
-          } else {
-            ctx.fill();
-          }
+          drawCombatTelegraph(
+            ctx,
+            proj,
+            getCountdownTelegraphProgress(proj.timer, proj.maxTimer),
+            getWarningCounterCue(proj.type, 'player-hit'),
+            cameraFrame,
+            isMobile,
+          );
         }
         ctx.restore();
 
@@ -4667,6 +4658,7 @@ export default function CombatArena({
         let archetypeMoveDirection: -1 | 0 | 1 = 1;
         let usesGenericTelegraph = true;
         let suppressGenericMovement = false;
+        let stalkerStrikeImpact = false;
         const distanceToPlayer = Math.hypot(playerRef.current.x - enemy.x, playerRef.current.y - enemy.y);
         const archetypeId = enemy.type !== 'Boss' ? enemy.archetypeId as EnemyArchetypeId | undefined : undefined;
         const archetypeState = archetypeId ? enemy.archetypeState : null;
@@ -4835,11 +4827,13 @@ export default function CombatArena({
                 enemy.x = Math.max(35, Math.min(WORLD_WIDTH - 35, ambush.x));
                 enemy.y = Math.max(35, Math.min(WORLD_HEIGHT - 35, ambush.y));
                 archetypeState.strikeFrames = enemy.type === 'Elite' ? 18 : 24;
+                enemy.stalkerTelegraphDuration = archetypeState.strikeFrames;
                 spawnTextRef.current(enemy.x, enemy.y - enemy.radius - 26, 'BACK ATTACK', '#fca5a5', 10, true);
               }
             } else if ((archetypeState.strikeFrames ?? 0) > 0) {
               archetypeState.strikeFrames = Math.max(0, (archetypeState.strikeFrames ?? 0) - elapsedFrames);
               if ((archetypeState.strikeFrames ?? 0) <= 0) {
+                stalkerStrikeImpact = true;
                 if (Math.hypot(playerRef.current.x - enemy.x, playerRef.current.y - enemy.y) < 105) {
                   handlePlayerHit(enemy, enemy.type === 'Elite' ? 290 : 190);
                 }
@@ -5147,6 +5141,27 @@ export default function CombatArena({
           ctx.restore();
         }
 
+        if (archetypeId === 'stalker' && archetypeState) {
+          const strikeProgress = getStalkerTelegraphProgress(
+            archetypeState.strikeFrames ?? 0,
+            enemy.stalkerTelegraphDuration ?? (enemy.type === 'Elite' ? 18 : 24),
+            stalkerStrikeImpact,
+          );
+          if (strikeProgress !== null) {
+            stalkerTelegraphShape.x = enemy.x;
+            stalkerTelegraphShape.y = enemy.y;
+            stalkerTelegraphShape.cueOffsetY = Math.max(enemy.radius, stalkerTelegraphShape.radius) + 20 / cameraFrame.zoom;
+            drawCombatTelegraph(
+              ctx,
+              stalkerTelegraphShape,
+              strikeProgress,
+              getWarningCounterCue('stalker_strike', 'player-hit'),
+              cameraFrame,
+              isMobile,
+            );
+          }
+        }
+
         // Check freeze status bypass
         if (enemy.isFrozen > 0) {
           enemy.isFrozen = Math.max(0, enemy.isFrozen - elapsedFrames);
@@ -5209,19 +5224,24 @@ export default function CombatArena({
 
         // --- RENDER DANGER RED TELEGRAPH THREATS (smaller enemy ranges) ---
         if (!targetStunned && usesGenericTelegraph && enemy.telegraphTimer > 60) {
-          ctx.save();
-          ctx.globalAlpha = 0.25;
-          ctx.fillStyle = '#ef4444';
-          ctx.beginPath();
-          if (enemy.telegraphType === 'line') {
-            // Draw narrower rectangle attack column targeting player
-            ctx.fillRect(enemy.x - 20, enemy.y - 6, 180, 12);
-          } else {
-            // Smaller circle shock zone
-            ctx.arc(enemy.x, enemy.y, 50, 0, Math.PI * 2);
-            ctx.fill();
+          const telegraphProgress = getGenericTelegraphProgress(
+            enemy.telegraphTimer,
+            usesGenericTelegraph && !targetStunned,
+            previousTelegraphTimer,
+          );
+          if (telegraphProgress !== null) {
+            genericTelegraphShape.x = enemy.x;
+            genericTelegraphShape.y = enemy.y;
+            genericTelegraphShape.cueOffsetY = Math.max(enemy.radius, genericTelegraphShape.radius) + 20 / cameraFrame.zoom;
+            drawCombatTelegraph(
+              ctx,
+              genericTelegraphShape,
+              telegraphProgress,
+              getWarningCounterCue('generic_enemy', 'player-hit'),
+              cameraFrame,
+              isMobile,
+            );
           }
-          ctx.restore();
 
           // Telegraph detonates/swipes exactly at 115 frames — tighter detonation radius
           if (previousTelegraphTimer < 115 && enemy.telegraphTimer >= 115) {
@@ -5246,22 +5266,6 @@ export default function CombatArena({
           ctx.strokeStyle = 'rgba(216,180,254,0.62)';
           ctx.lineWidth = enemy.type === 'Elite' ? 3 : 2;
           ctx.setLineDash([8, 7]);
-          ctx.beginPath();
-          ctx.moveTo(enemy.x, enemy.y);
-          ctx.lineTo(playerRef.current.x, playerRef.current.y);
-          ctx.stroke();
-          ctx.setLineDash([]);
-          ctx.restore();
-        }
-
-        if (enemy.archetypeId === 'stalker' && (enemy.archetypeState?.strikeFrames ?? 0) > 0) {
-          ctx.save();
-          ctx.strokeStyle = 'rgba(248,113,113,0.68)';
-          ctx.lineWidth = 2;
-          ctx.setLineDash([4, 5]);
-          ctx.beginPath();
-          ctx.arc(enemy.x, enemy.y, enemy.radius + 16, 0, Math.PI * 2);
-          ctx.stroke();
           ctx.beginPath();
           ctx.moveTo(enemy.x, enemy.y);
           ctx.lineTo(playerRef.current.x, playerRef.current.y);
@@ -5469,23 +5473,20 @@ export default function CombatArena({
       }
 
       // Draw Lightning Warning Circle (World Coordinates)
-      if (lightningWarningRef.current !== null) {
-        const warning = lightningWarningRef.current;
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(warning.x, warning.y, 45, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(168, 85, 247, 0.15)';
-        ctx.fill();
-        ctx.strokeStyle = '#a855f7';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([4, 4]);
-        ctx.stroke();
-        ctx.fillStyle = '#c084fc';
-        ctx.font = 'bold 12px "Space Grotesk", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('⚡', warning.x, warning.y);
-        ctx.restore();
+      const weatherWarning = lightningWarningRef.current;
+      const weatherImpact = lightningStrikeVisualRef.current;
+      const weatherTelegraph = weatherWarning ?? (weatherImpact?.duration === 6 ? weatherImpact : null);
+      if (weatherTelegraph) {
+        weatherTelegraphShape.x = weatherTelegraph.x;
+        weatherTelegraphShape.y = weatherTelegraph.y;
+        drawCombatTelegraph(
+          ctx,
+          weatherTelegraphShape,
+          weatherWarning ? getCountdownTelegraphProgress(weatherWarning.timer, 50) : 1,
+          getWarningCounterCue('weather_lightning', 'player-hit'),
+          cameraFrame,
+          isMobile,
+        );
       }
 
       // Draw Lightning Bolt Strike Visual (World Coordinates)

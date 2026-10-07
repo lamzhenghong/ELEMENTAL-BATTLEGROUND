@@ -15,6 +15,7 @@ import { applyStoryChoice } from '../storyChoiceRules';
 import StoryMemoryArchive from './StoryMemoryArchive';
 import CharacterRoleBadge from './CharacterRoleBadge';
 import PortraitEffectFrame from './PortraitEffectFrame';
+import SlidingTabMarker from './ui/SlidingTabMarker';
 import { personalizeCampaignScene } from '../utils/storyDialoguePersonalization';
 import { getStoryArtwork } from '../data/story/artwork';
 import { getArenaLocation } from '../utils/arenaLocation';
@@ -268,9 +269,11 @@ export default function StoryMode({
       </AnimatePresence>
 
       {/* Primary campaign tabs */}
-      <div className="grid grid-cols-3 bg-[#0b0f19]/80 border border-white/10 p-1 rounded-xl w-full md:flex md:w-fit gap-1 shadow-lg backdrop-blur-md">
+      <div className="menu-tab-rail grid grid-cols-3 bg-[#0b0f19]/80 border border-white/10 p-1 rounded-xl w-full md:flex md:w-fit gap-1 shadow-lg backdrop-blur-md">
+        <SlidingTabMarker selection={activeTab} />
         <button
           type="button"
+          aria-pressed={activeTab === 'campaign'}
           onClick={() => {
             setActiveTab('campaign');
             AetheriaAudioEngine.playClick();
@@ -287,6 +290,7 @@ export default function StoryMode({
 
         <button
           type="button"
+          aria-pressed={activeTab === 'characters'}
           onClick={() => {
             setActiveTab('characters');
             AetheriaAudioEngine.playClick();
@@ -303,6 +307,7 @@ export default function StoryMode({
 
         <button
           type="button"
+          aria-pressed={activeTab === 'memories'}
           onClick={() => {
             setActiveTab('memories');
             AetheriaAudioEngine.playClick();

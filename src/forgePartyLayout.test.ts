@@ -19,7 +19,7 @@ assert.doesNotMatch(
 );
 assert.match(
   inventorySource,
-  /className="w-full grid grid-cols-2 gap-1[^"]*"/,
+  /className="[^"]*\bw-full grid grid-cols-2 gap-1\b[^"]*"/,
   'Forge tabs should use a stable two-column grid so every tab remains visible',
 );
 assert.doesNotMatch(inventorySource, /tabContainerRef|addEventListener\('wheel'/);

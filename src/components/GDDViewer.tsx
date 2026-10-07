@@ -20,6 +20,7 @@ import { getCharacterKit } from '../utils/characterKits';
 import { getSpecialUltimateCharacterEntry } from '../utils/specialUltimates';
 import CharacterRoleBadge from './CharacterRoleBadge';
 import EnemyArchiveTab from './wiki/EnemyArchiveTab';
+import SlidingTabMarker from './ui/SlidingTabMarker';
 import PortraitEffectFrame from './PortraitEffectFrame';
 import ElementSigil from './ElementSigil';
 
@@ -194,10 +195,12 @@ export default function GDDViewer({
         </div>
 
         {/* Tabs switcher */}
-        <div className="flex overflow-x-auto whitespace-nowrap scrollbar-none gap-1 bg-black/45 p-1 rounded-lg border border-white/10 w-full">
+        <div className="menu-tab-rail flex overflow-x-auto whitespace-nowrap scrollbar-none gap-1 bg-black/45 p-1 rounded-lg border border-white/10 w-full">
+          <SlidingTabMarker selection={activeTab} />
           {(['lore', 'nations', 'characters', 'weapons', 'artifacts', 'enemies', 'systems', 'tutorial'] as const).map((tab) => (
             <button
               key={tab}
+              aria-pressed={activeTab === tab}
               onClick={() => setActiveTab(tab)}
               className={`px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-md transition-all cursor-pointer shrink-0 ${
                 activeTab === tab

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import type { SaveState } from '../types';
+import { getCurrentCloudSyncStatus } from './cloudSyncStatus';
 import { formatCloudAccountError, validateCloudCredentials } from './cloudAuthValidation';
 import {
   clearCloudLocalMetadata,
@@ -77,6 +78,7 @@ export const useCloudAccount = ({
   const [authResolved, setAuthResolved] = useState(!isSupabaseConfigured);
   const [syncStatus, setSyncStatus] = useState<CloudSyncStatus>(isSupabaseConfigured ? 'checking' : 'unavailable');
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
+  const [lastSyncedFingerprint, setLastSyncedFingerprint] = useState<string | null>(null);
   const [conflict, setConflict] = useState<CloudSaveConflict | null>(null);
   const [accountModalOpen, setAccountModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<CloudAuthMode>('sign-in');
@@ -134,6 +136,7 @@ export const useCloudAccount = ({
       lastSyncedFingerprint: fingerprint
     });
     setLastSyncedAt(record.updatedAt);
+    setLastSyncedFingerprint(fingerprint);
     setSyncStatus('synced');
     if (applyToGame) applyCloudBundleRef.current(bundle);
   }, []);
@@ -230,6 +233,7 @@ export const useCloudAccount = ({
     const bundle = bundleRef.current;
     const fingerprint = fingerprintCloudBundle(bundle);
     if (metadata.lastSyncedFingerprint === fingerprint) {
+      setLastSyncedFingerprint(fingerprint);
       setSyncStatus('synced');
       return;
     }
@@ -596,7 +600,7 @@ export const useCloudAccount = ({
     session,
     user: session?.user ?? null,
     authResolved,
-    syncStatus,
+    syncStatus: getCurrentCloudSyncStatus(syncStatus, currentFingerprint, lastSyncedFingerprint),
     lastSyncedAt,
     conflict,
     accountModalOpen,

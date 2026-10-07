@@ -3,6 +3,7 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import CharacterKitTestPage from './components/CharacterKitTestPage.tsx';
 import './index.css';
+import './components/ui/MenuPolish.css';
 import { GAME_VERSION } from './config/gameVersion';
 
 console.log(`RPG GAME: Version ${GAME_VERSION}`);

@@ -29,6 +29,11 @@ import ElementSigil from './components/ElementSigil';
 import InGameSettingsModal from './components/InGameSettingsModal';
 import MobileControlEditor from './components/MobileControlEditor';
 import PlayerStatsModal from './components/PlayerStatsModal';
+import SaveStatusIndicator from './components/ui/SaveStatusIndicator';
+import SlidingTabMarker from './components/ui/SlidingTabMarker';
+import MenuSurface from './components/ui/MenuSurface';
+import { writeTrackedLocalJson } from './save/localSaveFeedback';
+import { isMenuClickTarget } from './utils/menuPresentation';
 import { 
   Shield, Sparkles, Coins, HelpCircle, History, RefreshCw, Star, 
   BookOpen, Compass, Sword, Landmark, Hammer, Trophy, DollarSign, 
@@ -741,7 +746,7 @@ export default function App() {
           const parsed = JSON.parse(stored);
           const currentPT = basePlayTimeRef.current + Math.floor((Date.now() - sessionStartRef.current) / 1000);
           parsed.stats = { ...(parsed.stats || {}), playTime: currentPT };
-          localStorage.setItem('aetheria_rpg_save_v3', JSON.stringify(parsed));
+          writeTrackedLocalJson(localStorage, 'aetheria_rpg_save_v3', parsed, { acknowledgesProgress: false });
         }
       } catch (_e) { /* silent */ }
     }, 30000);
@@ -754,7 +759,7 @@ export default function App() {
           const parsed = JSON.parse(stored);
           const currentPT = basePlayTimeRef.current + Math.floor((Date.now() - sessionStartRef.current) / 1000);
           parsed.stats = { ...(parsed.stats || {}), playTime: currentPT };
-          localStorage.setItem('aetheria_rpg_save_v3', JSON.stringify(parsed));
+          writeTrackedLocalJson(localStorage, 'aetheria_rpg_save_v3', parsed, { acknowledgesProgress: false });
         }
       } catch (_e) { /* silent */ }
     };
@@ -852,8 +857,8 @@ export default function App() {
 
   const applyCloudBundle = useCallback((bundle: { saveState: SaveState; pullHistory: { name: string; rarity: number; time: string }[] }) => {
     const normalized = normalizeLoadedSaveState(bundle.saveState);
-    localStorage.setItem('aetheria_rpg_save_v3', JSON.stringify(normalized));
-    localStorage.setItem('aetheria_pull_history', JSON.stringify(bundle.pullHistory.slice(0, 100)));
+    writeTrackedLocalJson(localStorage, 'aetheria_rpg_save_v3', normalized);
+    writeTrackedLocalJson(localStorage, 'aetheria_pull_history', bundle.pullHistory.slice(0, 100));
     basePlayTimeRef.current = normalized.stats?.playTime || 0;
     sessionStartRef.current = Date.now();
     setDisplayPlayTime(normalized.stats?.playTime || 0);
@@ -882,7 +887,7 @@ export default function App() {
             purchasedShopItemIds: []
           };
           try {
-            localStorage.setItem('aetheria_rpg_save_v3', JSON.stringify(updated));
+            writeTrackedLocalJson(localStorage, 'aetheria_rpg_save_v3', updated);
           } catch (err) {
             console.error("Local save persistence error", err);
           }
@@ -969,7 +974,7 @@ export default function App() {
         stats: { ...updated.stats, playTime: currentPlayTime }
       };
       try {
-        localStorage.setItem('aetheria_rpg_save_v3', JSON.stringify(withPlayTime));
+        writeTrackedLocalJson(localStorage, 'aetheria_rpg_save_v3', withPlayTime);
       } catch (err) {
         console.error("Local save persistence error", err);
       }
@@ -2454,7 +2459,7 @@ export default function App() {
     setPullHistory(prev => {
       const newHistory = [...logItems, ...prev].slice(0, 100); // Max 100 logs saved
       try {
-        localStorage.setItem('aetheria_pull_history', JSON.stringify(newHistory));
+        writeTrackedLocalJson(localStorage, 'aetheria_pull_history', newHistory);
       } catch (e) {
         console.warn("Could not preserve pull logs on disk.", e);
       }
@@ -2617,6 +2622,7 @@ export default function App() {
           email={cloudAccount.user?.email ?? null}
           signedIn={Boolean(cloudAccount.user)}
           syncLabel={cloudSyncLabel}
+          saveStatus={<SaveStatusIndicator cloudStatus={cloudAccount.syncStatus} ready={localSaveReady} onAccount={cloudAccount.openAccountModal} />}
           bgmEnabled={menuBgmEnabled}
           onStart={handleStartSimulation}
           onAccount={() => {
@@ -2865,7 +2871,13 @@ export default function App() {
   }
 
   return withTransitionHost(
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans relative antialiased leading-normal overflow-x-hidden">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans relative antialiased leading-normal overflow-x-hidden"
+      data-menu-feedback={activeScreen !== 'arena' && activeScreen !== 'dungeon' && !storyBattleActive}
+      onClickCapture={event => {
+        if (activeScreen === 'arena' || activeScreen === 'dungeon' || storyBattleActive) return;
+        const button = (event.target as Element).closest<HTMLButtonElement>('button');
+        if (isMenuClickTarget(Boolean(button), button?.disabled ?? false, button?.getAttribute('aria-disabled') ?? null)) AetheriaAudioEngine.playClick();
+      }}>
       {/* Immersive Game World Backdrop Simulation gradients */}
       <div className={`absolute inset-0 bg-gradient-to-b ${activeUiTheme.backdropClass} pointer-events-none`} />
       <div className={`absolute top-0 right-1/4 w-[600px] h-[400px] ${activeUiTheme.orbOneClass} rounded-full blur-[130px] pointer-events-none`} />
@@ -2973,6 +2985,7 @@ export default function App() {
           </div>
 
           {/* Mora Currency */}
+          <SaveStatusIndicator cloudStatus={cloudAccount.syncStatus} ready={localSaveReady} onAccount={cloudAccount.openAccountModal} />
           <div data-reward-target="mora" className="flex items-center gap-1 md:gap-1.5 p-1 px-2 md:px-3 rounded-lg bg-black/40 border border-white/15 shrink-0">
             <Coins className="w-3.5 h-3.5 text-amber-400" />
             <span className="hidden md:inline text-slate-400 font-mono text-[10px] uppercase">Mora:</span>
@@ -3023,7 +3036,8 @@ export default function App() {
         <div className={`${activeScreen === 'home' ? 'lg:col-span-4' : 'lg:col-span-3'} space-y-6`}>
           
           {/* Main Action tab selectors */}
-          <div className={`flex md:flex-wrap overflow-x-auto md:overflow-x-visible whitespace-nowrap md:whitespace-normal scrollbar-custom-tabs backdrop-blur-md border p-2 rounded-xl w-full gap-1 ${activeUiTheme.panelClass}`}>
+          <div className={`menu-tab-rail flex md:flex-wrap overflow-x-auto md:overflow-x-visible whitespace-nowrap md:whitespace-normal scrollbar-custom-tabs backdrop-blur-md border p-2 rounded-xl w-full gap-1 ${activeUiTheme.panelClass}`}>
+            <SlidingTabMarker selection={activeScreen} />
             <button
               onClick={() => {
                 navigateWithTransition('home');
@@ -3035,6 +3049,7 @@ export default function App() {
                   : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
               }`}
               id="dash_screen_home"
+              aria-current={activeScreen === 'home' ? 'page' : undefined}
             >
               <Compass className={`w-3.5 h-3.5 shrink-0 ${activeScreen === 'home' ? 'text-slate-955' : 'text-cyan-400 animate-pulse'}`} />
               <span>Home</span>
@@ -3051,6 +3066,7 @@ export default function App() {
                   : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-black'
               }`}
               id="dash_screen_story"
+              aria-current={activeScreen === 'story' ? 'page' : undefined}
             >
               <BookOpen className={`w-3.5 h-3.5 shrink-0 ${activeScreen === 'story' ? 'text-slate-955' : 'text-emerald-400 animate-pulse'}`} />
               <span className="hidden md:inline">Story Campaign</span>
@@ -3068,6 +3084,7 @@ export default function App() {
                   : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-black'
               }`}
               id="dash_screen_arena"
+              aria-current={activeScreen === 'arena' ? 'page' : undefined}
             >
               <Sword className={`w-3.5 h-3.5 shrink-0 ${activeScreen === 'arena' ? 'text-slate-955' : 'text-rose-400 animate-pulse'}`} />
               <span className="hidden md:inline">{t('combat_arena', language)}</span>
@@ -3100,6 +3117,7 @@ export default function App() {
                     : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-black'
                 }`}
                 id="dash_screen_dungeon"
+                aria-current={activeScreen === 'dungeon' ? 'page' : undefined}
               >
                 <Landmark className={`w-3.5 h-3.5 shrink-0 ${activeScreen === 'dungeon' ? 'text-slate-955' : 'text-violet-400 animate-pulse'}`} />
                 <span className="hidden md:inline">{t('rogue_ruins', language)}</span>
@@ -3133,6 +3151,7 @@ export default function App() {
                     : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-black'
                 }`}
                 id="dash_screen_wish"
+                aria-current={activeScreen === 'wish' ? 'page' : undefined}
               >
                 <Sparkles className={`w-3.5 h-3.5 shrink-0 ${activeScreen === 'wish' ? 'text-slate-955' : 'text-amber-400 animate-pulse'}`} />
                 <span className="hidden md:inline">{t('celestial_summons', language)}</span>
@@ -3152,6 +3171,7 @@ export default function App() {
                   : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
               }`}
               id="dash_screen_inventory"
+              aria-current={activeScreen === 'inventory' ? 'page' : undefined}
             >
               <Hammer className={`w-3.5 h-3.5 shrink-0 ${activeScreen === 'inventory' ? 'text-slate-955' : 'text-orange-400 animate-pulse'}`} />
               <span className="hidden md:inline">{t('forge_ascension', language)}</span>
@@ -3169,6 +3189,7 @@ export default function App() {
                   : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-black'
               }`}
               id="dash_screen_quest"
+              aria-current={activeScreen === 'quest' ? 'page' : undefined}
             >
               <Trophy className={`w-3.5 h-3.5 shrink-0 ${activeScreen === 'quest' ? 'text-slate-955' : 'text-yellow-400 animate-pulse'}`} />
               <span className="hidden md:inline">{t('quest_log', language)}</span>
@@ -3186,6 +3207,7 @@ export default function App() {
                   : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-black'
               }`}
               id="dash_screen_party"
+              aria-current={activeScreen === 'party' ? 'page' : undefined}
             >
               <Users className={`w-3.5 h-3.5 shrink-0 ${activeScreen === 'party' ? 'text-slate-955' : 'text-blue-400 animate-pulse'}`} />
               <span className="hidden md:inline">{t('party_setup', language)}</span>
@@ -3227,6 +3249,7 @@ export default function App() {
                     : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-black'
                 }`}
                 id="dash_screen_shop"
+                aria-current={activeScreen === 'shop' ? 'page' : undefined}
               >
                 <Coins className={`w-3.5 h-3.5 shrink-0 ${activeScreen === 'shop' ? 'text-slate-955' : 'text-teal-400 animate-pulse'}`} />
                 <span className="hidden md:inline">Gems Shop</span>
@@ -3244,6 +3267,7 @@ export default function App() {
                   : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
               }`}
               id="dash_screen_wiki"
+              aria-current={activeScreen === 'wiki' ? 'page' : undefined}
             >
               <BookOpen className={`w-3.5 h-3.5 shrink-0 ${activeScreen === 'wiki' ? 'text-slate-955' : 'text-fuchsia-400 animate-pulse'}`} />
               <span className="hidden md:inline">{t('lore_wiki', language)}</span>
@@ -3253,6 +3277,7 @@ export default function App() {
 
           {/* Actual screens swap frame */}
           <div className="flex-1 justify-between flex flex-col">
+            <MenuSurface screen={activeScreen} paused={storyBattleActive || showSettingsModal || mobileFullscreenGateOpen} lowGraphics={isMobile}>
             <React.Suspense fallback={<ScreenLoadingFallback />}>
               <AnimatePresence mode="wait">
               {activeScreen === 'home' && (
@@ -3515,6 +3540,7 @@ export default function App() {
                 >
                   <SquadronQuestLedger
                     activeQuests={saveState.activeQuests}
+                    completedQuestIds={saveState.completedQuestIds}
                     onClaimQuestReward={claimQuestReward}
                     onClaimAllQuestRewards={claimAllQuestRewards}
                     layout="full"
@@ -4137,6 +4163,7 @@ export default function App() {
               )}
               </AnimatePresence>
             </React.Suspense>
+            </MenuSurface>
           </div>
         </div>
 
@@ -4148,6 +4175,7 @@ export default function App() {
           {activeScreen !== 'quest' && (
             <SquadronQuestLedger
               activeQuests={saveState.activeQuests}
+              completedQuestIds={saveState.completedQuestIds}
               onClaimQuestReward={claimQuestReward}
               onClaimAllQuestRewards={claimAllQuestRewards}
               layout="sidebar"
