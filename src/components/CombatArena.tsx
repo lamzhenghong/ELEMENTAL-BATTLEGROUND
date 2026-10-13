@@ -231,7 +231,7 @@ import {
   worldToScreen,
   type CameraFrame,
 } from '../utils/cinematicCamera';
-import { resolveActivePartyIndex } from '../utils/combatPartySelection';
+import { reconcileCombatParty, resolveActivePartyIndex } from '../utils/combatPartySelection';
 import { tickCombatPartyTimers } from '../utils/combatPartyTimers';
 
 const EMPTY_STORY_CHOICE_SELECTIONS: StoryChoiceSelections = {};
@@ -1545,8 +1545,10 @@ export default function CombatArena({
     });
 
     if (list.length > 0) {
-      setCombatParty(list);
-      setActivePartyIndex(resolveActivePartyIndex(list, previousActiveCharacterId));
+      const nextParty = reconcileCombatParty(loopStateRef.current.combatParty, list);
+      loopStateRef.current.combatParty = nextParty;
+      setCombatParty(nextParty);
+      setActivePartyIndex(resolveActivePartyIndex(nextParty, previousActiveCharacterId));
     }
   }, [partyIds, characterLevels, characterEquippedWeapon, inventoryWeapons, inventoryArtifacts, characterEquippedArtifacts, dungeonMode, dungeonBuffs, dungeonPartyHp, dungeonPartyUlt, characterPortraits]);
 
