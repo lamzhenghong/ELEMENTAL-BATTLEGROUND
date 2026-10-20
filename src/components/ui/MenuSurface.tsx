@@ -19,6 +19,9 @@ export default function MenuSurface({ screen, paused, lowGraphics, children }: {
     return () => { observer.disconnect(); document.removeEventListener('visibilitychange', onVisibility); };
   }, [profile.ambient]);
 
+  // Fullscreen combat HUDs must escape the menu's isolated stacking context.
+  if (screen === 'arena' || screen === 'dungeon') return <>{children}</>;
+
   return (
     <div className="menu-surface" data-material={profile.material}
       data-ambient={profile.ambient} data-running={visible && foreground && !paused}
